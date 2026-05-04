@@ -11,7 +11,6 @@ describe('invariant', () => {
   it('narrows the type after the call', () => {
     const x: number | null = 1 as number | null;
     invariant(x !== null, 'x must be set');
-    // @ts-expect-error if narrowing fails to remove null
     const y: number = x;
     expect(y).toBe(1);
   });
