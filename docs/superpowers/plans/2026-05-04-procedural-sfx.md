@@ -558,27 +558,31 @@ describe('lowpass', () => {
 });
 
 describe('mix', () => {
-  it('sums shorter buffers into a longer output', () => {
+  it('sums shorter buffers into a longer output without attenuating in-range values', () => {
     const a = new Float32Array([0.5, 0.5, 0.5, 0.5]);
     const b = new Float32Array([0.5, 0.5]);
     const out = mix([a, b]);
     expect(out.length).toBe(4);
-    // tanh(1) ≈ 0.7616; tanh(0.5) ≈ 0.4621
-    expect(out[0]!).toBeCloseTo(Math.tanh(1), 4);
-    expect(out[2]!).toBeCloseTo(Math.tanh(0.5), 4);
+    // First two samples sum to 1.0 — within range, passed through unchanged.
+    expect(out[0]!).toBeCloseTo(1, 6);
+    expect(out[1]!).toBeCloseTo(1, 6);
+    // Third sample is the tail of `a` only — unchanged.
+    expect(out[2]!).toBeCloseTo(0.5, 6);
   });
 
-  it('soft-clips peaks above 1 via tanh', () => {
+  it('soft-clips only when the summed value exceeds ±1', () => {
     const a = new Float32Array([2, -2]);
     const out = mix([a]);
+    // Out-of-range: clipped via tanh.
+    expect(out[0]!).toBeCloseTo(Math.tanh(2), 4);
+    expect(out[1]!).toBeCloseTo(-Math.tanh(2), 4);
     expect(Math.abs(out[0]!)).toBeLessThan(1);
-    expect(Math.abs(out[1]!)).toBeLessThan(1);
   });
 
-  it('applies per-buffer gainsDb', () => {
+  it('applies per-buffer gainsDb (in-range stays linear)', () => {
     const a = new Float32Array([1]);
     const out = mix([a], [-6]); // -6 dB ≈ 0.501
-    expect(out[0]!).toBeCloseTo(Math.tanh(0.501), 3);
+    expect(out[0]!).toBeCloseTo(0.501, 3);
   });
 });
 
@@ -633,7 +637,11 @@ export function lowpass(buf: Float32Array, cutoffHz: number): Float32Array {
   return buf;
 }
 
-/** Sum buffers (zero-padded to max length) and soft-clip via tanh. */
+/**
+ * Sum buffers (zero-padded to max length). Pass-through when |sum| ≤ 1;
+ * soft-clip via tanh only on samples that exceed the range. Single-layer
+ * mixes therefore preserve full headroom.
+ */
 export function mix(buffers: Float32Array[], gainsDb?: number[]): Float32Array {
   let maxLen = 0;
   for (const b of buffers) maxLen = Math.max(maxLen, b.length);
@@ -643,7 +651,10 @@ export function mix(buffers: Float32Array[], gainsDb?: number[]): Float32Array {
     const g = gainsDb && gainsDb[bi] !== undefined ? Math.pow(10, gainsDb[bi]! / 20) : 1;
     for (let i = 0; i < buf.length; i++) out[i] += buf[i]! * g;
   }
-  for (let i = 0; i < out.length; i++) out[i] = Math.tanh(out[i]!);
+  for (let i = 0; i < out.length; i++) {
+    const s = out[i]!;
+    if (s > 1 || s < -1) out[i] = Math.tanh(s);
+  }
   return out;
 }
 
@@ -921,10 +932,8 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
   'wave-start': {
     totalSec: 0.35,
     layers: [
-      { kind: 'sequence', offsets: [0, 0.15], layer: {
-        kind: 'osc', wave: 'sine', freqStart: 440, duration: 0.12,
-        envelope: { attack: 0.005, decay: 0.040, sustain: 0.3, release: 0.060 },
-      }},
+      { kind: 'osc', wave: 'sine', freqStart: 440, duration: 0.12,
+        envelope: { attack: 0.005, decay: 0.040, sustain: 0.3, release: 0.060 } },
       { kind: 'sequence', offsets: [0.15], layer: {
         kind: 'osc', wave: 'sine', freqStart: 660, duration: 0.18,
         envelope: { attack: 0.005, decay: 0.060, sustain: 0.3, release: 0.100 },
@@ -1052,7 +1061,7 @@ export const SFX_POOL_SIZE: Readonly<Record<SfxKey, number>> = {
 };
 ```
 
-Note: `silent-100ms.wav` is still required here for the music keys; it will be deleted in Task 13 only after we confirm music doesn't reference it. Keep both for now — the file is tiny.
+Note: `silent-100ms.wav` is still required here for the music keys. Music replacement is out of scope for this plan, so the file stays — Task 13 only updates the comment to make that explicit.
 
 - [ ] **Step 2: Run typecheck and tests to verify nothing broke**
 
@@ -1207,7 +1216,7 @@ export class AudioManager {
   private currentMusic: MusicKey | null = null;
   private initialized = false;
   private jitterRng = makeRng(0xa17d10);
-  private supportsPlaybackRate = true;
+  private supportsPlaybackRate = false;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -1229,6 +1238,11 @@ export class AudioManager {
       }
       this.sfxPools.set(key, { players, cursor: 0 });
     }
+    // Duck-type once: assume playbackRate is supported iff the property exists on a
+    // freshly-constructed player. Setting an unknown prop on a JS-side proxy doesn't
+    // throw, so try/catch on assignment is unreliable — this is.
+    const probe = this.sfxPools.get('ui-click')?.players[0];
+    this.supportsPlaybackRate = probe !== undefined && 'playbackRate' in (probe as object);
     this.initialized = true;
   }
 
@@ -1246,11 +1260,7 @@ export class AudioManager {
       player.volume = this.volumes.master * this.volumes.sfx;
       if (this.supportsPlaybackRate && JITTER_KEYS.has(key)) {
         const rate = 1 + (this.jitterRng() - 0.5) * 0.06;
-        try {
-          (player as unknown as { playbackRate: number }).playbackRate = rate;
-        } catch {
-          this.supportsPlaybackRate = false;
-        }
+        (player as unknown as { playbackRate: number }).playbackRate = rate;
       }
       void player.seekTo(0);
       player.play();
@@ -1335,9 +1345,11 @@ Walk through:
 
 Confirm: each sound is audible, distinct, and not the previous silent placeholder.
 
-- [ ] **Step 4: Confirm cache hit on second launch**
+- [ ] **Step 4: Confirm cache hit on a cold relaunch**
 
-Background and reopen the app (do not uninstall). Trigger one SFX. The bake step should skip every key (no `writeAsStringAsync` calls). Verify by checking Metro logs are quiet during init — no warnings about file writes.
+A cold relaunch (the only way to re-run `AudioProvider.init`) means: kill the app process — swipe up from the iOS app switcher and dismiss, or `adb shell am force-stop <package>` on Android — then reopen. **Backgrounding alone keeps the JS runtime alive and `init` does not re-run, so this won't exercise the cache path.**
+
+Add a `console.log('[bake] writing', path)` next to `writeAsStringAsync` in `bake.ts` for the duration of this check (revert before commit). On a cold relaunch you should see zero `[bake] writing` lines if the cache directory survived. If `cacheDirectory` was evicted by the OS, expect 11 lines on the relaunch — that's correct behavior, just rerun the test.
 
 - [ ] **Step 5: Build and launch on Android**
 
@@ -1359,21 +1371,16 @@ Manual verification only. Move to the next task.
 
 ---
 
-### Task 13: Delete the silent placeholder
+### Task 13: Document `silent-100ms.wav` is now music-only
 
 **Files:**
-- Delete: `src/audio/assets/silent-100ms.wav`
 - Modify: `src/audio/catalog.ts`
 
-Only do this once Task 12 has confirmed nothing depends on the silent WAV at runtime. Music keys still reference it via `require`, so we either need to drop those requires or keep the file. Plan: keep the file but stop using it for SFX (already done in Task 9). Delete the file when music gets a real source — **not in this plan**.
+The silent WAV is no longer used by SFX (Task 9 dropped the SFX requires) but `MUSIC_SOURCES` still references it — deleting the file would break Metro bundling for the music keys, and replacing music is explicitly out of scope. This task just clarifies the remaining usage in code.
 
-- [ ] **Step 1: Skip — keep `silent-100ms.wav` for music**
+- [ ] **Step 1: Update the comment in `catalog.ts`**
 
-`MUSIC_SOURCES` in `catalog.ts` still references it. Removing the file would break music init (which silently no-ops, but produces a Metro bundling error at compile time). Leaving it in place is correct for this scope.
-
-- [ ] **Step 2: Update the comment in `catalog.ts`** (clarity, no functional change)
-
-In `src/audio/catalog.ts`, replace the leading comment block with:
+Replace the leading comment block in `src/audio/catalog.ts` with:
 
 ```ts
 // SFX keys are synthesized at runtime — see specs.ts and bake.ts.
@@ -1381,7 +1388,7 @@ In `src/audio/catalog.ts`, replace the leading comment block with:
 const silent = require('./assets/silent-100ms.wav');
 ```
 
-- [ ] **Step 3: Commit (if the comment changed)**
+- [ ] **Step 2: Commit**
 
 ```bash
 git add src/audio/catalog.ts
@@ -1445,7 +1452,7 @@ This task is verification only.
 | `catalog.ts` migration (drop `SFX_SOURCES`, add `SFX_KEYS`) | Task 9 |
 | `vitest.config.ts` widened to include `src/audio/**/*.spec.ts` | Task 2 |
 | Risk #1 — URI vs `require` form | Task 11 (uses `{ uri }`) + Task 12 Step 6 (string-form fallback) |
-| Risk #2 — `playbackRate` availability | Task 11 (try/catch flips `supportsPlaybackRate`) |
+| Risk #2 — `playbackRate` availability | Task 11 (duck-type `'playbackRate' in player` once at end of `init`) |
 | Risk #3 — `expo-file-system` SDK 55 API | Task 1 Step 3 (verifies import) + Task 10 Step 2 (fallback to top-level import) |
 | Acceptance: audible SFX on iOS+Android | Task 12 |
 | Acceptance: cache hit on relaunch | Task 12 Step 4 |
@@ -1454,7 +1461,7 @@ This task is verification only.
 
 ### Placeholder scan
 
-No "TBD" / "implement later" / vague handwave steps. Every code step shows the full code. The single deliberate non-action is Task 13 Step 1, which is documented as a no-op with explicit reasoning.
+No "TBD" / "implement later" / vague handwave steps. Every code step shows the full code. Task 13 is intentionally documentation-only — `silent-100ms.wav` stays on disk for music until music gets a real source in a future plan.
 
 ### Type consistency
 
