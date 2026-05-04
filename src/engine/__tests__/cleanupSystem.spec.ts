@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compactInPlace, compactProjectilesAndRelease } from '@/engine/systems/cleanupSystem';
+import { compactInPlace, compactProjectilesAndRelease, compactProjectilesAndReleaseToPool } from '@/engine/systems/cleanupSystem';
 import { WormEnemy } from '@/entities/enemies/WormEnemy';
 import { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
 import { ObjectPool } from '@/engine/pool/ObjectPool';
@@ -22,7 +22,7 @@ describe('compactInPlace', () => {
   });
 });
 
-describe('compactProjectilesAndRelease', () => {
+describe('compactProjectilesAndReleaseToPool', () => {
   it('releases dead projectiles back to the pool', () => {
     const pool = new ObjectPool<HitscanProjectile>({
       create: () => new HitscanProjectile({ id: 'p:0', kind: 'projectile:hitscan-bolt', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
@@ -32,7 +32,24 @@ describe('compactProjectilesAndRelease', () => {
     const a = pool.acquire(); a.alive = true;
     const b = pool.acquire(); b.alive = false;
     const arr = [a, b];
-    compactProjectilesAndRelease(arr, pool);
+    compactProjectilesAndReleaseToPool(arr, pool);
+    expect(arr).toEqual([a]);
+    expect(pool.activeCount).toBe(1);
+    expect(pool.freeCount).toBe(1);
+  });
+});
+
+describe('compactProjectilesAndRelease (callback form)', () => {
+  it('routes dead projectiles via the release callback', () => {
+    const pool = new ObjectPool<HitscanProjectile>({
+      create: () => new HitscanProjectile({ id: 'p:0', kind: 'projectile:hitscan-bolt', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+      reset: (p) => p.resetForPool(),
+      initialSize: 0,
+    });
+    const a = pool.acquire(); a.alive = true;
+    const b = pool.acquire(); b.alive = false;
+    const arr = [a, b];
+    compactProjectilesAndRelease(arr, (p) => pool.release(p as HitscanProjectile));
     expect(arr).toEqual([a]);
     expect(pool.activeCount).toBe(1);
     expect(pool.freeCount).toBe(1);
