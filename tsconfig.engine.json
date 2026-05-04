@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2022",
+    "jsx": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "src/lib/**/*",
+    "src/engine/**/*",
+    "src/world/**/*",
+    "src/entities/**/*",
+    "src/content/**/*",
+    "src/difficulty/**/*",
+    "src/meta/**/*"
+  ],
+  "exclude": ["**/*.tsx"]
+}
