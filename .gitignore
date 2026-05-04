@@ -1,0 +1,45 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Expo / RN
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Metro
+.metro-cache/
+
+# Native
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Test
+coverage/
+
+# Superpowers brainstorm (visual companion artifacts)
+.superpowers/
