@@ -53,3 +53,57 @@ describe('makeRng', () => {
     }
   });
 });
+
+import { noise, applyAdsr } from '@/audio/synth';
+
+describe('noise', () => {
+  it('returns the right length for the requested duration', () => {
+    const buf = noise(0.01, 'white', makeRng(1));
+    expect(buf.length).toBe(441);
+  });
+
+  it('keeps white-noise samples bounded in [-1, 1]', () => {
+    const buf = noise(0.05, 'white', makeRng(7));
+    for (let i = 0; i < buf.length; i++) {
+      expect(buf[i]!).toBeGreaterThanOrEqual(-1);
+      expect(buf[i]!).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('keeps pink-noise samples bounded in [-1, 1]', () => {
+    const buf = noise(0.05, 'pink', makeRng(7));
+    for (let i = 0; i < buf.length; i++) {
+      expect(buf[i]!).toBeGreaterThanOrEqual(-1);
+      expect(buf[i]!).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('is deterministic given the same RNG seed', () => {
+    const a = noise(0.01, 'white', makeRng(42));
+    const b = noise(0.01, 'white', makeRng(42));
+    for (let i = 0; i < a.length; i++) expect(a[i]).toBe(b[i]);
+  });
+});
+
+describe('applyAdsr', () => {
+  it('shapes the envelope at boundary samples', () => {
+    const buf = new Float32Array(SAMPLE_RATE).fill(1); // 1 second of DC
+    applyAdsr(buf, { attack: 0.1, decay: 0.1, sustain: 0.5, release: 0.1 });
+    // start: 0
+    expect(buf[0]!).toBeCloseTo(0, 4);
+    // end of attack (~0.1s): peak ≈ 1
+    expect(buf[Math.round(SAMPLE_RATE * 0.1) - 1]!).toBeCloseTo(1, 2);
+    // end of decay (~0.2s): sustain level ≈ 0.5
+    expect(buf[Math.round(SAMPLE_RATE * 0.2)]!).toBeCloseTo(0.5, 2);
+    // mid-sustain (~0.5s): still ≈ 0.5
+    expect(buf[Math.round(SAMPLE_RATE * 0.5)]!).toBeCloseTo(0.5, 2);
+    // end of release (~1.0s, last sample): ≈ 0
+    expect(buf[buf.length - 1]!).toBeCloseTo(0, 2);
+  });
+
+  it('returns the same buffer (mutates in place)', () => {
+    const buf = new Float32Array(100).fill(1);
+    const ret = applyAdsr(buf, { attack: 0.001, decay: 0.001, sustain: 0.5, release: 0.001 });
+    expect(ret).toBe(buf);
+  });
+});
