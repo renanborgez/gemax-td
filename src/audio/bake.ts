@@ -69,9 +69,9 @@ function manualBtoa(s: string): string {
     const b = i + 1 < s.length ? s.charCodeAt(i + 1) : 0;
     const c = i + 2 < s.length ? s.charCodeAt(i + 2) : 0;
     const triple = (a << 16) | (b << 8) | c;
-    out += chars[(triple >> 18) & 63] + chars[(triple >> 12) & 63];
-    out += i + 1 < s.length ? chars[(triple >> 6) & 63] : '=';
-    out += i + 2 < s.length ? chars[triple & 63] : '=';
+    out += chars[(triple >> 18) & 63]! + chars[(triple >> 12) & 63]!;
+    out += i + 1 < s.length ? chars[(triple >> 6) & 63]! : '=';
+    out += i + 2 < s.length ? chars[triple & 63]! : '=';
   }
   return out;
 }
