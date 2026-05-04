@@ -101,7 +101,18 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     return {
       worldRef: worldRef as { current: World },
       redrawTick,
-      startNextWave: () => engine.startNextWave(),
+      startNextWave: () => {
+        const idx = w.waveDirector.waveIndex + 1;
+        const next = w.level.waves[idx];
+        if (!next) return;
+        // Bonus = full delayBeforeStart × 5 (true elapsed-countdown is deferred).
+        const bonus = Math.floor(next.delayBeforeStart * 5);
+        if (bonus > 0) {
+          w.credits += bonus;
+          w.bus.emit('credits-changed', { credits: w.credits });
+        }
+        engine.startNextWave();
+      },
       setSpeed: (s) => { engine.setSpeed(s); useHudStore.getState().setSpeed(s); },
       pause: () => { engine.pause(); useHudStore.getState().setPaused(true); },
       resume: () => { engine.resume(); useHudStore.getState().setPaused(false); },
