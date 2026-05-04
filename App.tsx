@@ -1,25 +1,25 @@
+import 'react-native-gesture-handler';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { bootstrap } from '@/app/bootstrap';
+import { SaveProvider } from '@/app/providers/SaveProvider';
+import { AudioProvider } from '@/app/providers/AudioProvider';
+import { RootNav } from '@/app/RootNav';
 
 export default function App() {
+  useEffect(() => { bootstrap(); }, []);
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>tower-gemax · netrunner online</Text>
-      <StatusBar style="light" />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <SaveProvider>
+          <AudioProvider>
+            <RootNav />
+            <StatusBar style="light" />
+          </AudioProvider>
+        </SaveProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0E1A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    color: '#00F0FF',
-    fontSize: 16,
-    fontFamily: 'monospace',
-  },
-});
