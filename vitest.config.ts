@@ -11,6 +11,7 @@ export default defineConfig({
       'src/content/**/*.spec.ts',
       'src/difficulty/**/*.spec.ts',
       'src/meta/**/*.spec.ts',
+      'src/ui/**/*.spec.ts',
     ],
     globals: true,
     environment: 'node',
