@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
+import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function PauseModal({
   visible, onResume, onRestart, onExit,
@@ -9,9 +10,15 @@ export function PauseModal({
       <View style={styles.bg}>
         <View style={styles.card}>
           <Text style={styles.title}>PAUSED</Text>
-          <Pressable onPress={onResume} style={styles.btn}><Text style={styles.btnText}>RESUME</Text></Pressable>
-          <Pressable onPress={onRestart} style={styles.btn}><Text style={styles.btnText}>RESTART</Text></Pressable>
-          <Pressable onPress={onExit} style={[styles.btn, styles.exit]}><Text style={styles.btnText}>EXIT</Text></Pressable>
+          <Pressable onPress={onResume} style={styles.btnPrimary}>
+            <Text style={styles.btnPrimaryText}>RESUME</Text>
+          </Pressable>
+          <Pressable onPress={onRestart} style={styles.btnSecondary}>
+            <Text style={styles.btnSecondaryText}>RESTART</Text>
+          </Pressable>
+          <Pressable onPress={onExit} style={styles.btnDanger}>
+            <Text style={styles.btnDangerText}>EXIT</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -19,10 +26,35 @@ export function PauseModal({
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0E1ADD' },
-  card: { padding: 24, borderColor: '#00F0FF', borderWidth: 1, gap: 12, minWidth: 240 },
-  title: { color: '#00F0FF', fontFamily: 'monospace', fontSize: 18, textAlign: 'center' },
-  btn: { paddingVertical: 12, alignItems: 'center', borderColor: '#00F0FF', borderWidth: 1 },
-  btnText: { color: '#E8F1FF', fontFamily: 'monospace', fontSize: 13 },
-  exit: { borderColor: '#FF2BD6' },
+  bg: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000DD' },
+  card: {
+    padding: SPACING.xl,
+    borderRadius: RADIUS.xl,
+    gap: SPACING.md,
+    minWidth: 260,
+    backgroundColor: COLORS.bgCard,
+  },
+  title: { ...TEXT.title, color: COLORS.primary, textAlign: 'center', marginBottom: SPACING.sm },
+  btnPrimary: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+  },
+  btnPrimaryText: { ...TEXT.button, color: COLORS.textOnAccent },
+  btnSecondary: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.bgElevated,
+  },
+  btnSecondaryText: { ...TEXT.button, color: COLORS.textPrimary },
+  btnDanger: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    borderColor: COLORS.danger,
+    borderWidth: 1,
+  },
+  btnDangerText: { ...TEXT.button, color: COLORS.danger },
 });

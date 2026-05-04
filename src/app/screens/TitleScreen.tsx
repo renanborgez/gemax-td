@@ -1,35 +1,82 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
-import { SettingsModal } from '@/ui/modals/SettingsModal';
+import { ScreenShell } from '@/ui/components/ScreenShell';
+import { AngularButton } from '@/ui/components/AngularButton';
+import { MenuRow } from '@/ui/components/MenuRow';
+import { useSave } from '@/app/providers/SaveProvider';
+import { TECH_NODES } from '@/content/techNodes';
+import { COLORS, TEXT, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Title'>;
 
+const APP_VERSION = '1.0.0-BETA';
+
 export function TitleScreen({ navigation }: Props) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { data } = useSave();
+
+  const installed = TECH_NODES.filter((n) => (data.meta.techTree[n.id] ?? 0) > 0).length;
+  const total = TECH_NODES.length;
+
   return (
-    <View style={styles.root}>
-      <Text style={styles.title}>tower-gemax</Text>
-      <Text style={styles.subtitle}>netrunner online</Text>
-      <Pressable style={styles.btn} onPress={() => navigation.navigate('LevelSelect')}>
-        <Text style={styles.btnText}>Run</Text>
-      </Pressable>
-      <Pressable style={styles.btn} onPress={() => navigation.navigate('TechTree')}>
-        <Text style={styles.btnText}>Tech Tree</Text>
-      </Pressable>
-      <Pressable style={styles.btn} onPress={() => setSettingsOpen(true)}>
-        <Text style={styles.btnText}>Settings</Text>
-      </Pressable>
-      <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </View>
+    <ScreenShell sectionTitle="Main Menu">
+      <View style={styles.titleBlock}>
+        <Text style={styles.titleLine} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={styles.titleWhite}>GeMax </Text>
+          <Text style={styles.titleMint}>TD</Text>
+        </Text>
+        <View style={styles.dividerRow}>
+          <View style={styles.dot} />
+          <View style={styles.dividerLine} />
+        </View>
+      </View>
+
+      <View style={styles.playWrap}>
+        <AngularButton label="PLAY" onPress={() => navigation.navigate('LevelSelect')} />
+      </View>
+
+      <View style={styles.menuList}>
+        <MenuRow
+          icon="cube-outline"
+          heading="COLLECTION"
+          sub={`${installed}/${total} UPGRADES INSTALLED`}
+          accent={COLORS.secondary}
+          onPress={() => navigation.navigate('TechTree')}
+        />
+        <Text style={styles.version}>V. {APP_VERSION}</Text>
+      </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0E1A', gap: 16 },
-  title: { color: '#00F0FF', fontFamily: 'monospace', fontSize: 32, letterSpacing: 2 },
-  subtitle: { color: '#FF2BD6', fontFamily: 'monospace', fontSize: 14, marginBottom: 32 },
-  btn: { paddingVertical: 12, paddingHorizontal: 32, borderColor: '#00F0FF', borderWidth: 1 },
-  btnText: { color: '#E8F1FF', fontFamily: 'monospace', fontSize: 16 },
+  titleBlock: { gap: 0 },
+  titleLine: {
+    ...TEXT.display,
+    fontSize: 56,
+    lineHeight: 64,
+    letterSpacing: -1,
+  },
+  titleWhite: { color: COLORS.textPrimary },
+  titleMint: { color: COLORS.secondary },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+  },
+  dot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: COLORS.primary,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  playWrap: { marginTop: SPACING.md },
+  menuList: { gap: SPACING.sm, marginTop: SPACING.sm },
+  version: {
+    ...TEXT.labelSmall,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
 });

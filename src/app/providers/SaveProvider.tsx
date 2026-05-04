@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SaveStore } from '@/meta/SaveStore';
 import { asyncStorageKv } from '@/meta/asyncStorageKv';
 import type { SaveDataLatest } from '@/meta/schema';
+import { COLORS } from '@/render/theme';
 
 type Ctx = {
   store: SaveStore;
@@ -21,8 +22,8 @@ export function SaveProvider({ children }: { children: React.ReactNode }) {
 
   if (!data) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0E1A' }}>
-        <ActivityIndicator color="#00F0FF" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.bg }}>
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }

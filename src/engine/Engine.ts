@@ -124,6 +124,16 @@ export class Engine {
           damage,
           attackerTowerId: intent.towerId,
         });
+        // Visual-only beam entity: lives a few frames so the renderer can draw
+        // a tower→target line. Damage is already staged above.
+        const p = w.pools.hitscan.acquire();
+        p.alive = true;
+        p.fromX = intent.fromX; p.fromY = intent.fromY;
+        p.x = intent.targetX; p.y = intent.targetY;
+        p.targetEnemyId = intent.targetEnemyId;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.ttl = 0.08;
+        w.entities.projectiles.push(p);
       } else if (intent.projectileKind === 'aoe-pulse') {
         // Spawn an AoE pulse at target.
         const p = w.pools.aoe.acquire();
@@ -246,23 +256,27 @@ export class Engine {
     }
 
     // 7. Process leaks (lives, lose check).
+    let livesChanged = false;
     for (const leak of w.staged.leaks) {
       w.lives -= 1;
       w.bus.emit('life-lost', { enemyKind: leak.enemyKind });
-      w.bus.emit('lives-changed', { lives: w.lives });
+      livesChanged = true;
     }
     w.staged.leaks.length = 0;
+    if (livesChanged) w.bus.emit('lives-changed', { lives: w.lives });
 
     // 8. Bounty payouts on dead enemies.
+    let creditsChanged = false;
     for (const e of w.entities.enemies) {
       if (!e.alive && e.hp <= 0 && e.lastDamagedBy) {
         if (e.bounty > 0) {
           w.credits += e.bounty;
-          w.bus.emit('credits-changed', { credits: w.credits });
           e.bounty = 0;
+          creditsChanged = true;
         }
       }
     }
+    if (creditsChanged) w.bus.emit('credits-changed', { credits: w.credits });
 
     // 9. Compact arrays (release pool entries).
     compactInPlace(w.entities.enemies);
@@ -277,13 +291,15 @@ export class Engine {
     if (w.effects.globals.lifeRegenPerMinute > 0) {
       w.regenAccumulator += dt;
       const period = 60 / w.effects.globals.lifeRegenPerMinute;
+      let regenChanged = false;
       while (w.regenAccumulator >= period) {
         w.regenAccumulator -= period;
         if (w.lives < w.level.startLives) {
           w.lives += 1;
-          w.bus.emit('lives-changed', { lives: w.lives });
+          regenChanged = true;
         }
       }
+      if (regenChanged) w.bus.emit('lives-changed', { lives: w.lives });
     }
 
     // 11. Lose check.

@@ -17,7 +17,7 @@ const grid = SHORT([
   'BBBBBBBBP',
   'BBBBBBBBP',
   'PPPPPPPPP',
-  'PXXXBBBBB',
+  'PBBBBBBBB',
   'PBBBBBBBB',
   'PBBBBBBBB',
   'PPPPPPBBB',
@@ -41,8 +41,8 @@ export const LVL_01_INTRANET: LevelDef = {
   spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
   path,
   startCredits: 100,
-  startLives: 20,
-  starThresholds: { stars3: 18, stars2: 12, stars1: 1 },
+  startLives: 10,
+  starThresholds: { stars3: 9, stars2: 6, stars1: 1 },
   waves: [
     // Wave 1: gentle worms
     { delayBeforeStart: 6, groups: [

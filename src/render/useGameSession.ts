@@ -3,6 +3,7 @@ import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { AppState } from 'react-native';
 import { Engine, type Clock } from '@/engine/Engine';
 import { createWorld, type World, type RedrawPort } from '@/world/World';
+import { EMPTY_SNAPSHOT, buildSnapshot, type WorldSnapshot } from '@/render/snapshot';
 import { buildEffectsContext } from '@/meta/TechTree';
 import { TECH_NODES } from '@/content/techNodes';
 import { LEVEL_BY_ID } from '@/content/levels';
@@ -14,7 +15,7 @@ import type { Difficulty } from '@/content/types';
 
 export type GameSession = {
   worldRef: { current: World };
-  redrawTick: SharedValue<number>;
+  snapshot: SharedValue<WorldSnapshot>;
   /** UI commands. */
   startNextWave(): void;
   setSpeed(s: 1 | 2 | 3): void;
@@ -26,7 +27,7 @@ export type GameSession = {
 export function useGameSession(opts: { levelId: string; difficulty: Difficulty; seed: number }): GameSession {
   const { data, store, refresh } = useSave();
   const audio = useAudio();
-  const redrawTick = useSharedValue(0);
+  const snapshot = useSharedValue<WorldSnapshot>(EMPTY_SNAPSHOT);
   const worldRef = useRef<World | null>(null);
   const engineRef = useRef<Engine | null>(null);
 
@@ -35,10 +36,18 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     const level = LEVEL_BY_ID[opts.levelId];
     if (!level) throw new Error(`unknown level ${opts.levelId}`);
     const effects = buildEffectsContext(TECH_NODES, data);
-    const redraw: RedrawPort = { bump: () => { redrawTick.value = redrawTick.value + 1; } };
+    const redraw: RedrawPort = {
+      bump: () => {
+        const w = worldRef.current;
+        if (w) snapshot.value = buildSnapshot(w);
+      },
+    };
     worldRef.current = createWorld({
       level, difficulty: opts.difficulty, seed: opts.seed, effects, redraw,
     });
+    if (__DEV__) {
+      worldRef.current.credits = 200000;
+    }
     useHudStore.getState().reset({
       lives: worldRef.current.lives,
       credits: worldRef.current.credits,
@@ -90,8 +99,15 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     engineRef.current = engine;
     attachEventBridge(w.bus);
 
-    // Wire SFX cues.
-    w.bus.on('enemy-died', () => audio.playSfx('enemy-death'));
+    // Wire SFX cues. Coalesce enemy-death so a single AoE blast doesn't fan
+    // out into N synchronous native audio calls in one bus.flush().
+    let lastDeathSfxAt = 0;
+    w.bus.on('enemy-died', () => {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now - lastDeathSfxAt < 60) return;
+      lastDeathSfxAt = now;
+      audio.playSfx('enemy-death');
+    });
     w.bus.on('life-lost', () => audio.playSfx('life-lost'));
     w.bus.on('wave-started', () => audio.playSfx('wave-start'));
     w.bus.on('tower-placed', () => audio.playSfx('tower-placed'));
@@ -100,7 +116,7 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
 
     return {
       worldRef: worldRef as { current: World },
-      redrawTick,
+      snapshot,
       startNextWave: () => {
         const idx = w.waveDirector.waveIndex + 1;
         const next = w.level.waves[idx];

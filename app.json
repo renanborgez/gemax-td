@@ -25,7 +25,13 @@
         "backgroundColor": "#0A0E1A"
       }
     },
-    "assetBundlePatterns": ["**/*"],
-    "newArchEnabled": true
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-audio",
+      "expo-font",
+      "expo-asset"
+    ]
   }
 }

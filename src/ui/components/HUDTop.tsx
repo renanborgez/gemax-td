@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useHudStore } from '@/ui/hudStore';
+import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function HUDTop({
   onPause, onSpeed, onSendNextWave,
@@ -14,22 +15,28 @@ export function HUDTop({
 
   return (
     <View style={styles.root}>
-      <View style={styles.col}><Text style={styles.label}>LIVES</Text><Text style={styles.value}>{lives}</Text></View>
-      <View style={styles.col}><Text style={styles.label}>CREDITS</Text><Text style={styles.value}>{credits}</Text></View>
-      <View style={styles.col}>
-        <Text style={styles.label}>WAVE</Text>
-        <Text style={styles.value}>{Math.max(0, waveIndex + 1)}/{totalWaves}</Text>
-      </View>
-      <View style={styles.colActions}>
-        <Pressable onPress={onPause} style={styles.btn}><Text style={styles.btnText}>‖</Text></Pressable>
-        {[1, 2, 3].map((s) => (
-          <Pressable key={s} onPress={() => onSpeed(s as 1 | 2 | 3)} style={[styles.btn, speed === s && styles.btnActive]}>
-            <Text style={styles.btnText}>{s}×</Text>
-          </Pressable>
-        ))}
+      <Stat label="LIVES" value={String(lives)} />
+      <Stat label="CREDITS" value={String(credits)} />
+      <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
+      <View style={styles.actions}>
+        <Pressable onPress={onPause} style={styles.btn}>
+          <Text style={styles.btnText}>‖</Text>
+        </Pressable>
+        {[1, 2].map((s) => {
+          const active = speed === s;
+          return (
+            <Pressable
+              key={s}
+              onPress={() => onSpeed(s as 1 | 2)}
+              style={[styles.btn, active && styles.btnActive]}
+            >
+              <Text style={[styles.btnText, active && styles.btnTextActive]}>{s}×</Text>
+            </Pressable>
+          );
+        })}
         {(status === 'idle' || status === 'cleared') && (
           <Pressable onPress={onSendNextWave} style={[styles.btn, styles.send]}>
-            <Text style={styles.btnText}>SEND</Text>
+            <Text style={[styles.btnText, styles.sendText]}>SEND</Text>
           </Pressable>
         )}
       </View>
@@ -37,14 +44,39 @@ export function HUDTop({
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.col}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.value}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flexDirection: 'row', padding: 8, gap: 12, alignItems: 'center', backgroundColor: '#0A0E1ACC' },
-  col: { alignItems: 'center' },
-  colActions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
-  label: { color: '#A8B5C5', fontFamily: 'monospace', fontSize: 10 },
-  value: { color: '#E8F1FF', fontFamily: 'monospace', fontSize: 14 },
-  btn: { paddingVertical: 6, paddingHorizontal: 8, borderColor: '#00F0FF', borderWidth: 1 },
-  btnActive: { backgroundColor: '#00F0FF22' },
-  btnText: { color: '#00F0FF', fontFamily: 'monospace', fontSize: 12 },
-  send: { borderColor: '#FFB347' },
+  root: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.lg,
+    alignItems: 'center',
+    backgroundColor: COLORS.bgCard,
+  },
+  col: { alignItems: 'flex-start' },
+  label: { ...TEXT.labelSmall },
+  value: { ...TEXT.hudValue },
+  actions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
+  btn: {
+    paddingVertical: 6,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.bgElevated,
+    minWidth: 38,
+    alignItems: 'center',
+  },
+  btnActive: { backgroundColor: COLORS.primary },
+  btnText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
+  btnTextActive: { color: COLORS.textOnAccent },
+  send: { backgroundColor: COLORS.tertiary },
+  sendText: { color: COLORS.textOnAccent },
 });

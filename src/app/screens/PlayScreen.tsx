@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
@@ -11,11 +12,10 @@ import { HUDBottom } from '@/ui/components/HUDBottom';
 import { TowerPanel } from '@/ui/components/TowerPanel';
 import { WavePreview } from '@/ui/components/WavePreview';
 import { PauseModal } from '@/ui/modals/PauseModal';
-import { WinModal } from '@/ui/modals/WinModal';
-import { LoseModal } from '@/ui/modals/LoseModal';
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
 import type { TowerKind } from '@/content/types';
 import type { Viewport } from '@/engine/Viewport';
+import { COLORS } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Play'>;
 
@@ -27,7 +27,6 @@ export function PlayScreen({ route, navigation }: Props) {
   });
   const [buyKind, setBuyKind] = useState<TowerKind | null>(null);
   const [pauseVisible, setPauseVisible] = useState(false);
-  const [endState, setEndState] = useState<{ won: boolean; stars: 0|1|2|3; shards: number; waves: number } | null>(null);
   const viewportRef = useRef<Viewport | null>(null);
 
   const gestures = useWorldGestures({
@@ -37,7 +36,6 @@ export function PlayScreen({ route, navigation }: Props) {
     setBuyKind,
   });
 
-  // Subscribe to match-won/lost from the bus.
   useEffect(() => {
     const w = session.worldRef.current;
     const offW = w.bus.on('match-won', () => {
@@ -45,29 +43,40 @@ export function PlayScreen({ route, navigation }: Props) {
       const t = w.level.starThresholds;
       const stars: 0|1|2|3 = lives >= t.stars3 ? 3 : lives >= t.stars2 ? 2 : lives > 0 ? 1 : 0;
       const shards = Math.round(stars * 10 * w.difficulty.shardRewardMult * (1 + 0.05 * w.level.chapter));
-      setEndState({ won: true, stars, shards, waves: w.waveDirector.totalWaves });
+      navigation.replace('Win', {
+        levelId: route.params.levelId,
+        difficulty: route.params.difficulty,
+        stars, shards,
+        totalWaves: w.waveDirector.totalWaves,
+      });
     });
     const offL = w.bus.on('match-lost', ({ wavesCleared }) => {
-      setEndState({ won: false, stars: 0, shards: 0, waves: wavesCleared });
+      navigation.replace('Lose', {
+        levelId: route.params.levelId,
+        difficulty: route.params.difficulty,
+        wavesCleared,
+      });
     });
     return () => { offW(); offL(); };
-  }, [session]);
+  }, [session, navigation, route.params.levelId, route.params.difficulty]);
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <HUDTop
         onPause={() => { session.pause(); setPauseVisible(true); }}
         onSpeed={(s) => session.setSpeed(s)}
         onSendNextWave={() => session.startNextWave()}
       />
-      <GestureDetector gesture={gestures}>
-        <View style={styles.canvas}>
-          <SkiaWorld session={session} onViewportReady={(vp) => { viewportRef.current = vp; }} />
-        </View>
-      </GestureDetector>
+      <View style={styles.canvasWrap}>
+        <GestureDetector gesture={gestures}>
+          <View style={styles.canvas}>
+            <SkiaWorld session={session} onViewportReady={(vp) => { viewportRef.current = vp; }} buyKind={buyKind} />
+          </View>
+        </GestureDetector>
+        <TowerPanel worldRef={session.worldRef} />
+        <WavePreview worldRef={session.worldRef} />
+      </View>
       <HUDBottom selected={buyKind} onSelect={setBuyKind} />
-      <TowerPanel worldRef={session.worldRef} />
-      <WavePreview worldRef={session.worldRef} />
       <TutorialOverlay />
 
       <PauseModal
@@ -76,23 +85,12 @@ export function PlayScreen({ route, navigation }: Props) {
         onRestart={() => navigation.replace('Play', route.params)}
         onExit={() => { setPauseVisible(false); navigation.popToTop(); }}
       />
-      <WinModal
-        visible={endState?.won === true}
-        stars={endState?.stars ?? 0}
-        shards={endState?.shards ?? 0}
-        onContinue={() => navigation.popToTop()}
-      />
-      <LoseModal
-        visible={endState?.won === false}
-        wavesCleared={endState?.waves ?? 0}
-        onRetry={() => { setEndState(null); navigation.replace('Play', route.params); }}
-        onExit={() => { setEndState(null); navigation.popToTop(); }}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0A0E1A' },
+  root: { flex: 1, backgroundColor: COLORS.bg },
+  canvasWrap: { flex: 1, position: 'relative' },
   canvas: { flex: 1 },
 });

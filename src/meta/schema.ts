@@ -42,7 +42,7 @@ export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
     settings: {
       audioMaster: 1.0,
       sfx: 1.0,
-      music: 0.7,
+      music: 1.0,
       difficultyDefault: 'normal',
       tutorialSeen: false,
     },

@@ -1,46 +1,65 @@
 import React from 'react';
-import { Group, Circle } from '@shopify/react-native-skia';
+import { Group, Circle, Line } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
-import type { World } from '@/world/World';
 import type { Viewport } from '@/engine/Viewport';
-import type { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjectile';
+import type { WorldSnapshot } from '@/render/snapshot';
 
 const MAX_PROJECTILES = 64;
 
-type ProjectileSnapshot = { x: number; y: number; kind: string; r: number };
-
 export function ProjectilesLayer({
-  world, viewport, redrawTick,
-}: { world: World; viewport: Viewport; redrawTick: SharedValue<number> }) {
-  const snapshot = useDerivedValue<ProjectileSnapshot[]>(() => {
-    redrawTick.value;
-    const out: ProjectileSnapshot[] = [];
-    for (const p of world.entities.projectiles) {
-      if (!p.alive) continue;
-      const r = p.kind === 'projectile:aoe-pulse'
-        ? (p as AoEPulseProjectile).currentRadius * viewport.tileSize
-        : viewport.tileSize * 0.08;
-      out.push({ x: p.x * viewport.tileSize, y: p.y * viewport.tileSize, kind: p.kind, r });
-      if (out.length >= MAX_PROJECTILES) break;
-    }
-    return out;
-  });
-
+  viewport, snapshot,
+}: { viewport: Viewport; snapshot: SharedValue<WorldSnapshot> }) {
   return (
     <Group>
       {Array.from({ length: MAX_PROJECTILES }, (_, i) => (
-        <ProjectileSlot key={i} index={i} snapshot={snapshot} />
+        <ProjectileSlot key={i} index={i} snapshot={snapshot} viewport={viewport} />
       ))}
     </Group>
   );
 }
 
 function ProjectileSlot({
-  index, snapshot,
-}: { index: number; snapshot: SharedValue<ProjectileSnapshot[]> }) {
-  const cx = useDerivedValue(() => snapshot.value[index]?.x ?? -1000);
-  const cy = useDerivedValue(() => snapshot.value[index]?.y ?? -1000);
-  const r = useDerivedValue(() => snapshot.value[index]?.r ?? 0);
-  const opacity = useDerivedValue(() => (index < snapshot.value.length ? 0.8 : 0));
-  return <Circle cx={cx} cy={cy} r={r} color="#00F0FF" opacity={opacity} />;
+  index, snapshot, viewport,
+}: { index: number; snapshot: SharedValue<WorldSnapshot>; viewport: Viewport }) {
+  const tileSize = viewport.tileSize;
+
+  // Circle (ballistic / aoe pulse) target point.
+  const cx = useDerivedValue(() => (snapshot.value.projectiles[index]?.x ?? -1000) * tileSize);
+  const cy = useDerivedValue(() => (snapshot.value.projectiles[index]?.y ?? -1000) * tileSize);
+  const r = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p) return 0;
+    if (p.kind === 'projectile:hitscan-bolt') return 0;          // drawn as a Line, not a Circle
+    if (p.kind === 'projectile:aoe-pulse') return p.currentRadius * tileSize;
+    return tileSize * 0.12;                                       // ballistic bolt
+  });
+  const circleOpacity = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p) return 0;
+    if (p.kind === 'projectile:hitscan-bolt') return 0;
+    return 0.85;
+  });
+
+  // Hitscan beam endpoints.
+  const p1 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:hitscan-bolt') return { x: -1000, y: -1000 };
+    return { x: p.fromX * tileSize, y: p.fromY * tileSize };
+  });
+  const p2 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:hitscan-bolt') return { x: -1000, y: -1000 };
+    return { x: p.x * tileSize, y: p.y * tileSize };
+  });
+  const beamOpacity = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    return p && p.kind === 'projectile:hitscan-bolt' ? 0.95 : 0;
+  });
+
+  return (
+    <Group>
+      <Circle cx={cx} cy={cy} r={r} color="#44EEFF" opacity={circleOpacity} />
+      <Line p1={p1} p2={p2} color="#44EEFF" style="stroke" strokeWidth={2} opacity={beamOpacity} />
+    </Group>
+  );
 }

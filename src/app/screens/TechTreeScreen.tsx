@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { useSave } from '@/app/providers/SaveProvider';
 import { TECH_NODES } from '@/content/techNodes';
 import { isUnlockable, unlock } from '@/meta/TechTree';
+import { ScreenShell } from '@/ui/components/ScreenShell';
+import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TechTree'>;
 
-export function TechTreeScreen(_: Props) {
+export function TechTreeScreen({ navigation }: Props) {
   const { data, store, refresh } = useSave();
 
   const onUnlock = (nodeId: string) => {
@@ -21,44 +23,87 @@ export function TechTreeScreen(_: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.root}>
-      <Text style={styles.heading}>UPGRADES · {data.meta.shards} SHARDS</Text>
+    <ScreenShell
+      sectionTitle="Tech Tree"
+      onBack={() => navigation.goBack()}
+    >
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>UPGRADES</Text>
+        <View style={styles.shardPill}>
+          <Text style={styles.shardText}>{data.meta.shards} ◆</Text>
+        </View>
+      </View>
+
       {TECH_NODES.map((node) => {
         const tier = data.meta.techTree[node.id] ?? 0;
         const status = isUnlockable(node, data);
+        const isUnlocked = tier > 0;
+        const accent = isUnlocked ? COLORS.secondary : COLORS.primary;
         return (
           <View key={node.id} style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.name}>{node.displayName}</Text>
-              <Text style={[styles.tier, tier > 0 && styles.tierUnlocked]}>{tier > 0 ? 'UNLOCKED' : `${node.cost} ◆`}</Text>
+            <View style={[styles.accent, { backgroundColor: accent }]} />
+            <View style={styles.cardBody}>
+              <View style={styles.row}>
+                <Text style={styles.name}>{node.displayName}</Text>
+                <Text style={[styles.tier, isUnlocked && styles.tierUnlocked]}>
+                  {isUnlocked ? 'INSTALLED' : `${node.cost} ◆`}
+                </Text>
+              </View>
+              <Text style={styles.desc}>{node.description}</Text>
+              {!isUnlocked && (
+                <Pressable
+                  disabled={!status.ok}
+                  style={[styles.unlock, !status.ok && styles.unlockDisabled]}
+                  onPress={() => onUnlock(node.id)}
+                >
+                  <Text style={[styles.unlockText, !status.ok && styles.unlockTextDisabled]}>
+                    {status.ok ? 'INSTALL' : status.reason}
+                  </Text>
+                </Pressable>
+              )}
             </View>
-            <Text style={styles.desc}>{node.description}</Text>
-            {tier === 0 && (
-              <Pressable
-                disabled={!status.ok}
-                style={[styles.unlock, !status.ok && styles.unlockDisabled]}
-                onPress={() => onUnlock(node.id)}
-              >
-                <Text style={styles.unlockText}>{status.ok ? 'INSTALL' : status.reason}</Text>
-              </Pressable>
-            )}
           </View>
         );
       })}
-    </ScrollView>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 16, gap: 12, backgroundColor: '#0A0E1A' },
-  heading: { color: '#00F0FF', fontFamily: 'monospace', fontSize: 16, marginTop: 32, marginBottom: 16 },
-  card: { padding: 12, borderColor: '#00F0FF66', borderWidth: 1, gap: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  name: { color: '#E8F1FF', fontFamily: 'monospace', fontSize: 14 },
-  tier: { color: '#FFB347', fontFamily: 'monospace', fontSize: 12 },
-  tierUnlocked: { color: '#7CFF6B' },
-  desc: { color: '#A8B5C5', fontSize: 12, fontFamily: 'monospace' },
-  unlock: { paddingVertical: 8, alignItems: 'center', borderColor: '#00F0FF', borderWidth: 1 },
-  unlockDisabled: { opacity: 0.4 },
-  unlockText: { color: '#00F0FF', fontFamily: 'monospace', fontSize: 12 },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: { ...TEXT.label, color: COLORS.textMuted, fontSize: 11 },
+  shardPill: {
+    paddingVertical: 4,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tertiarySoft,
+  },
+  shardText: { ...TEXT.buttonSmall, color: COLORS.tertiary },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.bgCard,
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+  },
+  accent: { width: 3, alignSelf: 'stretch' },
+  cardBody: { flex: 1, padding: SPACING.md, gap: SPACING.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  name: { ...TEXT.title, fontSize: 14 },
+  tier: { ...TEXT.buttonSmall, color: COLORS.tertiary },
+  tierUnlocked: { color: COLORS.secondary },
+  desc: { ...TEXT.bodySmall },
+  unlock: {
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    marginTop: SPACING.xs,
+  },
+  unlockDisabled: { backgroundColor: COLORS.bgElevated },
+  unlockText: { ...TEXT.button, color: COLORS.textOnAccent },
+  unlockTextDisabled: { color: COLORS.textMuted },
 });

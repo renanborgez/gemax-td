@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
@@ -7,19 +7,24 @@ import type { TowerKind } from '@/content/types';
 import { getTowerDef } from '@/entities/registry';
 import { useHudStore } from '@/ui/hudStore';
 
-export function useWorldGestures(opts: {
+type GestureOpts = {
   worldRef: { current: World };
   getViewport: () => Viewport | null;
   getBuyKind: () => TowerKind | null;
   setBuyKind: (k: TowerKind | null) => void;
-}) {
+};
+
+export function useWorldGestures(opts: GestureOpts) {
+  const optsRef = useRef(opts);
+  optsRef.current = opts;
   return useMemo(() => {
     function handleTap(screenX: number, screenY: number) {
-      const w = opts.worldRef.current;
-      const vp = opts.getViewport(); if (!vp) return;
+      const o = optsRef.current;
+      const w = o.worldRef.current;
+      const vp = o.getViewport(); if (!vp) return;
       const local = { x: screenX, y: screenY };  // gesture is canvas-local already
       const grid = vp.worldToGrid(local);
-      const buyKind = opts.getBuyKind();
+      const buyKind = o.getBuyKind();
 
       if (buyKind) {
         const def = getTowerDef(buyKind);
@@ -40,7 +45,7 @@ export function useWorldGestures(opts: {
         w.entities.towers.push(tower);
         w.bus.emit('tower-placed', { towerId: id, kind: def.kind });
         w.bus.emit('credits-changed', { credits: w.credits });
-        opts.setBuyKind(null);
+        o.setBuyKind(null);
         return;
       }
 
