@@ -127,7 +127,7 @@ export function mix(buffers: Float32Array[], gainsDb?: number[]): Float32Array {
   for (let bi = 0; bi < buffers.length; bi++) {
     const buf = buffers[bi]!;
     const g = gainsDb && gainsDb[bi] !== undefined ? Math.pow(10, gainsDb[bi]! / 20) : 1;
-    for (let i = 0; i < buf.length; i++) out[i] += buf[i]! * g;
+    for (let i = 0; i < buf.length; i++) out[i] = out[i]! + buf[i]! * g;
   }
   for (let i = 0; i < out.length; i++) {
     const s = out[i]!;
