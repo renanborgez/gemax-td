@@ -37,7 +37,7 @@ describe('TechTree', () => {
     const save = blankSaveDataV1(); save.meta.shards = 200;
     unlock(FW1, save); unlock(FW2, save);
     const ctx = buildEffectsContext([FW1, FW2], save);
-    expect(ctx.behaviors.chainKill?.firewall).toBe(3);
+    expect(ctx.behaviors.chainKill?.['firewall']).toBe(3);
   });
 
   it('global regen accumulates', () => {
