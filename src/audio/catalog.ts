@@ -1,27 +1,25 @@
-// Placeholder silent WAV — replaced by real assets in a later pass.
-// Note: plan originally specified silent-100ms.mp3 but ffmpeg wasn't available
-// when the project was scaffolded; a 100ms silent PCM WAV is functionally
-// equivalent and Expo Audio supports both formats.
+// SFX keys are content-addressed and synthesized at runtime — see specs.ts and bake.ts.
+// Music sources still point to a silent placeholder; music generation is out of scope.
 const silent = require('./assets/silent-100ms.wav');
 
-export const SFX_SOURCES = {
-  'tower-fire-firewall':   silent,
-  'tower-fire-logic-bomb': silent,
-  'tower-fire-ice-lance':  silent,
-  'enemy-hit':             silent,
-  'enemy-death':           silent,
-  'wave-start':            silent,
-  'life-lost':             silent,
-  'win':                   silent,
-  'lose':                  silent,
-  'ui-click':              silent,
-  'tower-placed':          silent,
-} as const;
-export type SfxKey = keyof typeof SFX_SOURCES;
+export const SFX_KEYS = [
+  'tower-fire-firewall',
+  'tower-fire-logic-bomb',
+  'tower-fire-ice-lance',
+  'enemy-hit',
+  'enemy-death',
+  'wave-start',
+  'life-lost',
+  'win',
+  'lose',
+  'ui-click',
+  'tower-placed',
+] as const;
+export type SfxKey = typeof SFX_KEYS[number];
 
 export const MUSIC_SOURCES = {
-  'main-menu':  silent,
-  'in-game':    silent,
+  'main-menu': silent,
+  'in-game':   silent,
 } as const;
 export type MusicKey = keyof typeof MUSIC_SOURCES;
 
