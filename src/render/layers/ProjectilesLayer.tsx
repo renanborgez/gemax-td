@@ -3,8 +3,12 @@ import { Group, Circle, Line } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
 import type { WorldSnapshot } from '@/render/snapshot';
+import { COLORS } from '@/render/theme';
+import { LOGIC_BOMB_RADIUS_TILES } from '@/entities/projectiles/AoEPulseProjectile';
 
 const MAX_PROJECTILES = 64;
+// Peak vertical lift of the lobbed bomb arc, in tiles.
+const BOMB_ARC_HEIGHT = 0.6;
 
 export function ProjectilesLayer({
   viewport, snapshot,
@@ -23,7 +27,7 @@ function ProjectileSlot({
 }: { index: number; snapshot: SharedValue<WorldSnapshot>; viewport: Viewport }) {
   const tileSize = viewport.tileSize;
 
-  // Circle (ballistic / aoe pulse) target point.
+  // Expansion ring (aoe pulse) / ballistic bolt point.
   const cx = useDerivedValue(() => (snapshot.value.projectiles[index]?.x ?? -1000) * tileSize);
   const cy = useDerivedValue(() => (snapshot.value.projectiles[index]?.y ?? -1000) * tileSize);
   const r = useDerivedValue(() => {
@@ -38,6 +42,31 @@ function ProjectileSlot({
     if (!p) return 0;
     if (p.kind === 'projectile:hitscan-bolt') return 0;
     return 0.85;
+  });
+
+  // Bomb body: a small filled disc that travels with the projectile during the
+  // flight phase and stays put while the explosion expands underneath it.
+  // Y is lifted along a parabolic arc (sin curve) so the throw reads as lobbed.
+  const bombCx = cx;
+  const bombCy = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.bombPhase === null) return -1000;
+    const baseY = p.y * tileSize;
+    if (p.bombPhase !== 'flight') return baseY;
+    const lift = Math.sin(p.flightProgress * Math.PI) * BOMB_ARC_HEIGHT * tileSize;
+    return baseY - lift;
+  });
+  const bombR = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.bombPhase === null) return 0;
+    return tileSize * 0.18;
+  });
+  const bombOpacity = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.bombPhase === null) return 0;
+    if (p.bombPhase === 'flight') return 0.95;
+    // Detonating: fade the body as the shockwave expands so it doesn't fight the ring.
+    return Math.max(0, 1 - p.currentRadius / LOGIC_BOMB_RADIUS_TILES);
   });
 
   // Hitscan beam endpoints.
@@ -58,8 +87,9 @@ function ProjectileSlot({
 
   return (
     <Group>
-      <Circle cx={cx} cy={cy} r={r} color="#44EEFF" opacity={circleOpacity} />
-      <Line p1={p1} p2={p2} color="#44EEFF" style="stroke" strokeWidth={2} opacity={beamOpacity} />
+      <Circle cx={cx} cy={cy} r={r} color={COLORS.primary} opacity={circleOpacity} />
+      <Circle cx={bombCx} cy={bombCy} r={bombR} color={COLORS.danger} opacity={bombOpacity} />
+      <Line p1={p1} p2={p2} color={COLORS.primary} style="stroke" strokeWidth={2} opacity={beamOpacity} />
     </Group>
   );
 }

@@ -14,7 +14,7 @@ export function LoseScreen({ navigation, route }: Props) {
   return (
     <ScreenShell
       sectionTitle="Defeat Report"
-      onBack={() => navigation.popToTop()}
+      onBack={() => navigation.navigate('LevelSelect')}
     >
       <View style={styles.hero}>
         <Text style={styles.heroLineDanger}>SYSTEM COMPROMISED</Text>
@@ -36,7 +36,7 @@ export function LoseScreen({ navigation, route }: Props) {
         >
           <Text style={styles.btnPrimaryText}>RETRY</Text>
         </Pressable>
-        <Pressable onPress={() => navigation.popToTop()} style={styles.btnDanger}>
+        <Pressable onPress={() => navigation.navigate('LevelSelect')} style={styles.btnDanger}>
           <Text style={styles.btnDangerText}>EXIT</Text>
         </Pressable>
       </View>

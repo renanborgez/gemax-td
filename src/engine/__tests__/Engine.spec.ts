@@ -11,7 +11,7 @@ import { LogicBombTower } from '@/entities/towers/LogicBombTower';
 import { ICELanceTower } from '@/entities/towers/ICELanceTower';
 import { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
 import { BallisticProjectile } from '@/entities/projectiles/BallisticProjectile';
-import { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjectile';
+import { AoEPulseProjectile, LOGIC_BOMB_FLIGHT_SPEED } from '@/entities/projectiles/AoEPulseProjectile';
 import type { LevelDef } from '@/content/types';
 
 beforeEach(() => {
@@ -62,6 +62,52 @@ describe('Engine.simStep', () => {
     }
     expect(lifeLost).toBeGreaterThanOrEqual(1);
     expect(matchLost).toBe(1);
+  });
+
+  it('logic bomb flies before detonating, then deals damage on impact', () => {
+    const w = createWorld({ level, difficulty: 'normal', seed: 1, redraw: { bump: () => {} } });
+    // Stationary worm pushed directly onto entities.enemies (no wave system).
+    // Speed=0 keeps it pinned at distAlongPath, so the bomb's captured dest stays accurate.
+    const worm = new WormEnemy({
+      id: w.idGen('enemy'),
+      defKind: 'worm',
+      baseStats: { hp: 50, speed: 0, armor: 0 },
+      bounty: 0, flying: false, spawnerId: 'main',
+    });
+    worm.x = 2.5; worm.y = 0.5;
+    worm.distAlongPath = 2;
+    worm.maxHp = 50; worm.hp = 50;
+    w.entities.enemies.push(worm);
+
+    // Logic bomb placed at the start of the path, far enough that flight is observable.
+    const bomb = new LogicBombTower({
+      id: w.idGen('tower'), defKind: 'logic-bomb', level: 1,
+      x: 0.5, y: 0.5, tileCoord: { col: 0, row: 0 },
+      baseStats: { range: 10, fireRate: 5, damage: 100 },
+      projectileKind: 'aoe-pulse', targets: 'both', defaultTargetPriority: 'strongest',
+    });
+    w.entities.towers.push(bomb);
+
+    const engine = new Engine(w, fakeClock);
+
+    // Frame 1: targeting fires, bomb spawns at the tower in flight phase.
+    engine.simStep(1 / 60);
+    const proj = w.entities.projectiles.find((p) => p.alive && p.kind === 'projectile:aoe-pulse');
+    expect(proj).toBeDefined();
+    const ap = proj as AoEPulseProjectile;
+    expect(ap.phase).toBe('flight');
+    expect(worm.hp).toBe(50);
+
+    // Mid-flight: still in the flight phase, no damage applied yet.
+    // Flight covers 2 tiles at LOGIC_BOMB_FLIGHT_SPEED (~0.286s) — step ~halfway.
+    const flightFrames = Math.ceil((2 / LOGIC_BOMB_FLIGHT_SPEED) * 60);
+    for (let i = 0; i < Math.floor(flightFrames / 2); i++) engine.simStep(1 / 60);
+    expect(ap.phase).toBe('flight');
+    expect(worm.hp).toBe(50);
+
+    // After flight + a few detonate frames, the worm at the captured dest takes damage.
+    for (let i = 0; i < flightFrames; i++) engine.simStep(1 / 60);
+    expect(worm.hp).toBeLessThan(50);
   });
 
   it('a powerful firewall placed mid-path kills both worms — match won', () => {

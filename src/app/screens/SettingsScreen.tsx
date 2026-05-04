@@ -3,13 +3,11 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { useSave } from '@/app/providers/SaveProvider';
-import type { Difficulty } from '@/content/types';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
-const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard', 'insane'];
 const VOLS = [0, 0.25, 0.5, 0.75, 1];
 
 export function SettingsScreen({ navigation }: Props) {
@@ -18,10 +16,6 @@ export function SettingsScreen({ navigation }: Props) {
 
   const setVol = (k: 'audioMaster' | 'sfx' | 'music', v: number) => {
     store.update((d) => { d.settings[k] = v; });
-    refresh();
-  };
-  const setDifficulty = (d: Difficulty) => {
-    store.update((s) => { s.settings.difficultyDefault = d; });
     refresh();
   };
   const onReset = async () => {
@@ -65,23 +59,6 @@ export function SettingsScreen({ navigation }: Props) {
         ))}
       </Section>
 
-      <Section label="DEFAULT DIFFICULTY">
-        {DIFFICULTIES.map((d) => {
-          const active = data.settings.difficultyDefault === d;
-          return (
-            <Pressable
-              key={d}
-              onPress={() => setDifficulty(d)}
-              style={[styles.pill, active && styles.pillActive]}
-            >
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                {d.toUpperCase()}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </Section>
-
       <View style={{ height: SPACING.md }} />
 
       <Pressable
@@ -123,15 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgElevated,
   },
   dotActive: { backgroundColor: COLORS.primary },
-  pill: {
-    paddingVertical: 6,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.bgElevated,
-  },
-  pillActive: { backgroundColor: COLORS.primary },
-  pillText: { ...TEXT.buttonSmall, color: COLORS.textMuted },
-  pillTextActive: { color: COLORS.textOnAccent },
   danger: {
     paddingVertical: SPACING.md,
     alignItems: 'center',

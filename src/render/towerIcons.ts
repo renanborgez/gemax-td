@@ -8,22 +8,22 @@ export const TOWER_ICON_VIEWBOX = 24;
 
 // Stroke-only, monoline glyphs that read at small sizes and match the cyberpunk theme.
 export const TOWER_ICON_SVG: Record<TowerKind, string> = {
-  // Brick wall: outer rect + horizontal mortar courses + staggered vertical mortar.
+  // Laser tower: trapezoid base, mid-strut, top emitter box, vertical beam,
+  // and a tip-flare bar to read as "laser firing upward."
   firewall:
-    'M 3 6 L 21 6 L 21 19 L 3 19 Z ' +
-    'M 3 10.3 L 21 10.3 ' +
-    'M 3 14.6 L 21 14.6 ' +
-    'M 9 6 L 9 10.3 ' +
-    'M 15 6 L 15 10.3 ' +
-    'M 12 10.3 L 12 14.6 ' +
-    'M 9 14.6 L 9 19 ' +
-    'M 15 14.6 L 15 19',
-  // Round bomb body + zigzag fuse with a spark wisp.
+    'M 6 22 L 9 8 L 15 8 L 18 22 Z ' +
+    'M 7.5 15 L 16.5 15 ' +
+    'M 10 8 L 14 8 L 14 5 L 10 5 Z ' +
+    'M 12 5 L 12 0 ' +
+    'M 9 1 L 15 1',
+  // Bomb: round body with circular highlight, fuse cap on top, curling fuse,
+  // and a 4-point spark at the tip. Reads as a classic cartoon bomb.
   'logic-bomb':
-    'M 18 14.5 A 6 6 0 1 1 6 14.5 A 6 6 0 1 1 18 14.5 Z ' +
-    'M 12 8.5 L 12 5 ' +
-    'M 12 5 L 14 3 L 12 1 ' +
-    'M 14 3 L 17 2',
+    'M 5 15.5 A 7 7 0 1 0 19 15.5 A 7 7 0 1 0 5 15.5 Z ' +
+    'M 7.5 12 A 4 4 0 0 1 11 8.5 ' +
+    'M 10.5 6.5 L 13.5 6.5 L 13.5 8.5 L 10.5 8.5 Z ' +
+    'M 12 6.5 C 13.5 4 15.5 4.5 16.5 2.5 ' +
+    'M 16.5 0.5 L 17 1.8 L 18.3 2.5 L 17 3.2 L 16.5 4.5 L 16 3.2 L 14.7 2.5 L 16 1.8 Z',
   // Crystalline diamond/lance with internal facet crosshair.
   'ice-lance':
     'M 12 2 L 18 12 L 12 22 L 6 12 Z ' +

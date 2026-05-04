@@ -1,15 +1,17 @@
 import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
 import type { World } from '@/world/World';
 import type { TowerKind } from '@/content/types';
 import { getTowerDef } from '@/entities/registry';
 import { useHudStore } from '@/ui/hudStore';
+import { type Camera, MIN_ZOOM, MAX_ZOOM, clampPan } from '@/render/useCamera';
 
 type GestureOpts = {
   worldRef: { current: World };
-  getViewport: () => Viewport | null;
+  viewport: Viewport | null;
+  camera: Camera;
   getBuyKind: () => TowerKind | null;
   setBuyKind: (k: TowerKind | null) => void;
 };
@@ -17,13 +19,35 @@ type GestureOpts = {
 export function useWorldGestures(opts: GestureOpts) {
   const optsRef = useRef(opts);
   optsRef.current = opts;
+
+  const { camera, viewport } = opts;
+  const startZoom = useSharedValue(1);
+  const startPanX = useSharedValue(0);
+  const startPanY = useSharedValue(0);
+
+  // Worklets capture these as primitives at gesture-creation time. The
+  // gesture is rebuilt when viewport identity (and therefore these values)
+  // changes, e.g. on canvas layout / orientation change.
+  const mapW = viewport?.mapWidthPx ?? 0;
+  const mapH = viewport?.mapHeightPx ?? 0;
+  const canvasW = viewport?.canvasWidthPx ?? 0;
+  const canvasH = viewport?.canvasHeightPx ?? 0;
+
   return useMemo(() => {
     function handleTap(screenX: number, screenY: number) {
       const o = optsRef.current;
       const w = o.worldRef.current;
-      const vp = o.getViewport(); if (!vp) return;
-      const local = { x: screenX, y: screenY };  // gesture is canvas-local already
-      const grid = vp.worldToGrid(local);
+      const vp = o.viewport; if (!vp) return;
+      // Inverse camera transform: screen → world (canvas px at zoom=1).
+      const z = o.camera.zoom.value;
+      const px = o.camera.panX.value;
+      const py = o.camera.panY.value;
+      const world = { x: (screenX - px) / z, y: (screenY - py) / z };
+      // Reject taps outside the map bounds (slack area when fit-to-view).
+      if (world.x < 0 || world.x >= vp.mapWidthPx || world.y < 0 || world.y >= vp.mapHeightPx) {
+        return;
+      }
+      const grid = vp.worldToGrid(world);
       const buyKind = o.getBuyKind();
 
       if (buyKind) {
@@ -62,11 +86,42 @@ export function useWorldGestures(opts: GestureOpts) {
 
     const tap = Gesture.Tap()
       .maxDuration(250)
+      .maxDistance(10)
       .onEnd((e) => {
         runOnJS(handleTap)(e.x, e.y);
       });
 
-    return Gesture.Race(tap);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // minDistance > tap.maxDistance — tap claims small drifts (≤10px); pan
+    // only activates once the user has clearly committed to dragging.
+    const pan = Gesture.Pan()
+      .minDistance(14)
+      .averageTouches(true)
+      .onStart(() => {
+        startPanX.value = camera.panX.value;
+        startPanY.value = camera.panY.value;
+      })
+      .onUpdate((e) => {
+        const z = camera.zoom.value;
+        camera.panX.value = clampPan(startPanX.value + e.translationX, z, mapW, canvasW);
+        camera.panY.value = clampPan(startPanY.value + e.translationY, z, mapH, canvasH);
+      });
+
+    const pinch = Gesture.Pinch()
+      .onStart(() => {
+        startZoom.value = camera.zoom.value;
+        startPanX.value = camera.panX.value;
+        startPanY.value = camera.panY.value;
+      })
+      .onUpdate((e) => {
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, startZoom.value * e.scale));
+        const factor = newZoom / startZoom.value;
+        const nextX = e.focalX - (e.focalX - startPanX.value) * factor;
+        const nextY = e.focalY - (e.focalY - startPanY.value) * factor;
+        camera.zoom.value = newZoom;
+        camera.panX.value = clampPan(nextX, newZoom, mapW, canvasW);
+        camera.panY.value = clampPan(nextY, newZoom, mapH, canvasH);
+      });
+
+    return Gesture.Race(tap, Gesture.Simultaneous(pan, pinch));
+  }, [mapW, mapH, canvasW, canvasH, camera, startZoom, startPanX, startPanY]);
 }

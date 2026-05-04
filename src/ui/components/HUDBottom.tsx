@@ -13,11 +13,13 @@ export function HUDBottom({
   selected, onSelect,
 }: { selected: TowerKind | null; onSelect: (k: TowerKind | null) => void }) {
   const credits = useHudStore((s) => s.credits);
+  const someoneSelected = selected !== null;
   return (
     <View style={styles.root}>
       {ALL_TOWER_DEFS.map((def) => {
         const affordable = credits >= def.cost;
         const isSelected = selected === def.kind;
+        const dimmed = !isSelected && (someoneSelected || !affordable);
         return (
           <Pressable
             key={def.kind}
@@ -26,7 +28,7 @@ export function HUDBottom({
             style={[
               styles.cell,
               isSelected && styles.cellSelected,
-              !affordable && !isSelected && styles.cellDisabled,
+              dimmed && styles.cellDisabled,
             ]}
           >
             <TowerIcon kind={def.kind} />

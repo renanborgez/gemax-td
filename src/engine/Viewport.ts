@@ -19,6 +19,11 @@ export class Viewport {
   readonly canvasOriginScreen: Vec2;
   readonly dpr: number;
   readonly tileSize: number;
+  readonly mapWidthPx: number;
+  readonly mapHeightPx: number;
+  /** Default pan offsets that center the map within the canvas at zoom=1. */
+  readonly defaultPanX: number;
+  readonly defaultPanY: number;
 
   constructor(opts: ViewportOptions) {
     this.canvasWidthPx = opts.canvasWidthPx;
@@ -27,8 +32,17 @@ export class Viewport {
     this.gridRows = opts.gridRows;
     this.canvasOriginScreen = opts.canvasOriginScreen;
     this.dpr = opts.dpr;
-    // Square tiles sized to fit width; portrait map taller than wide.
-    this.tileSize = opts.canvasWidthPx / opts.gridCols;
+    // Square tiles fit-to-view: the smaller of width/height ratios. The map
+    // can be wider OR taller than the canvas, so always pick the dimension
+    // that fits — pan/zoom navigates the rest.
+    this.tileSize = Math.min(
+      opts.canvasWidthPx / opts.gridCols,
+      opts.canvasHeightPx / opts.gridRows,
+    );
+    this.mapWidthPx = this.tileSize * opts.gridCols;
+    this.mapHeightPx = this.tileSize * opts.gridRows;
+    this.defaultPanX = (opts.canvasWidthPx - this.mapWidthPx) / 2;
+    this.defaultPanY = (opts.canvasHeightPx - this.mapHeightPx) / 2;
   }
 
   gridToWorld(g: GridCoord): Vec2 {

@@ -1,94 +1,50 @@
 import React, { useMemo } from 'react';
-import { Group, Rect, Path } from '@shopify/react-native-skia';
-import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { Path, Skia } from '@shopify/react-native-skia';
 import type { Viewport } from '@/engine/Viewport';
-import type { WorldSnapshot } from '@/render/snapshot';
+import type { World } from '@/world/World';
 import { COLORS } from '@/render/theme';
 import type { TowerKind } from '@/content/types';
-import { TOWER_ICON_COLORS, makeTowerIconPath } from '@/render/towerIcons';
+import { TOWER_ICON_COLORS } from '@/render/towerIcons';
 
-const MAX_CELLS = 256;
-
+// Outline of every buildable tile. Always rendered as a faint grid hint so the
+// playfield reads as a placement surface even outside placement mode; the
+// outlines tint and brighten when the user is holding a tower to place.
+// One Skia Path contains every cell rect and is stroked in a single draw call —
+// no per-cell components, no SharedValue subscriptions, no per-frame worklets.
+// The path is keyed on grid+tileSize, which only change on canvas resize.
 export function BuildableLayer({
-  viewport, snapshot, buyKind,
+  viewport, world, buyKind,
 }: {
   viewport: Viewport;
-  snapshot: SharedValue<WorldSnapshot>;
+  world: World;
   buyKind: TowerKind | null;
 }) {
-  // Pre-bake the preview icon path once per (kind, tileSize). When no kind is
-  // active we omit the icon subtree entirely.
-  const iconPath = useMemo(() => {
-    if (!buyKind) return null;
-    return makeTowerIconPath(buyKind, viewport.tileSize * 0.55);
-  }, [buyKind, viewport.tileSize]);
-  const iconColor = buyKind ? TOWER_ICON_COLORS[buyKind] : COLORS.cyan;
-  const iconStroke = Math.max(1, viewport.tileSize * 0.035);
+  const path = useMemo(() => {
+    const tile = viewport.tileSize;
+    const inset = Math.max(2, tile * 0.08);
+    const size = tile - inset * 2;
+    const p = Skia.Path.Make();
+    const grid = world.grid;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        if (grid.canBuild({ col: c, row: r })) {
+          p.addRect(Skia.XYWHRect(c * tile + inset, r * tile + inset, size, size));
+        }
+      }
+    }
+    return p;
+  }, [viewport.tileSize, world]);
 
+  const color = buyKind ? TOWER_ICON_COLORS[buyKind] : COLORS.buildableHint;
+  const opacity = buyKind ? 0.35 : 0.12;
+  const stroke = Math.max(1, viewport.tileSize * 0.03);
   return (
-    <Group>
-      {Array.from({ length: MAX_CELLS }, (_, i) => (
-        <BuildableCell
-          key={i}
-          index={i}
-          snapshot={snapshot}
-          viewport={viewport}
-          iconPath={iconPath}
-          iconColor={iconColor}
-          iconStroke={iconStroke}
-        />
-      ))}
-    </Group>
-  );
-}
-
-function BuildableCell({
-  index, snapshot, viewport, iconPath, iconColor, iconStroke,
-}: {
-  index: number;
-  snapshot: SharedValue<WorldSnapshot>;
-  viewport: Viewport;
-  iconPath: ReturnType<typeof makeTowerIconPath> | null;
-  iconColor: string;
-  iconStroke: number;
-}) {
-  const tileSize = viewport.tileSize;
-  const inset = Math.max(2, tileSize * 0.08);
-  const x = useDerivedValue(() => (snapshot.value.buildable[index]?.col ?? -1000) * tileSize + inset);
-  const y = useDerivedValue(() => (snapshot.value.buildable[index]?.row ?? -1000) * tileSize + inset);
-  const rectOpacity = useDerivedValue(() => (index < snapshot.value.buildable.length ? 0.18 : 0));
-  const iconOpacity = useDerivedValue(() => (index < snapshot.value.buildable.length ? 0.45 : 0));
-  const iconTransform = useDerivedValue(() => {
-    const cell = snapshot.value.buildable[index];
-    const cx = cell ? cell.col * tileSize + tileSize / 2 : -10000;
-    const cy = cell ? cell.row * tileSize + tileSize / 2 : -10000;
-    return [{ translateX: cx }, { translateY: cy }];
-  });
-  const size = tileSize - inset * 2;
-  return (
-    <>
-      <Rect
-        x={x}
-        y={y}
-        width={size}
-        height={size}
-        color={COLORS.buildableHint}
-        style="stroke"
-        strokeWidth={1}
-        opacity={rectOpacity}
-      />
-      {iconPath && (
-        <Group transform={iconTransform} opacity={iconOpacity}>
-          <Path
-            path={iconPath}
-            style="stroke"
-            strokeWidth={iconStroke}
-            strokeJoin="round"
-            strokeCap="round"
-            color={iconColor}
-          />
-        </Group>
-      )}
-    </>
+    <Path
+      path={path}
+      color={color}
+      style="stroke"
+      strokeWidth={stroke}
+      opacity={opacity}
+    />
   );
 }

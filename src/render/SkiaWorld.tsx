@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Canvas, Group } from '@shopify/react-native-skia';
 import { type LayoutChangeEvent, View, StyleSheet, PixelRatio } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import { Viewport } from '@/engine/Viewport';
 import { BackgroundLayer } from '@/render/layers/BackgroundLayer';
 import { PathLayer } from '@/render/layers/PathLayer';
@@ -12,6 +13,7 @@ import { ProjectilesLayer } from '@/render/layers/ProjectilesLayer';
 import { FXLayer } from '@/render/layers/FXLayer';
 import { RangeIndicatorLayer } from '@/render/layers/RangeIndicatorLayer';
 import type { GameSession } from '@/render/useGameSession';
+import type { CameraTransform } from '@/render/useCamera';
 import { COLORS } from '@/render/theme';
 import type { TowerKind } from '@/content/types';
 
@@ -19,10 +21,12 @@ export function SkiaWorld({
   session,
   onViewportReady,
   buyKind = null,
+  cameraTransform,
 }: {
   session: GameSession;
   onViewportReady?: (vp: Viewport) => void;
   buyKind?: TowerKind | null;
+  cameraTransform: SharedValue<CameraTransform>;
 }) {
   const world = session.worldRef.current;
   const [size, setSize] = useState<{ w: number; h: number; x: number; y: number } | null>(null);
@@ -36,7 +40,7 @@ export function SkiaWorld({
 
   const viewport = useMemo(() => {
     if (!size) return null;
-    const vp = new Viewport({
+    return new Viewport({
       canvasWidthPx: size.w,
       canvasHeightPx: size.h,
       gridCols: world.level.grid.cols,
@@ -44,19 +48,20 @@ export function SkiaWorld({
       canvasOriginScreen: { x: size.x, y: size.y },
       dpr: PixelRatio.get(),
     });
-    onViewportReady?.(vp);
-    return vp;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size?.w, size?.h, size?.x, size?.y]);
+  }, [size?.w, size?.h, size?.x, size?.y, world.level.grid.cols, world.level.grid.rows]);
+
+  useEffect(() => {
+    if (viewport) onViewportReady?.(viewport);
+  }, [viewport, onViewportReady]);
 
   return (
     <View style={styles.root} onLayout={onLayout}>
       {viewport && (
         <Canvas style={StyleSheet.absoluteFillObject}>
-          <Group>
-            <BackgroundLayer viewport={viewport} />
+          <BackgroundLayer viewport={viewport} />
+          <Group transform={cameraTransform}>
             <PathLayer world={world} viewport={viewport} />
-            <BuildableLayer viewport={viewport} snapshot={session.snapshot} buyKind={buyKind} />
+            <BuildableLayer viewport={viewport} world={world} buyKind={buyKind} />
             <GridOverlayLayer viewport={viewport} snapshot={session.snapshot} />
             <TowersLayer viewport={viewport} snapshot={session.snapshot} />
             <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />

@@ -7,7 +7,7 @@ import { FIXED_DT, MAX_REAL_DT, MAX_STEPS_PER_FRAME } from '@/engine/time';
 import { clamp } from '@/lib/lerp';
 import { distance } from '@/lib/vec2';
 import type { BallisticProjectile } from '@/entities/projectiles/BallisticProjectile';
-import type { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjectile';
+import { type AoEPulseProjectile, LOGIC_BOMB_TTL_SAFETY } from '@/entities/projectiles/AoEPulseProjectile';
 import type { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
 import type { ICELanceTower } from '@/entities/towers/ICELanceTower';
 
@@ -135,13 +135,26 @@ export class Engine {
         p.ttl = 0.08;
         w.entities.projectiles.push(p);
       } else if (intent.projectileKind === 'aoe-pulse') {
-        // Spawn an AoE pulse at target.
+        // Bomb: spawn at the tower, fly to the captured target point, then expand.
+        // radius / expandRate / flightSpeed come from class defaults (see AoEPulseProjectile).
         const p = w.pools.aoe.acquire();
         p.alive = true;
-        p.x = intent.targetX; p.y = intent.targetY;
+        p.x = intent.fromX; p.y = intent.fromY;
+        p.destX = intent.targetX; p.destY = intent.targetY;
         p.damage = intent.damage; p.sourceTowerId = intent.towerId;
-        p.ttl = 0.4; p.radius = 1.5; p.currentRadius = 0;
-        p.hitEnemyIds.clear();
+        const dx = intent.targetX - intent.fromX;
+        const dy = intent.targetY - intent.fromY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0) {
+          p.phase = 'flight';
+          p.vx = (dx / dist) * p.flightSpeed;
+          p.vy = (dy / dist) * p.flightSpeed;
+          p.flightDuration = dist / p.flightSpeed;
+        } else {
+          p.phase = 'detonate';
+        }
+        // ttl covers flight + full expansion + safety buffer.
+        p.ttl = p.flightDuration + p.radius / p.expandRate + LOGIC_BOMB_TTL_SAFETY;
         // Tech: longer slow field on logic bomb is read at hit time.
         w.entities.projectiles.push(p);
       } else if (intent.projectileKind === 'ballistic-pulse') {
@@ -195,19 +208,30 @@ export class Engine {
         }
       } else if (p.kind === 'projectile:aoe-pulse') {
         const ap = p as AoEPulseProjectile;
-        ap.currentRadius = Math.min(ap.radius, ap.currentRadius + ap.expandRate * dt);
-        for (const e of w.entities.enemies) {
-          if (!e.alive || ap.hitEnemyIds.has(e.id)) continue;
-          const d = distance(ap, e);
-          if (d <= ap.currentRadius) {
-            ap.hitEnemyIds.add(e.id);
-            w.staged.damage.push({ targetEnemyId: e.id, damage: ap.damage, attackerTowerId: ap.sourceTowerId });
-            // Tech: slow field on logic-bomb.
-            const sf = w.effects.behaviors.slowFieldOnLogicBomb;
-            if (sf) {
-              e.statuses.push({ kind: 'slow', magnitude: 0.5, duration: sf.duration, remaining: sf.duration, appliedByTowerId: ap.sourceTowerId });
-              if (sf.dotPerSecond) {
-                e.statuses.push({ kind: 'dot', magnitude: sf.dotPerSecond, duration: sf.duration, remaining: sf.duration, appliedByTowerId: ap.sourceTowerId });
+        if (ap.phase === 'flight') {
+          // Travel toward the captured destination; no damage during flight.
+          ap.x += ap.vx * dt;
+          ap.y += ap.vy * dt;
+          ap.flightT += dt;
+          if (ap.flightT >= ap.flightDuration) {
+            ap.x = ap.destX; ap.y = ap.destY;
+            ap.phase = 'detonate';
+          }
+        } else {
+          ap.currentRadius = Math.min(ap.radius, ap.currentRadius + ap.expandRate * dt);
+          for (const e of w.entities.enemies) {
+            if (!e.alive || ap.hitEnemyIds.has(e.id)) continue;
+            const d = distance(ap, e);
+            if (d <= ap.currentRadius) {
+              ap.hitEnemyIds.add(e.id);
+              w.staged.damage.push({ targetEnemyId: e.id, damage: ap.damage, attackerTowerId: ap.sourceTowerId });
+              // Tech: slow field on logic-bomb.
+              const sf = w.effects.behaviors.slowFieldOnLogicBomb;
+              if (sf) {
+                e.statuses.push({ kind: 'slow', magnitude: 0.5, duration: sf.duration, remaining: sf.duration, appliedByTowerId: ap.sourceTowerId });
+                if (sf.dotPerSecond) {
+                  e.statuses.push({ kind: 'dot', magnitude: sf.dotPerSecond, duration: sf.duration, remaining: sf.duration, appliedByTowerId: ap.sourceTowerId });
+                }
               }
             }
           }

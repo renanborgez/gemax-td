@@ -10,10 +10,13 @@ export type ProjectileSnap = {
   currentRadius: number;
   /** Hitscan beam origin (tiles). 0 for non-hitscan projectiles. */
   fromX: number; fromY: number;
+  /** Bomb (aoe-pulse) lifecycle phase. null for non-bomb projectiles. */
+  bombPhase: 'flight' | 'detonate' | null;
+  /** 0..1 progress through flight; only meaningful when bombPhase === 'flight'. */
+  flightProgress: number;
 };
 export type BuildHintSnap = { col: number; row: number; valid: boolean } | null;
 export type RangeSnap = { x: number; y: number; r: number } | null;
-export type BuildableSnap = { col: number; row: number };
 
 export type WorldSnapshot = {
   enemies: EnemySnap[];
@@ -21,11 +24,10 @@ export type WorldSnapshot = {
   projectiles: ProjectileSnap[];
   buildHint: BuildHintSnap;
   range: RangeSnap;
-  buildable: BuildableSnap[];
 };
 
 export const EMPTY_SNAPSHOT: WorldSnapshot = {
-  enemies: [], towers: [], projectiles: [], buildHint: null, range: null, buildable: [],
+  enemies: [], towers: [], projectiles: [], buildHint: null, range: null,
 };
 
 export function buildSnapshot(world: World): WorldSnapshot {
@@ -42,13 +44,23 @@ export function buildSnapshot(world: World): WorldSnapshot {
   const projectiles: ProjectileSnap[] = [];
   for (const p of world.entities.projectiles) {
     if (!p.alive) continue;
-    const cr = p.kind === 'projectile:aoe-pulse' ? (p as AoEPulseProjectile).currentRadius : 0;
+    let cr = 0;
+    let bombPhase: 'flight' | 'detonate' | null = null;
+    let flightProgress = 0;
+    if (p.kind === 'projectile:aoe-pulse') {
+      const ap = p as AoEPulseProjectile;
+      cr = ap.currentRadius;
+      bombPhase = ap.phase;
+      if (ap.phase === 'flight' && ap.flightDuration > 0) {
+        flightProgress = ap.flightT / ap.flightDuration;
+      }
+    }
     let fromX = 0, fromY = 0;
     if (p.kind === 'projectile:hitscan-bolt') {
       const hp = p as HitscanProjectile;
       fromX = hp.fromX; fromY = hp.fromY;
     }
-    projectiles.push({ x: p.x, y: p.y, kind: p.kind, currentRadius: cr, fromX, fromY });
+    projectiles.push({ x: p.x, y: p.y, kind: p.kind, currentRadius: cr, fromX, fromY, bombPhase, flightProgress });
   }
   let buildHint: BuildHintSnap = null;
   const sel = world.selection.buildSpot;
@@ -59,12 +71,5 @@ export function buildSnapshot(world: World): WorldSnapshot {
     const t = world.entities.towers.find((x) => x.id === tid);
     if (t) range = { x: t.x, y: t.y, r: t.base.range };
   }
-  const buildable: BuildableSnap[] = [];
-  const grid = world.grid;
-  for (let r = 0; r < grid.rows; r++) {
-    for (let c = 0; c < grid.cols; c++) {
-      if (grid.canBuild({ col: c, row: r })) buildable.push({ col: c, row: r });
-    }
-  }
-  return { enemies, towers, projectiles, buildHint, range, buildable };
+  return { enemies, towers, projectiles, buildHint, range };
 }

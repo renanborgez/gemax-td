@@ -4,8 +4,13 @@ import { useHudStore } from '@/ui/hudStore';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function HUDTop({
-  onPause, onSpeed, onSendNextWave,
-}: { onPause: () => void; onSpeed: (s: 1 | 2 | 3) => void; onSendNextWave: () => void }) {
+  onPause, onSpeed, onSendNextWave, onExit,
+}: {
+  onPause: () => void;
+  onSpeed: (s: 1 | 2 | 3) => void;
+  onSendNextWave: () => void;
+  onExit: () => void;
+}) {
   const lives = useHudStore((s) => s.lives);
   const credits = useHudStore((s) => s.credits);
   const waveIndex = useHudStore((s) => s.waveIndex);
@@ -13,27 +18,29 @@ export function HUDTop({
   const speed = useHudStore((s) => s.speed);
   const status = useHudStore((s) => s.waveStatus);
 
+  const speedActive = speed === 2;
+  const toggleSpeed = () => onSpeed(speedActive ? 1 : 2);
+
   return (
     <View style={styles.root}>
       <Stat label="LIVES" value={String(lives)} />
       <Stat label="CREDITS" value={String(credits)} />
       <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
       <View style={styles.actions}>
-        <Pressable onPress={onPause} style={styles.btn}>
-          <Text style={styles.btnText}>‖</Text>
+        <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
+          <Text style={[styles.btnText, styles.btnExitText]}>✕</Text>
         </Pressable>
-        {[1, 2].map((s) => {
-          const active = speed === s;
-          return (
-            <Pressable
-              key={s}
-              onPress={() => onSpeed(s as 1 | 2)}
-              style={[styles.btn, active && styles.btnActive]}
-            >
-              <Text style={[styles.btnText, active && styles.btnTextActive]}>{s}×</Text>
-            </Pressable>
-          );
-        })}
+        {status === 'in-progress' && (
+          <Pressable onPress={onPause} style={styles.btn}>
+            <Text style={styles.btnText}>‖</Text>
+          </Pressable>
+        )}
+        <Pressable
+          onPress={toggleSpeed}
+          style={[styles.btn, speedActive && styles.btnActive]}
+        >
+          <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
+        </Pressable>
         {(status === 'idle' || status === 'cleared') && (
           <Pressable onPress={onSendNextWave} style={[styles.btn, styles.send]}>
             <Text style={[styles.btnText, styles.sendText]}>SEND</Text>
@@ -79,4 +86,6 @@ const styles = StyleSheet.create({
   btnTextActive: { color: COLORS.textOnAccent },
   send: { backgroundColor: COLORS.tertiary },
   sendText: { color: COLORS.textOnAccent },
+  btnExit: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.danger },
+  btnExitText: { color: COLORS.danger },
 });

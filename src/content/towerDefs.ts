@@ -5,7 +5,7 @@ import { ICELanceTower } from '@/entities/towers/ICELanceTower';
 
 export const FIREWALL: TowerDef = {
   kind: 'firewall',
-  displayName: 'Firewall',
+  displayName: 'Laser',
   baseStats: { range: 3.5, fireRate: 1.2, damage: 8 },
   upgrades: [
     { range: 4.0, fireRate: 1.4, damage: 12, cost: 60 },

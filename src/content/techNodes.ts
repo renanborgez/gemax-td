@@ -1,17 +1,17 @@
 import type { TechNode } from '@/content/types';
 
 export const TECH_NODES: readonly TechNode[] = [
-  // Firewall
+  // Laser (kind: firewall — internal id retained for save compatibility)
   {
     id: 'tower.firewall.t1', category: 'tower', cost: 30, requires: [],
     effect: { kind: 'tower-behavior-chain', tower: 'firewall', chainCount: 2 },
-    displayName: 'Firewall: Chain Strike',
+    displayName: 'Laser: Chain Strike',
     description: 'On kill, chain to a 2nd target within range.',
   },
   {
     id: 'tower.firewall.t2', category: 'tower', cost: 80, requires: ['tower.firewall.t1'],
     effect: { kind: 'tower-behavior-chain', tower: 'firewall', chainCount: 3 },
-    displayName: 'Firewall: Chain Strike+',
+    displayName: 'Laser: Chain Strike+',
     description: 'Chain extends to a 3rd target on kill.',
   },
   // Logic Bomb
