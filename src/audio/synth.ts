@@ -100,3 +100,54 @@ export function applyAdsr(buf: Float32Array, env: Adsr): Float32Array {
   }
   return buf;
 }
+
+/** Single-pole IIR lowpass; mutates in place. */
+export function lowpass(buf: Float32Array, cutoffHz: number): Float32Array {
+  if (buf.length === 0) return buf;
+  const rc = 1 / (2 * Math.PI * cutoffHz);
+  const dt = 1 / SAMPLE_RATE;
+  const alpha = dt / (rc + dt);
+  let prev = buf[0]!;
+  for (let i = 0; i < buf.length; i++) {
+    prev = prev + alpha * (buf[i]! - prev);
+    buf[i] = prev;
+  }
+  return buf;
+}
+
+/**
+ * Sum buffers (zero-padded to max length). Pass-through when |sum| ≤ 1;
+ * soft-clip via tanh only on samples that exceed the range. Single-layer
+ * mixes therefore preserve full headroom.
+ */
+export function mix(buffers: Float32Array[], gainsDb?: number[]): Float32Array {
+  let maxLen = 0;
+  for (const b of buffers) maxLen = Math.max(maxLen, b.length);
+  const out = new Float32Array(maxLen);
+  for (let bi = 0; bi < buffers.length; bi++) {
+    const buf = buffers[bi]!;
+    const g = gainsDb && gainsDb[bi] !== undefined ? Math.pow(10, gainsDb[bi]! / 20) : 1;
+    for (let i = 0; i < buf.length; i++) out[i] += buf[i]! * g;
+  }
+  for (let i = 0; i < out.length; i++) {
+    const s = out[i]!;
+    if (s > 1 || s < -1) out[i] = Math.tanh(s);
+  }
+  return out;
+}
+
+/** Right-pad a buffer with zeros so its length covers `totalSec`. */
+export function pad(buf: Float32Array, totalSec: number): Float32Array {
+  const target = Math.max(0, Math.round(totalSec * SAMPLE_RATE));
+  if (buf.length >= target) return buf;
+  const out = new Float32Array(target);
+  out.set(buf, 0);
+  return out;
+}
+
+/** Scale a buffer by `db` in place. */
+export function gain(buf: Float32Array, db: number): Float32Array {
+  const g = Math.pow(10, db / 20);
+  for (let i = 0; i < buf.length; i++) buf[i] = buf[i]! * g;
+  return buf;
+}

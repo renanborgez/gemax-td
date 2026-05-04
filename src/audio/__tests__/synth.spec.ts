@@ -107,3 +107,81 @@ describe('applyAdsr', () => {
     expect(ret).toBe(buf);
   });
 });
+
+import { lowpass, mix, pad, gain } from '@/audio/synth';
+
+describe('lowpass', () => {
+  it('returns the same buffer (mutates in place)', () => {
+    const buf = new Float32Array(100).fill(1);
+    const ret = lowpass(buf, 1000);
+    expect(ret).toBe(buf);
+  });
+
+  it('attenuates a high-frequency tone more than a low-frequency tone', () => {
+    const high = osc('sine', 8000, 8000, 0.05);
+    const low = osc('sine', 200, 200, 0.05);
+    lowpass(high, 1000);
+    lowpass(low, 1000);
+    const peak = (b: Float32Array) => {
+      let m = 0;
+      for (let i = 0; i < b.length; i++) m = Math.max(m, Math.abs(b[i]!));
+      return m;
+    };
+    expect(peak(high)).toBeLessThan(peak(low));
+  });
+});
+
+describe('mix', () => {
+  it('sums shorter buffers into a longer output without attenuating in-range values', () => {
+    const a = new Float32Array([0.5, 0.5, 0.5, 0.5]);
+    const b = new Float32Array([0.5, 0.5]);
+    const out = mix([a, b]);
+    expect(out.length).toBe(4);
+    // First two samples sum to 1.0 — within range, passed through unchanged.
+    expect(out[0]!).toBeCloseTo(1, 6);
+    expect(out[1]!).toBeCloseTo(1, 6);
+    // Third sample is the tail of `a` only — unchanged.
+    expect(out[2]!).toBeCloseTo(0.5, 6);
+  });
+
+  it('soft-clips only when the summed value exceeds ±1', () => {
+    const a = new Float32Array([2, -2]);
+    const out = mix([a]);
+    // Out-of-range: clipped via tanh.
+    expect(out[0]!).toBeCloseTo(Math.tanh(2), 4);
+    expect(out[1]!).toBeCloseTo(-Math.tanh(2), 4);
+    expect(Math.abs(out[0]!)).toBeLessThan(1);
+  });
+
+  it('applies per-buffer gainsDb (in-range stays linear)', () => {
+    const a = new Float32Array([1]);
+    const out = mix([a], [-6]); // -6 dB ≈ 0.501
+    expect(out[0]!).toBeCloseTo(0.501, 3);
+  });
+});
+
+describe('pad', () => {
+  it('zero-pads the tail to reach totalSec', () => {
+    const a = new Float32Array([1, 1]);
+    const out = pad(a, 0.001); // 44 samples at 44.1 kHz
+    expect(out.length).toBe(44);
+    expect(out[0]).toBe(1);
+    expect(out[1]).toBe(1);
+    expect(out[2]).toBe(0);
+    expect(out[43]).toBe(0);
+  });
+
+  it('does not truncate when input is already longer', () => {
+    const a = new Float32Array(1000).fill(1);
+    const out = pad(a, 0.001);
+    expect(out.length).toBe(1000);
+  });
+});
+
+describe('gain', () => {
+  it('scales by dB in place', () => {
+    const buf = new Float32Array([1]);
+    gain(buf, -6);
+    expect(buf[0]!).toBeCloseTo(0.501, 3);
+  });
+});
