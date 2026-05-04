@@ -13,6 +13,7 @@ import { WavePreview } from '@/ui/components/WavePreview';
 import { PauseModal } from '@/ui/modals/PauseModal';
 import { WinModal } from '@/ui/modals/WinModal';
 import { LoseModal } from '@/ui/modals/LoseModal';
+import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
 import type { TowerKind } from '@/content/types';
 import type { Viewport } from '@/engine/Viewport';
 
@@ -67,6 +68,7 @@ export function PlayScreen({ route, navigation }: Props) {
       <HUDBottom selected={buyKind} onSelect={setBuyKind} />
       <TowerPanel worldRef={session.worldRef} />
       <WavePreview worldRef={session.worldRef} />
+      <TutorialOverlay />
 
       <PauseModal
         visible={pauseVisible}
