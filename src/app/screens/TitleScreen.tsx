@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
+import { SettingsModal } from '@/ui/modals/SettingsModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Title'>;
 
 export function TitleScreen({ navigation }: Props) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <View style={styles.root}>
       <Text style={styles.title}>tower-gemax</Text>
@@ -16,6 +18,10 @@ export function TitleScreen({ navigation }: Props) {
       <Pressable style={styles.btn} onPress={() => navigation.navigate('TechTree')}>
         <Text style={styles.btnText}>Tech Tree</Text>
       </Pressable>
+      <Pressable style={styles.btn} onPress={() => setSettingsOpen(true)}>
+        <Text style={styles.btnText}>Settings</Text>
+      </Pressable>
+      <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 }
