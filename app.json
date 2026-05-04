@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "tower-gemax",
+    "slug": "tower-gemax",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0E1A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "online.gemax.tower",
+      "infoPlist": {
+        "UIBackgroundModes": []
+      }
+    },
+    "android": {
+      "package": "online.gemax.tower",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0E1A"
+      }
+    },
+    "assetBundlePatterns": ["**/*"],
+    "newArchEnabled": true
+  }
+}

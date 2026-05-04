@@ -1,0 +1,14 @@
+{
+  "extends": ["@tsconfig/strictest/tsconfig.json", "expo/tsconfig.base"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "jsx": "react-native",
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "moduleResolution": "bundler"
+  },
+  "include": ["App.tsx", "index.ts", "src/**/*"]
+}
