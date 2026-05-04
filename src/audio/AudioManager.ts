@@ -1,7 +1,18 @@
 import { setAudioModeAsync, createAudioPlayer, type AudioPlayer } from 'expo-audio';
-import { SFX_SOURCES, MUSIC_SOURCES, SFX_POOL_SIZE, type SfxKey, type MusicKey } from '@/audio/catalog';
+import { SFX_KEYS, MUSIC_SOURCES, SFX_POOL_SIZE, type SfxKey, type MusicKey } from '@/audio/catalog';
+import { bakeSfx } from '@/audio/bake';
+import { makeRng } from '@/audio/synth';
 
 export type Volumes = { master: number; sfx: number; music: number };
+
+const JITTER_KEYS: ReadonlySet<SfxKey> = new Set([
+  'tower-fire-firewall',
+  'tower-fire-logic-bomb',
+  'tower-fire-ice-lance',
+  'enemy-hit',
+  'enemy-death',
+  'ui-click',
+]);
 
 export class AudioManager {
   private volumes: Volumes = { master: 1, sfx: 1, music: 0.7 };
@@ -9,6 +20,8 @@ export class AudioManager {
   private musicPlayer: AudioPlayer | null = null;
   private currentMusic: MusicKey | null = null;
   private initialized = false;
+  private jitterRng = makeRng(0xa17d10);
+  private supportsPlaybackRate = false;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -17,18 +30,24 @@ export class AudioManager {
     } catch {
       // Audio mode failure is non-fatal — SFX may still work.
     }
-    for (const key of Object.keys(SFX_SOURCES) as SfxKey[]) {
+    const uris = await bakeSfx();
+    for (const key of SFX_KEYS) {
       const players: AudioPlayer[] = [];
       const poolSize = SFX_POOL_SIZE[key];
       for (let i = 0; i < poolSize; i++) {
         try {
-          players.push(createAudioPlayer(SFX_SOURCES[key]));
+          players.push(createAudioPlayer({ uri: uris[key]! }));
         } catch {
           // If a player fails to construct, skip it; round-robin will use what we have.
         }
       }
       this.sfxPools.set(key, { players, cursor: 0 });
     }
+    // Duck-type once: assume playbackRate is supported iff the property exists on a
+    // freshly-constructed player. Setting an unknown prop on a JS-side proxy doesn't
+    // throw, so try/catch on assignment is unreliable — this is.
+    const probe = this.sfxPools.get('ui-click')?.players[0];
+    this.supportsPlaybackRate = probe !== undefined && 'playbackRate' in (probe as object);
     this.initialized = true;
   }
 
@@ -44,6 +63,10 @@ export class AudioManager {
     pool.cursor = (pool.cursor + 1) % pool.players.length;
     try {
       player.volume = this.volumes.master * this.volumes.sfx;
+      if (this.supportsPlaybackRate && JITTER_KEYS.has(key)) {
+        const rate = 1 + (this.jitterRng() - 0.5) * 0.06;
+        (player as unknown as { playbackRate: number }).playbackRate = rate;
+      }
       void player.seekTo(0);
       player.play();
     } catch { /* swallow on RN runtime quirks */ }
