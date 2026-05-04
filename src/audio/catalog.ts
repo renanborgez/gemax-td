@@ -1,5 +1,5 @@
-// SFX keys are content-addressed and synthesized at runtime — see specs.ts and bake.ts.
-// Music sources still point to a silent placeholder; music generation is out of scope.
+// SFX keys are synthesized at runtime — see specs.ts and bake.ts.
+// Music still uses a placeholder silent WAV; replacing music is out of scope here.
 const silent = require('./assets/silent-100ms.wav');
 
 export const SFX_KEYS = [
