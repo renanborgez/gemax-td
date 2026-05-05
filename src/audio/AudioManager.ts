@@ -38,7 +38,11 @@ export class AudioManager {
   async init(): Promise<void> {
     if (this.initialized) return;
     try {
-      await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        interruptionMode: 'mixWithOthers',
+      });
     } catch {
       // Audio mode failure is non-fatal — SFX may still work.
     }

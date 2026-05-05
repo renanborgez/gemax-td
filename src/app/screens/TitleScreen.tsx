@@ -68,17 +68,23 @@ export function TitleScreen({ navigation }: Props) {
   const heroChapterDef = CHAPTER_BY_INDEX[heroChapter];
   const heroAccent = heroChapterDef?.paletteAccent ?? COLORS.secondary;
 
-  // Measured height of the body region. Clamp scale so we shrink on small
-  // devices but never grow past the tuned defaults on large ones.
-  const [bodyHeight, setBodyHeight] = useState(0);
+  // Measured size of the body region. Height drives the global scale; width
+  // drives the hero size so the 3D scene fills available width.
+  const [bodySize, setBodySize] = useState({ w: 0, h: 0 });
   const scale =
-    bodyHeight === 0
+    bodySize.h === 0
       ? MAX_SCALE
-      : Math.max(MIN_SCALE, Math.min(MAX_SCALE, bodyHeight / REF_HEIGHT));
+      : Math.max(MIN_SCALE, Math.min(MAX_SCALE, bodySize.h / REF_HEIGHT));
+  const heroSize =
+    bodySize.w > 0
+      ? Math.min(bodySize.w, bodySize.h * 0.55)
+      : BASE.heroSize * scale;
 
   const onBodyLayout = (e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    if (h !== bodyHeight) setBodyHeight(h);
+    const { width, height } = e.nativeEvent.layout;
+    if (width !== bodySize.w || height !== bodySize.h) {
+      setBodySize({ w: width, h: height });
+    }
   };
 
   const onContinue = () => {
@@ -189,7 +195,7 @@ export function TitleScreen({ navigation }: Props) {
           <ChapterHero3D
             chapterIndex={heroChapter}
             accent={heroAccent}
-            size={BASE.heroSize * scale}
+            size={heroSize}
           />
           {heroChapterDef && (
             <View style={[styles.heroLabel, { gap: 2 * scale }]}>

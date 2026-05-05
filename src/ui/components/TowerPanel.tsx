@@ -142,11 +142,21 @@ function TowerPanelImpl({
           </View>
           <View style={styles.actions}>
             {nextUpgrade && (
-              <Pressable onPress={onUpgrade} style={styles.upgrade}>
+              <Pressable
+                onPress={onUpgrade}
+                style={styles.upgrade}
+                accessibilityRole="button"
+                accessibilityLabel={`Upgrade ${def.displayName} for ${nextUpgradePrice} credits`}
+              >
                 <Text style={styles.upgradeText}>UPGRADE {nextUpgradePrice} ¢</Text>
               </Pressable>
             )}
-            <Pressable onPress={onSell} style={styles.sell}>
+            <Pressable
+              onPress={onSell}
+              style={styles.sell}
+              accessibilityRole="button"
+              accessibilityLabel={`Sell ${def.displayName}`}
+            >
               <Text style={styles.sellText}>SELL</Text>
             </Pressable>
           </View>

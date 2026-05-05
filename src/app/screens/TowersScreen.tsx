@@ -159,16 +159,30 @@ function EquippedTile({
 function AvailableTile({
   def, owned, onPress,
 }: { def: TowerDef; owned: boolean; onPress: () => void }) {
+  if (!owned) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={[styles.tile, styles.tileLocked]}
+      >
+        <View style={styles.tileLockedDimmed} pointerEvents="none">
+          <TowerIcon kind={def.kind} size={TILE_ICON_SIZE} />
+          <Text style={styles.tileName} numberOfLines={1}>{def.displayName}</Text>
+        </View>
+        <View style={styles.unlockOverlay} pointerEvents="none">
+          <Text style={styles.unlockOverlayText}>UNLOCK</Text>
+          <Text style={styles.unlockOverlayCost}>{def.unlockCost ?? 0} ◆</Text>
+        </View>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.tile, owned ? styles.tileAvailable : styles.tileLocked]}
+      style={[styles.tile, styles.tileAvailable]}
     >
       <TowerIcon kind={def.kind} size={TILE_ICON_SIZE} />
       <Text style={styles.tileName} numberOfLines={1}>{def.displayName}</Text>
-      {!owned && (
-        <Text style={styles.tilePrice}>{def.unlockCost ?? 0} ◆</Text>
-      )}
     </Pressable>
   );
 }
@@ -339,7 +353,37 @@ const styles = StyleSheet.create({
   },
   tileEquipped: { borderColor: COLORS.secondary },
   tileAvailable: { borderColor: COLORS.border },
-  tileLocked: { backgroundColor: COLORS.bgElevated, borderColor: COLORS.tertiarySoft, opacity: 0.85 },
+  tileLocked: {
+    backgroundColor: COLORS.bgElevated,
+    borderColor: COLORS.tertiarySoft,
+    overflow: 'hidden',
+  },
+  tileLockedDimmed: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: SPACING.sm,
+    opacity: 0.55,
+  },
+  unlockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${COLORS.bgCard}66`,
+    gap: 2,
+  },
+  unlockOverlayText: {
+    ...TEXT.buttonSmall,
+    color: COLORS.tertiary,
+    fontSize: 12,
+    letterSpacing: 1.4,
+  },
+  unlockOverlayCost: {
+    ...TEXT.labelSmall,
+    color: COLORS.tertiary,
+    fontSize: 11,
+  },
   tileEmpty: {
     backgroundColor: COLORS.bgElevated,
     borderStyle: 'dashed',
@@ -347,7 +391,6 @@ const styles = StyleSheet.create({
   },
   tileEmptyText: { ...TEXT.labelSmall, color: COLORS.textMuted, letterSpacing: 1.0 },
   tileName: { ...TEXT.labelSmall, color: COLORS.textPrimary, fontSize: 11, textAlign: 'center' },
-  tilePrice: { ...TEXT.buttonSmall, color: COLORS.tertiary, fontSize: 10 },
 
   // Dialog
   backdrop: {

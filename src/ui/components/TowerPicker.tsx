@@ -31,11 +31,12 @@ export function TowerPicker({
   const loadoutDefs = useMemo(() => {
     const slots = normalizeLoadout(data.meta.activeLoadout);
     const byKind = new Map(ALL_TOWER_DEFS.map((d) => [d.kind, d] as const));
-    const filled = slots
+    const equipped = slots
       .map((k) => (k === null ? undefined : byKind.get(k)))
       .filter((d): d is typeof ALL_TOWER_DEFS[number] => d !== undefined);
-    return filled.length === 0 ? ALL_TOWER_DEFS : filled;
-  }, [data.meta.activeLoadout]);
+    if (equipped.length > 0) return equipped;
+    return ALL_TOWER_DEFS.filter((d) => data.meta.unlockedTowers.includes(d.kind));
+  }, [data.meta.activeLoadout, data.meta.unlockedTowers]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgElevated,
   },
   closeText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
-  row: { flexDirection: 'row', gap: SPACING.sm },
+  row: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   cell: {
     width: 92,
     height: 72,
@@ -167,6 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
+    overflow: 'hidden',
   },
   cellDisabled: { opacity: 0.45 },
   hidden: { opacity: 0 },

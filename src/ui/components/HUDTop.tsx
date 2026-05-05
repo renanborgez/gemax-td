@@ -112,21 +112,20 @@ function aggregate(wave: World['level']['waves'][number]): Record<string, number
 
 const styles = StyleSheet.create({
   root: {
-    paddingVertical: SPACING.sm,
+    paddingVertical: 4,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.bgCard,
-    gap: SPACING.sm,
   },
   row: {
     flexDirection: 'row',
-    gap: SPACING.lg,
+    gap: SPACING.md,
     alignItems: 'center',
   },
-  col: { alignItems: 'flex-start' },
-  label: { ...TEXT.labelSmall },
-  value: { ...TEXT.hudValue },
+  col: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  label: { ...TEXT.labelSmall, fontSize: 10 },
+  value: { ...TEXT.hudValue, fontSize: 14 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  icon: { ...TEXT.hudValue, fontSize: 14 },
+  icon: { ...TEXT.hudValue, fontSize: 13 },
   nextRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -143,11 +142,11 @@ const styles = StyleSheet.create({
   nextHint: { ...TEXT.labelSmall, color: COLORS.tertiary, opacity: 0.8 },
   actions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
   btn: {
-    paddingVertical: 6,
-    paddingHorizontal: SPACING.md,
+    paddingVertical: 3,
+    paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.bgElevated,
-    minWidth: 38,
+    minWidth: 32,
     alignItems: 'center',
   },
   btnActive: { backgroundColor: COLORS.primary },

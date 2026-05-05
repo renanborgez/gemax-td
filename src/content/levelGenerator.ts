@@ -42,31 +42,35 @@ type Template = {
   waypoints: GridCoord[];
 };
 
-/** Hook: short L with a head start, so the entry corner is visible without
- *  hiding behind the spawner. Used as the easiest template. */
+/** Hook: tight S-curve for the very first missions. Three bends keep enemies
+ *  in tower range longer and give the player time to learn the loop. */
 function tplHook(rng: () => number): Template {
   const cols = 5 + Math.floor(rng() * 2);    // 5–6
-  const rows = 9 + Math.floor(rng() * 2);    // 9–10
-  // Path enters top-left, runs right two cells, then drops to base.
-  return {
-    cols, rows,
-    waypoints: [
-      { col: 0, row: 0 },
-      { col: 2, row: 0 },
-      { col: 2, row: rows - 1 },
-    ],
-  };
-}
-
-/** L-shape: one wide bend across the top. */
-function tplL(rng: () => number): Template {
-  const cols = 6 + Math.floor(rng() * 2);    // 6–7
   const rows = 10 + Math.floor(rng() * 2);   // 10–11
+  const midRow = Math.floor(rows * 0.45);
   return {
     cols, rows,
     waypoints: [
       { col: 0, row: 0 },
       { col: cols - 2, row: 0 },
+      { col: cols - 2, row: midRow },
+      { col: 1, row: midRow },
+      { col: 1, row: rows - 1 },
+    ],
+  };
+}
+
+/** L-shape: two bends — drop part-way, then sweep across before final drop. */
+function tplL(rng: () => number): Template {
+  const cols = 6 + Math.floor(rng() * 2);    // 6–7
+  const rows = 10 + Math.floor(rng() * 2);   // 10–11
+  const midRow = 2 + Math.floor(rng() * 2);
+  return {
+    cols, rows,
+    waypoints: [
+      { col: 0, row: 0 },
+      { col: 0, row: midRow },
+      { col: cols - 2, row: midRow },
       { col: cols - 2, row: rows - 1 },
     ],
   };
@@ -268,7 +272,11 @@ function generateWaves(
     } else {
       // Base creep stream — count scales with intensity + chapter for sustained
       // economy pressure; toughest creep stays light so small grids survive.
-      const baseCount = Math.round(8 + 10 * intensity + chapterIdx * 1.2);
+      // Mission 0 of chapter 0 trims the count further — onboarding wave.
+      const isTutorial = chapterIdx === 0 && missionIdx === 0;
+      const baseCount = isTutorial
+        ? Math.round(5 + 5 * intensity)
+        : Math.round(8 + 10 * intensity + chapterIdx * 1.2);
       groups.push({
         id: 'g1',
         spawnerId: 'main',
@@ -332,8 +340,11 @@ export function generateLevel(key: GenerationKey): LevelDef {
   const spawnerTile: GridCoord = { col: tpl.waypoints[0]!.col, row: tpl.waypoints[0]!.row };
 
   // Economy + lives scale slightly with chapter; a 4-life buffer keeps a
-  // 3-star clear plausible all the way to chapter 9.
-  const startCredits = 80 + chapterIdx * 22 + missionIdx * 6;
+  // 3-star clear plausible all the way to chapter 9. First mission of
+  // chapter 0 gets an extra credit cushion so newcomers can afford a
+  // second tower before the wave hits the first bend.
+  const tutorialBoost = chapterIdx === 0 && missionIdx === 0 ? 40 : 0;
+  const startCredits = 100 + chapterIdx * 22 + missionIdx * 6 + tutorialBoost;
   const startLives = 10 + Math.floor(chapterIdx / 3);
 
   const isFinale = missionIdx === MISSIONS_PER_CHAPTER - 1;

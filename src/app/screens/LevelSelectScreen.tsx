@@ -32,7 +32,7 @@ function isChapterUnlocked(
 }
 
 export function LevelSelectScreen({ navigation, route }: Props) {
-  const { data } = useSave();
+  const { data, store, refresh } = useSave();
   const chapter = route.params.chapter;
   const def = CHAPTER_BY_INDEX[chapter];
   const accent = def?.paletteAccent ?? COLORS.secondary;
@@ -93,7 +93,11 @@ export function LevelSelectScreen({ navigation, route }: Props) {
             key={lvl.id}
             style={[styles.card, dimmed && styles.cardLocked]}
             disabled={disabled}
-            onPress={() => navigation.navigate('Briefing', { levelId: lvl.id, difficulty })}
+            onPress={() => {
+              store.update((d) => { d.meta.lastPlayedLevelId = lvl.id; });
+              refresh();
+              navigation.navigate('Play', { levelId: lvl.id, difficulty });
+            }}
           >
             <View style={[styles.accent, { backgroundColor: accent }]} />
             <View style={{ flex: 1, gap: 4 }}>
@@ -118,6 +122,18 @@ export function LevelSelectScreen({ navigation, route }: Props) {
               {'★'.repeat(stars)}
               {'☆'.repeat(3 - stars)}
             </Text>
+            {!disabled && (
+              <Pressable
+                style={styles.infoBtn}
+                hitSlop={8}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  navigation.navigate('Briefing', { levelId: lvl.id, difficulty });
+                }}
+              >
+                <Ionicons name="information-circle-outline" size={22} color={COLORS.textMuted} />
+              </Pressable>
+            )}
             {(chapterLocked || isFutureLocked) && (
               <View pointerEvents="none" style={styles.lockOverlay}>
                 <Ionicons name="lock-closed" size={24} color={COLORS.textMuted} />
@@ -187,5 +203,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  infoBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.xs,
   },
 });

@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, PanResponder, type LayoutChangeEvent } from 'react-native';
+import { View, Text, Pressable, StyleSheet, PanResponder, Linking, type LayoutChangeEvent } from 'react-native';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
-const APP_VERSION = '1.0.0-BETA';
+const APP_VERSION = '1.0.0';
+const PRIVACY_URL = 'https://gemax.online/privacy';
+const SUPPORT_URL = 'https://gemax.online/support';
 
 export function SettingsScreen() {
   const { data, store, refresh } = useSave();
@@ -23,26 +25,42 @@ export function SettingsScreen() {
   return (
     <ScreenShell sectionTitle="System Settings">
       <Section label={`EFFECTS  ${pct(data.settings.sfx)}`}>
-        <VolumeBar value={data.settings.sfx} onChange={(v) => setVol('sfx', v)} />
+        <VolumeBar label="Effects" value={data.settings.sfx} onChange={(v) => setVol('sfx', v)} />
       </Section>
 
       <Section label={`MUSIC  ${pct(data.settings.music)}`}>
-        <VolumeBar value={data.settings.music} onChange={(v) => setVol('music', v)} />
+        <VolumeBar label="Music" value={data.settings.music} onChange={(v) => setVol('music', v)} />
       </Section>
 
-      {__DEV__ ? (
-        <>
-          <View style={{ height: SPACING.md }} />
-          <Pressable
-            onPress={() => (confirmReset ? onReset() : setConfirmReset(true))}
-            style={styles.danger}
-          >
-            <Text style={styles.dangerText}>
-              {confirmReset ? 'TAP AGAIN TO CONFIRM' : 'RESET PROGRESS (DEV)'}
-            </Text>
-          </Pressable>
-        </>
-      ) : null}
+      <View style={styles.linkRow}>
+        <Pressable
+          onPress={() => { void Linking.openURL(PRIVACY_URL); }}
+          style={styles.linkBtn}
+          accessibilityRole="link"
+          accessibilityLabel="Open privacy policy in browser"
+        >
+          <Text style={styles.linkText}>PRIVACY POLICY</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => { void Linking.openURL(SUPPORT_URL); }}
+          style={styles.linkBtn}
+          accessibilityRole="link"
+          accessibilityLabel="Open support page in browser"
+        >
+          <Text style={styles.linkText}>SUPPORT</Text>
+        </Pressable>
+      </View>
+
+      <Pressable
+        onPress={() => (confirmReset ? onReset() : setConfirmReset(true))}
+        style={styles.danger}
+        accessibilityRole="button"
+        accessibilityLabel={confirmReset ? 'Confirm reset all progress' : 'Reset all progress'}
+      >
+        <Text style={styles.dangerText}>
+          {confirmReset ? 'TAP AGAIN TO CONFIRM' : 'RESET PROGRESS'}
+        </Text>
+      </Pressable>
 
       <Text style={styles.version}>V. {APP_VERSION}</Text>
     </ScreenShell>
@@ -58,7 +76,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function VolumeBar({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function VolumeBar({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
   const widthRef = useRef(0);
   const onLayout = (e: LayoutChangeEvent) => { widthRef.current = e.nativeEvent.layout.width; };
   const setFromX = (x: number) => {
@@ -79,6 +97,9 @@ function VolumeBar({ value, onChange }: { value: number; onChange: (v: number) =
     <View
       style={styles.barTrack}
       onLayout={onLayout}
+      accessibilityRole="adjustable"
+      accessibilityLabel={`${label} volume`}
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(value * 100) }}
       {...responder.panHandlers}
     >
       <View style={[styles.barFill, { width: `${value * 100}%` }]} />
@@ -127,6 +148,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dangerText: { ...TEXT.button, color: COLORS.danger },
+  linkRow: { flexDirection: 'row', gap: SPACING.sm },
+  linkBtn: {
+    flex: 1,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.bgElevated,
+  },
+  linkText: { ...TEXT.button, color: COLORS.textPrimary, fontSize: 12 },
   version: {
     ...TEXT.labelSmall,
     color: COLORS.textMuted,

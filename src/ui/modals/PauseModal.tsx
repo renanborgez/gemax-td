@@ -9,14 +9,29 @@ export function PauseModal({
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.bg}>
         <View style={styles.card}>
-          <Text style={styles.title}>PAUSED</Text>
-          <Pressable onPress={onResume} style={styles.btnPrimary}>
+          <Text style={styles.title} accessibilityRole="header">PAUSED</Text>
+          <Pressable
+            onPress={onResume}
+            style={styles.btnPrimary}
+            accessibilityRole="button"
+            accessibilityLabel="Resume mission"
+          >
             <Text style={styles.btnPrimaryText}>RESUME</Text>
           </Pressable>
-          <Pressable onPress={onRestart} style={styles.btnSecondary}>
+          <Pressable
+            onPress={onRestart}
+            style={styles.btnSecondary}
+            accessibilityRole="button"
+            accessibilityLabel="Restart mission"
+          >
             <Text style={styles.btnSecondaryText}>RESTART</Text>
           </Pressable>
-          <Pressable onPress={onExit} style={styles.btnDanger}>
+          <Pressable
+            onPress={onExit}
+            style={styles.btnDanger}
+            accessibilityRole="button"
+            accessibilityLabel="Exit mission to map"
+          >
             <Text style={styles.btnDangerText}>EXIT</Text>
           </Pressable>
         </View>

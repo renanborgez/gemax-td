@@ -12,7 +12,16 @@
     "test:engine:watch": "vitest --config vitest.config.ts",
     "lint:tsc:engine": "tsc --noEmit -p tsconfig.engine.json",
     "validate:waves": "vitest run --config scripts/vitest.validate-waves.config.ts",
-    "gen:icons": "node scripts/gen-icons.mjs"
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "eas:build:dev": "eas build --profile development --platform ios",
+    "eas:build:preview:ios": "eas build --profile preview --platform ios",
+    "eas:build:preview:android": "eas build --profile preview --platform android",
+    "eas:build:prod:ios": "eas build --profile production --platform ios",
+    "eas:build:prod:android": "eas build --profile production --platform android",
+    "eas:build:prod:all": "eas build --profile production --platform all",
+    "eas:submit:ios": "eas submit --platform ios --latest",
+    "eas:submit:android": "eas submit --platform android --latest",
+    "preflight": "npm run tsc && npm run test:engine && npm run lint:tsc:engine"
   },
   "dependencies": {
     "@expo-google-fonts/epilogue": "^0.4.2",
