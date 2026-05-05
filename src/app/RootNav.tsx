@@ -41,7 +41,9 @@ export function RootNav() {
 
   useEffect(() => {
     if (routeName === undefined) return;
-    void audio.playMusic(routeName === 'Play' ? 'in-game' : 'main-menu');
+    // Menus + Play (pre-wave) share the main-menu loop. PlayScreen swaps to
+    // 'in-game' only while a wave is actively running.
+    void audio.playMusic('main-menu');
   }, [routeName, audio]);
 
   return (

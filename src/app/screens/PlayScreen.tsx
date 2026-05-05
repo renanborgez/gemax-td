@@ -19,6 +19,7 @@ import { AbortMissionModal } from '@/ui/modals/AbortMissionModal';
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
 import { useHudStore } from '@/ui/hudStore';
 import { useSave } from '@/app/providers/SaveProvider';
+import { useAudio } from '@/app/providers/AudioProvider';
 import type { TowerKind } from '@/content/types';
 import type { GridCoord } from '@/lib/types';
 import type { Viewport } from '@/engine/Viewport';
@@ -46,6 +47,7 @@ const usePlacementStore = create<PlacementState>((setS) => ({
 
 export function PlayScreen({ route, navigation }: Props) {
   const { store } = useSave();
+  const audio = useAudio();
   const session = useGameSession({
     levelId: route.params.levelId,
     difficulty: route.params.difficulty,
@@ -166,16 +168,28 @@ export function PlayScreen({ route, navigation }: Props) {
     return () => { offW(); offL(); };
   }, [session, navigation, store, route.params.levelId, route.params.difficulty]);
 
+  // Music: in-game loop only while a wave is actively running. Idle/cleared
+  // states use the main-menu loop set by RootNav.
+  useEffect(() => {
+    const w = session.worldRef.current;
+    const offStart = w.bus.on('wave-started', () => { void audio.playMusic('in-game'); });
+    const offCleared = w.bus.on('wave-cleared', () => { void audio.playMusic('main-menu'); });
+    return () => { offStart(); offCleared(); };
+  }, [session, audio]);
+
   const confirmAbort = () => {
     setAbortVisible(false);
     pausedByAbort.current = false;
     allowExit.current = true;
     const action = pendingNavAction.current;
     pendingNavAction.current = null;
-    // Replay the pending action (swipe/back/tab tap) now that we've allowed it.
-    // Fall back to LevelSelect if no captured action (e.g. abort triggered from UI).
-    if (action) navigation.dispatch(action);
-    else navigation.navigate('LevelSelect');
+    // Defer navigation by a frame so the AbortMissionModal's native dismiss
+    // can finish before PlayScreen unmounts — otherwise the native Modal can
+    // leave a transparent overlay on the next screen that swallows touches.
+    requestAnimationFrame(() => {
+      if (action) navigation.dispatch(action);
+      else navigation.navigate('LevelSelect');
+    });
   };
 
   const cancelAbort = () => {
@@ -236,7 +250,7 @@ export function PlayScreen({ route, navigation }: Props) {
         onExit={() => {
           setPauseVisible(false);
           allowExit.current = true;
-          navigation.navigate('LevelSelect');
+          requestAnimationFrame(() => navigation.navigate('LevelSelect'));
         }}
       />
 

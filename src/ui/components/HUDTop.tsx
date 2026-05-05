@@ -31,23 +31,23 @@ export function HUDTop({
   return (
     <View style={styles.root}>
       <View style={styles.row}>
-        <Stat label="LIVES" value={String(lives)} />
-        <Stat label="CREDITS" value={String(credits)} />
+        <Stat label="LIVES" value={String(lives)} icon="♥" iconColor={COLORS.danger} />
+        <Stat label="CREDITS" value={String(credits)} icon="◉" iconColor={COLORS.tertiary} />
         <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
         <View style={styles.actions}>
-          <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
-            <Text style={[styles.btnText, styles.btnExitText]}>✕</Text>
+          <Pressable
+            onPress={toggleSpeed}
+            style={[styles.btn, speedActive && styles.btnActive]}
+          >
+            <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
           </Pressable>
           {status === 'in-progress' && (
             <Pressable onPress={onPause} style={styles.btn}>
               <Text style={styles.btnText}>‖</Text>
             </Pressable>
           )}
-          <Pressable
-            onPress={toggleSpeed}
-            style={[styles.btn, speedActive && styles.btnActive]}
-          >
-            <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
+          <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
+            <Text style={[styles.btnText, styles.btnExitText]}>Abort</Text>
           </Pressable>
         </View>
       </View>
@@ -64,11 +64,14 @@ export function HUDTop({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, icon, iconColor }: { label: string; value: string; icon?: string; iconColor?: string }) {
   return (
     <View style={styles.col}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+      <View style={styles.valueRow}>
+        {icon && <Text style={[styles.icon, iconColor ? { color: iconColor } : null]}>{icon}</Text>}
+        <Text style={styles.value}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -99,6 +102,8 @@ const styles = StyleSheet.create({
   col: { alignItems: 'flex-start' },
   label: { ...TEXT.labelSmall },
   value: { ...TEXT.hudValue },
+  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  icon: { ...TEXT.hudValue, fontSize: 14 },
   nextRow: {
     flexDirection: 'row',
     alignItems: 'center',
