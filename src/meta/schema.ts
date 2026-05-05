@@ -33,7 +33,7 @@ export type PersistedBlobV1 = {
 };
 
 /** Towers granted free at first launch (and backfilled into pre-loadout saves). */
-export const DEFAULT_UNLOCKED_TOWERS: readonly TowerKind[] = ['firewall', 'logic-bomb'];
+export const DEFAULT_UNLOCKED_TOWERS: readonly TowerKind[] = ['bullet-turret', 'logic-bomb'];
 /** Loadout cap — only this many towers are usable in a single match. */
 export const LOADOUT_SLOTS = 3;
 /**
@@ -41,7 +41,7 @@ export const LOADOUT_SLOTS = 3;
  * stays put when a tower is removed (the empty square doesn't shift left, and
  * the next deploy fills it before opening a new slot).
  */
-export const DEFAULT_LOADOUT: readonly (TowerKind | null)[] = ['firewall', 'logic-bomb', null];
+export const DEFAULT_LOADOUT: readonly (TowerKind | null)[] = ['bullet-turret', 'logic-bomb', null];
 
 export type SaveDataV2 = {
   profile: { createdAt: number; lastPlayedAt: number };
@@ -65,7 +65,29 @@ export type PersistedBlobV2 = {
   data: SaveDataV2;
 };
 
-export const CURRENT_VERSION = 2 as const;
+export type SaveDataV3 = {
+  profile: { createdAt: number; lastPlayedAt: number };
+  campaign: Record<string, LevelProgress>;
+  meta: {
+    shards: number;
+    techTree: Record<string, number>;
+    unlockedTowers: TowerKind[];
+    activeLoadout: (TowerKind | null)[];
+    /** Account XP (cumulative, current level). Drives the long-ladder progression. */
+    playerXp: number;
+    playerLevel: number;
+    /** Most recently entered level — used by the Title screen's CONTINUE affordance. */
+    lastPlayedLevelId?: string;
+  };
+  settings: SaveSettings;
+};
+
+export type PersistedBlobV3 = {
+  version: 3;
+  data: SaveDataV3;
+};
+
+export const CURRENT_VERSION = 3 as const;
 
 export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
   return {
@@ -102,6 +124,28 @@ export function blankSaveDataV2(now: number = Date.now()): SaveDataV2 {
   };
 }
 
-export type SaveDataLatest = SaveDataV2;
-export type PersistedBlobLatest = PersistedBlobV2;
-export const blankSaveDataLatest = blankSaveDataV2;
+export function blankSaveDataV3(now: number = Date.now()): SaveDataV3 {
+  return {
+    profile: { createdAt: now, lastPlayedAt: now },
+    campaign: {},
+    meta: {
+      shards: 0,
+      techTree: {},
+      unlockedTowers: [...DEFAULT_UNLOCKED_TOWERS],
+      activeLoadout: [...DEFAULT_LOADOUT],
+      playerXp: 0,
+      playerLevel: 1,
+    },
+    settings: {
+      audioMaster: 1.0,
+      sfx: 0.8,
+      music: 0.8,
+      difficultyDefault: 'normal',
+      tutorialSeen: false,
+    },
+  };
+}
+
+export type SaveDataLatest = SaveDataV3;
+export type PersistedBlobLatest = PersistedBlobV3;
+export const blankSaveDataLatest = blankSaveDataV3;

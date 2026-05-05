@@ -13,9 +13,22 @@ import type { TracerRoundProjectile } from '@/entities/projectiles/TracerRoundPr
 import type { ChainArcProjectile, ChainSegment } from '@/entities/projectiles/ChainArcProjectile';
 import { CHAIN_ARC_TTL } from '@/entities/projectiles/ChainArcProjectile';
 import type { PoisonDartProjectile } from '@/entities/projectiles/PoisonDartProjectile';
+import { type EMPBurstProjectile, EMP_BURST_TTL, EMP_BURST_EXPAND_RATE } from '@/entities/projectiles/EMPBurstProjectile';
+import { type MarkerDartProjectile, MARKER_DART_TTL } from '@/entities/projectiles/MarkerDartProjectile';
+import { type BeamArcProjectile, BEAM_ARC_TTL } from '@/entities/projectiles/BeamArcProjectile';
+import { type FlameConeProjectile, FLAME_CONE_TTL } from '@/entities/projectiles/FlameConeProjectile';
+import { type BulletProjectile, BULLET_TTL } from '@/entities/projectiles/BulletProjectile';
 import type { ICELanceTower } from '@/entities/towers/ICELanceTower';
 import type { TeslaCoilTower } from '@/entities/towers/TeslaCoilTower';
 import type { VenomSpireTower } from '@/entities/towers/VenomSpireTower';
+import type { EMPTower } from '@/entities/towers/EMPTower';
+import type { CryoFieldTower } from '@/entities/towers/CryoFieldTower';
+import type { MarkerTower } from '@/entities/towers/MarkerTower';
+import type { BeamCannonTower } from '@/entities/towers/BeamCannonTower';
+import type { FlamerTower } from '@/entities/towers/FlamerTower';
+import { isWraithPhasing } from '@/entities/wraithPhase';
+import { tryGetEnemyDef } from '@/entities/registry';
+import type { Enemy } from '@/entities/Enemy';
 
 export type Clock = {
   now(): number;                              // ms
@@ -122,6 +135,34 @@ export class Engine {
       w.entities.enemies.push(e);
     }
 
+    // Refresh per-enemy specials before targeting reads them.
+    for (const e of w.entities.enemies) {
+      if (!e.alive) continue;
+      e.untargetable = e.defKind === 'wraith' && isWraithPhasing(e.id, w.time);
+    }
+
+    // Cryo Field passive aura — refreshes a brief slow status on every enemy
+    // in range each tick. No fire intent; runs before targeting so the slow
+    // is already on enemies when other towers pick them.
+    for (const t of w.entities.towers) {
+      if (!t.alive || t.defKind !== 'cryo-field') continue;
+      const cryo = t as CryoFieldTower;
+      const r2 = t.base.range * t.base.range;
+      for (const e of w.entities.enemies) {
+        if (!e.alive || e.untargetable) continue;
+        const dx = e.x - t.x;
+        const dy = e.y - t.y;
+        if (dx * dx + dy * dy > r2) continue;
+        e.statuses.push({
+          kind: 'slow',
+          magnitude: cryo.auraSlowStrength,
+          duration: cryo.auraSlowDuration,
+          remaining: cryo.auraSlowDuration,
+          appliedByTowerId: t.id,
+        });
+      }
+    }
+
     // 2. Read phase: targeting → fireIntents.
     const ctx = { difficulty: w.difficulty, effects: { towerStatMults: w.effects.towerStatMults } };
     w.staged.fireIntents.length = 0;
@@ -152,12 +193,17 @@ export class Engine {
         w.entities.projectiles.push(p);
       } else if (intent.projectileKind === 'aoe-pulse') {
         // Bomb: spawn at the tower, fly to the captured target point, then expand.
-        // radius / expandRate / flightSpeed come from class defaults (see AoEPulseProjectile).
+        // radius / expandRate / flightSpeed come from class defaults (see AoEPulseProjectile),
+        // but tower subclasses (LogicBomb / Mortar) can override `blastRadius`.
         const p = w.pools.aoe.acquire();
         p.alive = true;
         p.x = intent.fromX; p.y = intent.fromY;
         p.destX = intent.targetX; p.destY = intent.targetY;
         p.damage = intent.damage; p.sourceTowerId = intent.towerId;
+        const sourceForRadius = towerById.get(intent.towerId) as { blastRadius?: number } | undefined;
+        if (typeof sourceForRadius?.blastRadius === 'number') {
+          p.radius = sourceForRadius.blastRadius;
+        }
         const dx = intent.targetX - intent.fromX;
         const dy = intent.targetY - intent.fromY;
         const dist = Math.hypot(dx, dy);
@@ -228,6 +274,7 @@ export class Engine {
           let bestX = 0, bestY = 0;
           for (const e of w.entities.enemies) {
             if (!e.alive || hit.has(e.id)) continue;
+            if (e.untargetable) continue;
             if (e.flying && sourceTower?.targets === 'ground') continue;
             if (!e.flying && sourceTower?.targets === 'flying') continue;
             const d = Math.hypot(e.x - cursorX, e.y - cursorY);
@@ -264,6 +311,148 @@ export class Engine {
         p.targetEnemyId = intent.targetEnemyId;
         p.damage = intent.damage; p.sourceTowerId = intent.towerId;
         p.ttl = 2;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'emp-burst') {
+        // EMP: instant radial pulse centered on the tower. Apply chip damage
+        // and a stun status to every targetable enemy within stunRadius;
+        // the projectile entity is purely visual (expanding ring).
+        const sourceTower = towerById.get(intent.towerId) as EMPTower | undefined;
+        const stunRadius = sourceTower?.stunRadius ?? 0;
+        const stunDuration = (sourceTower?.stunDuration ?? 0) * w.effects.globals.stunDurationMult;
+        for (const e of w.entities.enemies) {
+          if (!e.alive || e.untargetable) continue;
+          if (e.flying && sourceTower?.targets === 'ground') continue;
+          if (!e.flying && sourceTower?.targets === 'flying') continue;
+          const d = Math.hypot(e.x - intent.fromX, e.y - intent.fromY);
+          if (d > stunRadius) continue;
+          if (intent.damage > 0) {
+            w.staged.damage.push({
+              targetEnemyId: e.id,
+              damage: intent.damage,
+              attackerTowerId: intent.towerId,
+            });
+          }
+          e.statuses.push({
+            kind: 'stun',
+            magnitude: 1,
+            duration: stunDuration,
+            remaining: stunDuration,
+            appliedByTowerId: intent.towerId,
+          });
+        }
+        const p = w.pools.empBurst.acquire();
+        p.alive = true;
+        p.x = intent.fromX; p.y = intent.fromY;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.radius = stunRadius;
+        p.currentRadius = 0;
+        p.expandRate = EMP_BURST_EXPAND_RATE;
+        p.ttl = EMP_BURST_TTL;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'bullet') {
+        // Bullet: light kinetic round shared by Bullet Turret + Machine Gun.
+        // Travels in a straight line toward the captured target; on hit
+        // applies its damage and despawns.
+        const p = w.pools.bullet.acquire();
+        p.alive = true;
+        p.x = intent.fromX; p.y = intent.fromY;
+        const dx = intent.targetX - intent.fromX;
+        const dy = intent.targetY - intent.fromY;
+        const len = Math.hypot(dx, dy) || 1;
+        p.vx = (dx / len) * p.speed; p.vy = (dy / len) * p.speed;
+        p.targetEnemyId = intent.targetEnemyId;
+        p.damage = intent.damage; p.sourceTowerId = intent.towerId;
+        p.ttl = BULLET_TTL;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'marker-dart') {
+        // Marker: light dart, no damage. On impact (handled in update loop)
+        // applies a `mark` status to the target.
+        const p = w.pools.markerDart.acquire();
+        p.alive = true;
+        p.x = intent.fromX; p.y = intent.fromY;
+        const dx = intent.targetX - intent.fromX;
+        const dy = intent.targetY - intent.fromY;
+        const len = Math.hypot(dx, dy) || 1;
+        p.vx = (dx / len) * p.speed; p.vy = (dy / len) * p.speed;
+        p.targetEnemyId = intent.targetEnemyId;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.ttl = MARKER_DART_TTL;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'beam-arc') {
+        // Beam Cannon: instant hitscan with per-tower ramp. Maintain ramp on
+        // the source tower (resets when target id changes); apply current ramp
+        // to the staged damage so chain-on-kill / mark / armor still apply.
+        const beamTower = towerById.get(intent.towerId) as BeamCannonTower | undefined;
+        let rampMult = 1;
+        if (beamTower) {
+          if (beamTower.lastTargetId !== intent.targetEnemyId) {
+            beamTower.currentRamp = 1;
+            beamTower.lastTargetId = intent.targetEnemyId;
+          } else {
+            // Each tick advances the ramp toward maxRamp at a rate that hits
+            // maxRamp after rampSeconds of sustained fire. Approximated by
+            // increasing per-fire (since the cooldown is the wall-clock pacing).
+            const step = (beamTower.maxRamp - 1) / Math.max(0.1, beamTower.rampSeconds * beamTower.base.fireRate);
+            beamTower.currentRamp = Math.min(beamTower.maxRamp, beamTower.currentRamp + step);
+          }
+          rampMult = beamTower.currentRamp;
+        }
+        w.staged.damage.push({
+          targetEnemyId: intent.targetEnemyId,
+          damage: intent.damage * rampMult,
+          attackerTowerId: intent.towerId,
+        });
+        const p = w.pools.beamArc.acquire();
+        p.alive = true;
+        p.fromX = intent.fromX; p.fromY = intent.fromY;
+        p.x = intent.targetX; p.y = intent.targetY;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.rampFactor = rampMult;
+        p.ttl = BEAM_ARC_TTL;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'flame-cone') {
+        // Flamer: cone splash. Primary target gets full damage; up to
+        // (maxConeTargets - 1) additional enemies inside the cone half-angle
+        // around the tower→target vector, capped by tower range.
+        const flamerTower = towerById.get(intent.towerId) as FlamerTower | undefined;
+        const maxTargets = flamerTower?.maxConeTargets ?? 1;
+        const halfAngle = flamerTower?.coneHalfAngle ?? 0.6;
+        const range = flamerTower?.base.range ?? 2.2;
+        const dirX = intent.targetX - intent.fromX;
+        const dirY = intent.targetY - intent.fromY;
+        const dirLen = Math.hypot(dirX, dirY) || 1;
+        const dirNX = dirX / dirLen;
+        const dirNY = dirY / dirLen;
+        const cosThreshold = Math.cos(halfAngle);
+        const hits: string[] = [intent.targetEnemyId];
+        // Collect candidates (excluding primary) within range and inside cone.
+        for (const e of w.entities.enemies) {
+          if (!e.alive || e.untargetable || e.id === intent.targetEnemyId) continue;
+          if (e.flying && flamerTower?.targets === 'ground') continue;
+          if (!e.flying && flamerTower?.targets === 'flying') continue;
+          const ex = e.x - intent.fromX;
+          const ey = e.y - intent.fromY;
+          const len = Math.hypot(ex, ey);
+          if (len > range || len < 0.01) continue;
+          const cosAngle = (ex * dirNX + ey * dirNY) / len;
+          if (cosAngle < cosThreshold) continue;
+          hits.push(e.id);
+          if (hits.length >= maxTargets) break;
+        }
+        for (const id of hits) {
+          w.staged.damage.push({
+            targetEnemyId: id,
+            damage: intent.damage,
+            attackerTowerId: intent.towerId,
+          });
+        }
+        const p = w.pools.flameCone.acquire();
+        p.alive = true;
+        p.fromX = intent.fromX; p.fromY = intent.fromY;
+        p.x = intent.targetX; p.y = intent.targetY;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.coneHalfAngle = halfAngle;
+        p.ttl = FLAME_CONE_TTL;
         w.entities.projectiles.push(p);
       }
     }
@@ -361,7 +550,57 @@ export class Engine {
             }
           }
         }
+      } else if (p.kind === 'projectile:emp-burst') {
+        // Visual-only: expand the ring up to the tower's stunRadius. Damage
+        // and stun were applied at fire-time in the intent-handling block.
+        const ep = p as EMPBurstProjectile;
+        ep.currentRadius = Math.min(ep.radius, ep.currentRadius + ep.expandRate * dt);
+      } else if (p.kind === 'projectile:bullet') {
+        const bp = p as BulletProjectile;
+        bp.x += bp.vx * dt; bp.y += bp.vy * dt;
+        const candidate = bp.targetEnemyId ? enemyById.get(bp.targetEnemyId) : undefined;
+        const target = candidate && candidate.alive ? candidate : undefined;
+        if (target) {
+          const d = distance(bp, target);
+          if (d < 0.4) {
+            w.staged.damage.push({
+              targetEnemyId: target.id,
+              damage: bp.damage,
+              attackerTowerId: bp.sourceTowerId,
+            });
+            bp.alive = false;
+          }
+        } else {
+          bp.alive = false;
+        }
+      } else if (p.kind === 'projectile:marker-dart') {
+        // Marker dart: homes toward the captured target id; on impact pushes a
+        // `mark` status onto the target. No damage staged.
+        const md = p as MarkerDartProjectile;
+        md.x += md.vx * dt; md.y += md.vy * dt;
+        const candidate = md.targetEnemyId ? enemyById.get(md.targetEnemyId) : undefined;
+        const target = candidate && candidate.alive ? candidate : undefined;
+        if (target) {
+          const d = distance(md, target);
+          if (d < 0.4) {
+            const sourceTower = towerById.get(md.sourceTowerId) as MarkerTower | undefined;
+            if (sourceTower) {
+              target.statuses.push({
+                kind: 'mark',
+                magnitude: sourceTower.markDamageMult,
+                duration: sourceTower.markDuration,
+                remaining: sourceTower.markDuration,
+                appliedByTowerId: sourceTower.id,
+              });
+            }
+            md.alive = false;
+          }
+        } else {
+          md.alive = false;
+        }
       }
+      // beam-arc and flame-cone are visual-only — no per-tick update needed
+      // beyond the ttl decrement at the top of the loop.
     }
 
     // 6. Write phase: apply staged damage events.
@@ -387,6 +626,7 @@ export class Engine {
           let bestDist = Infinity;
           for (const e of w.entities.enemies) {
             if (!e.alive || alreadyHit.has(e.id) || e.id === ev.targetEnemyId) continue;
+            if (e.untargetable) continue;
             const d = Math.hypot(e.x - tower.x, e.y - tower.y);
             if (d > tower.base.range) continue;
             const dToCursor = Math.hypot(e.x - cursor.x, e.y - cursor.y);
@@ -404,6 +644,51 @@ export class Engine {
       }
     }
 
+    // 6c. Boss specials: death-spawn + passive heal-aura.
+    // Death-spawn fires once per dying enemy via `deathSpecialApplied`. Heal-
+    // aura runs every tick and only on alive enemies, so the bounty/leak
+    // accounting that follows is unaffected.
+    const newSpawnsFromDeath: Enemy[] = [];
+    for (const e of w.entities.enemies) {
+      if (e.alive || e.deathSpecialApplied) continue;
+      e.deathSpecialApplied = true;
+      const def = tryGetEnemyDef(e.defKind);
+      const sp = def?.special;
+      if (sp?.type === 'deathSpawn') {
+        for (let i = 0; i < sp.count; i++) {
+          const child = w.spawner.spawn({
+            enemyKind: sp.enemyKind,
+            spawnerId: e.spawnerId,
+          });
+          child.maxHp = child.base.hp * w.difficulty.enemyHpMult;
+          child.hp = child.maxHp;
+          child.distAlongPath = e.distAlongPath;
+          child.x = e.x;
+          child.y = e.y;
+          newSpawnsFromDeath.push(child);
+        }
+      }
+    }
+    for (const c of newSpawnsFromDeath) w.entities.enemies.push(c);
+
+    // Heal-aura: each holder regenerates nearby enemies at hpPerSec, scaled by dt.
+    for (const healer of w.entities.enemies) {
+      if (!healer.alive) continue;
+      const def = tryGetEnemyDef(healer.defKind);
+      if (def?.special?.type !== 'healAura') continue;
+      const aura = def.special;
+      const heal = aura.hpPerSec * dt;
+      const r2 = aura.radius * aura.radius;
+      for (const target of w.entities.enemies) {
+        if (!target.alive || target === healer) continue;
+        const dx = target.x - healer.x;
+        const dy = target.y - healer.y;
+        if (dx * dx + dy * dy > r2) continue;
+        if (target.hp >= target.maxHp) continue;
+        target.hp = Math.min(target.maxHp, target.hp + heal);
+      }
+    }
+
     // 7. Process leaks (lives, lose check).
     let livesChanged = false;
     for (const leak of w.staged.leaks) {
@@ -416,10 +701,11 @@ export class Engine {
 
     // 8. Bounty payouts on dead enemies.
     let creditsChanged = false;
+    const bountyMult = w.effects.globals.bountyMult;
     for (const e of w.entities.enemies) {
       if (!e.alive && e.hp <= 0 && e.lastDamagedBy) {
         if (e.bounty > 0) {
-          w.credits += e.bounty;
+          w.credits += Math.round(e.bounty * bountyMult);
           e.bounty = 0;
           creditsChanged = true;
         }
@@ -437,6 +723,11 @@ export class Engine {
       else if (p.kind === 'projectile:tracer-round') w.pools.tracer.release(p as TracerRoundProjectile);
       else if (p.kind === 'projectile:chain-arc') w.pools.chainArc.release(p as ChainArcProjectile);
       else if (p.kind === 'projectile:poison-dart') w.pools.poisonDart.release(p as PoisonDartProjectile);
+      else if (p.kind === 'projectile:emp-burst') w.pools.empBurst.release(p as EMPBurstProjectile);
+      else if (p.kind === 'projectile:marker-dart') w.pools.markerDart.release(p as MarkerDartProjectile);
+      else if (p.kind === 'projectile:beam-arc') w.pools.beamArc.release(p as BeamArcProjectile);
+      else if (p.kind === 'projectile:flame-cone') w.pools.flameCone.release(p as FlameConeProjectile);
+      else if (p.kind === 'projectile:bullet') w.pools.bullet.release(p as BulletProjectile);
     });
 
     // 10. Life regen tech node.

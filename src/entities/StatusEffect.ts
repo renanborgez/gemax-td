@@ -1,4 +1,4 @@
-export type StatusKind = 'slow' | 'stun' | 'dot' | 'freeze';
+export type StatusKind = 'slow' | 'stun' | 'dot' | 'freeze' | 'mark';
 
 export type StatusEffect = {
   kind: StatusKind;
@@ -49,4 +49,13 @@ export function totalDotDps(list: readonly StatusEffect[]): number {
   let total = 0;
   for (const s of list) if (s.kind === 'dot') total += s.magnitude;
   return total;
+}
+
+/** Multiplier applied to incoming damage when the enemy carries a `mark`
+ *  status. Stacks multiplicatively across active marks (e.g. two markers
+ *  active at once). 1.0 = no mark active. */
+export function damageTakenMult(list: readonly StatusEffect[]): number {
+  let mult = 1;
+  for (const s of list) if (s.kind === 'mark') mult *= s.magnitude;
+  return mult;
 }

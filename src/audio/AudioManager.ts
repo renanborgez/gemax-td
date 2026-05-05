@@ -6,12 +6,20 @@ import { makeRng } from '@/audio/synth';
 export type Volumes = { master: number; sfx: number; music: number };
 
 const JITTER_KEYS: ReadonlySet<SfxKey> = new Set([
+  'tower-fire-bullet-turret',
+  'tower-fire-machine-gun',
   'tower-fire-firewall',
   'tower-fire-logic-bomb',
   'tower-fire-ice-lance',
   'tower-fire-sniper',
   'tower-fire-tesla-coil',
   'tower-fire-venom-spire',
+  'tower-fire-emp',
+  'tower-fire-plasma-cannon',
+  'tower-fire-mortar',
+  'tower-fire-marker',
+  'tower-fire-beam-cannon',
+  'tower-fire-flamer',
   'enemy-hit',
   'enemy-death',
   'ui-click',

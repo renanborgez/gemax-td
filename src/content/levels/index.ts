@@ -1,5 +1,11 @@
-import { LVL_01_INTRANET } from '@/content/levels/lvl-01-intranet';
-import { LVL_02_UPLINK } from '@/content/levels/lvl-02-uplink';
+import { generateAllLevels } from '@/content/levelGenerator';
+import type { LevelDef } from '@/content/types';
 
-export const ALL_LEVELS = [LVL_01_INTRANET, LVL_02_UPLINK] as const;
-export const LEVEL_BY_ID = Object.fromEntries(ALL_LEVELS.map((l) => [l.id, l]));
+/**
+ * Campaign levels are generated deterministically from `levelGenerator.ts`
+ * — the entire 100-mission catalog (10 chapters × 10 missions) is rebuilt
+ * verbatim each load. Edits to a level happen in the generator, not here.
+ */
+export const ALL_LEVELS: ReadonlyArray<LevelDef> = generateAllLevels();
+export const LEVEL_BY_ID: Readonly<Record<string, LevelDef>> =
+  Object.fromEntries(ALL_LEVELS.map((l) => [l.id, l]));

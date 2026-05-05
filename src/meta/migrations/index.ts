@@ -1,4 +1,12 @@
-import { CURRENT_VERSION, DEFAULT_LOADOUT, DEFAULT_UNLOCKED_TOWERS, type SaveDataLatest, type SaveDataV1, type SaveDataV2 } from '@/meta/schema';
+import {
+  CURRENT_VERSION,
+  DEFAULT_LOADOUT,
+  DEFAULT_UNLOCKED_TOWERS,
+  type SaveDataLatest,
+  type SaveDataV1,
+  type SaveDataV2,
+  type SaveDataV3,
+} from '@/meta/schema';
 
 export type Migration = {
   from: number;
@@ -24,6 +32,24 @@ export const MIGRATIONS: Migration[] = [
         },
       };
       return v2;
+    },
+  },
+  {
+    from: 2,
+    to: 3,
+    migrate: (d) => {
+      // Account XP starts at zero for existing players (decision: V3 with
+      // zeroed XP — see /Users/renan/.claude/plans/i-want-to-find-optimized-chipmunk.md §7.3).
+      const v2 = d as SaveDataV2;
+      const v3: SaveDataV3 = {
+        ...v2,
+        meta: {
+          ...v2.meta,
+          playerXp: 0,
+          playerLevel: 1,
+        },
+      };
+      return v3;
     },
   },
 ];

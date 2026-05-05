@@ -3,7 +3,9 @@ import { View, StyleSheet } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TitleScreen } from '@/app/screens/TitleScreen';
+import { ChaptersScreen } from '@/app/screens/ChaptersScreen';
 import { LevelSelectScreen } from '@/app/screens/LevelSelectScreen';
+import { BriefingScreen } from '@/app/screens/BriefingScreen';
 import { TowersScreen } from '@/app/screens/TowersScreen';
 import { PlayScreen } from '@/app/screens/PlayScreen';
 import { SettingsScreen } from '@/app/screens/SettingsScreen';
@@ -16,7 +18,9 @@ import { COLORS, FONTS } from '@/render/theme';
 
 export type RootStackParamList = {
   Title: undefined;
-  LevelSelect: undefined;
+  Chapters: undefined;
+  LevelSelect: { chapter: number };
+  Briefing: { levelId: string; difficulty: Difficulty };
   Towers: undefined;
   Settings: undefined;
   Play: { levelId: string; difficulty: Difficulty };
@@ -73,7 +77,9 @@ export function RootNav() {
         <View style={styles.stackWrap}>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: COLORS.bg } }}>
             <Stack.Screen name="Title" component={TitleScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
+            <Stack.Screen name="Chapters" component={ChaptersScreen} />
             <Stack.Screen name="LevelSelect" component={LevelSelectScreen} />
+            <Stack.Screen name="Briefing" component={BriefingScreen} />
             <Stack.Screen name="Towers" component={TowersScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="Play" component={PlayScreen} />

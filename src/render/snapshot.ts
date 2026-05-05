@@ -3,8 +3,15 @@ import type { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjecti
 import type { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
 import type { TracerRoundProjectile } from '@/entities/projectiles/TracerRoundProjectile';
 import type { ChainArcProjectile, ChainSegment } from '@/entities/projectiles/ChainArcProjectile';
+import type { EMPBurstProjectile } from '@/entities/projectiles/EMPBurstProjectile';
+import type { BeamArcProjectile } from '@/entities/projectiles/BeamArcProjectile';
+import type { FlameConeProjectile } from '@/entities/projectiles/FlameConeProjectile';
 
-export type EnemySnap = { x: number; y: number; defKind: string; hp: number; maxHp: number };
+export type EnemySnap = {
+  x: number; y: number; defKind: string; hp: number; maxHp: number;
+  /** Wraith phase + future "ghost" specials. Renderer dims opacity when true. */
+  untargetable: boolean;
+};
 export type TowerSnap = { id: string; x: number; y: number; defKind: string; level: number };
 export type ProjectileSnap = {
   x: number; y: number; kind: string;
@@ -18,6 +25,10 @@ export type ProjectileSnap = {
   flightProgress: number;
   /** Chain-arc segments (tiles). Empty for non-chain projectiles. */
   chainSegments: readonly ChainSegment[];
+  /** Beam-cannon ramp factor (1..maxRamp). 0 for non-beam projectiles. */
+  rampFactor: number;
+  /** Flame-cone half-angle (radians). 0 for non-flame projectiles. */
+  coneHalfAngle: number;
   /** Remaining seconds until despawn — used by short-lived FX to fade out. */
   ttl: number;
 };
@@ -47,7 +58,7 @@ export function buildSnapshot(world: World): WorldSnapshot {
   const enemies: EnemySnap[] = [];
   for (const e of world.entities.enemies) {
     if (!e.alive) continue;
-    enemies.push({ x: e.x, y: e.y, defKind: e.defKind, hp: e.hp, maxHp: e.maxHp });
+    enemies.push({ x: e.x, y: e.y, defKind: e.defKind, hp: e.hp, maxHp: e.maxHp, untargetable: e.untargetable });
   }
   const projectiles: ProjectileSnap[] = [];
   for (const p of world.entities.projectiles) {
@@ -62,14 +73,26 @@ export function buildSnapshot(world: World): WorldSnapshot {
       if (ap.phase === 'flight' && ap.flightDuration > 0) {
         flightProgress = ap.flightT / ap.flightDuration;
       }
+    } else if (p.kind === 'projectile:emp-burst') {
+      cr = (p as EMPBurstProjectile).currentRadius;
     }
     let fromX = 0, fromY = 0;
+    let rampFactor = 0;
+    let coneHalfAngle = 0;
     if (p.kind === 'projectile:hitscan-bolt') {
       const hp = p as HitscanProjectile;
       fromX = hp.fromX; fromY = hp.fromY;
     } else if (p.kind === 'projectile:tracer-round') {
       const tp = p as TracerRoundProjectile;
       fromX = tp.fromX; fromY = tp.fromY;
+    } else if (p.kind === 'projectile:beam-arc') {
+      const bp = p as BeamArcProjectile;
+      fromX = bp.fromX; fromY = bp.fromY;
+      rampFactor = bp.rampFactor;
+    } else if (p.kind === 'projectile:flame-cone') {
+      const fc = p as FlameConeProjectile;
+      fromX = fc.fromX; fromY = fc.fromY;
+      coneHalfAngle = fc.coneHalfAngle;
     }
     let chainSegments: readonly ChainSegment[] = EMPTY_CHAIN_SEGMENTS;
     if (p.kind === 'projectile:chain-arc') {
@@ -82,6 +105,7 @@ export function buildSnapshot(world: World): WorldSnapshot {
       currentRadius: cr, fromX, fromY,
       bombPhase, flightProgress,
       chainSegments,
+      rampFactor, coneHalfAngle,
       ttl: p.ttl,
     });
   }

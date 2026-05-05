@@ -10,19 +10,23 @@ import { SkiaWorld } from '@/render/SkiaWorld';
 import { useGameSession } from '@/render/useGameSession';
 import { useWorldGestures, type TapResult } from '@/render/useWorldGestures';
 import { useCamera } from '@/render/useCamera';
-import { HUDTop } from '@/ui/components/HUDTop';
+import { CHAPTER_BY_INDEX } from '@/content/chapters';
+import { LEVEL_BY_ID } from '@/content/levels';
+import { HUDTop, NextWaveBanner } from '@/ui/components/HUDTop';
 import { TowerPanel } from '@/ui/components/TowerPanel';
 import { TowerPicker } from '@/ui/components/TowerPicker';
 import { PauseModal } from '@/ui/modals/PauseModal';
 import { NextWaveModal } from '@/ui/modals/NextWaveModal';
 import { AbortMissionModal } from '@/ui/modals/AbortMissionModal';
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
+import { FinalWaveOverlay } from '@/ui/components/FinalWaveOverlay';
 import { useHudStore } from '@/ui/hudStore';
 import { useSave } from '@/app/providers/SaveProvider';
 import { useAudio } from '@/app/providers/AudioProvider';
 import type { TowerKind } from '@/content/types';
 import type { GridCoord } from '@/lib/types';
 import type { Viewport } from '@/engine/Viewport';
+import { shardRewardForMatch } from '@/meta/playerLevel';
 import { COLORS, RADIUS, SPACING, TEXT } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Play'>;
@@ -53,9 +57,14 @@ export function PlayScreen({ route, navigation }: Props) {
     difficulty: route.params.difficulty,
     seed: 1,
   });
+  const chapterAccent = (() => {
+    const lvl = LEVEL_BY_ID[route.params.levelId];
+    return lvl ? CHAPTER_BY_INDEX[lvl.chapter]?.paletteAccent : undefined;
+  })();
   const [pauseVisible, setPauseVisible] = useState(false);
   const [abortVisible, setAbortVisible] = useState(false);
   const [nextWaveVisible, setNextWaveVisible] = useState(false);
+  const [finalWaveVisible, setFinalWaveVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const pendingNavAction = useRef<NavigationAction | null>(null);
   const allowExit = useRef(false);
@@ -109,6 +118,22 @@ export function PlayScreen({ route, navigation }: Props) {
     onCameraMoveStart: closePlacement,
   });
 
+  const onStartWavePress = useCallback(() => {
+    const wd = session.worldRef.current.waveDirector;
+    const nextIdx = wd.waveIndex + 1;
+    const isFinal = nextIdx === wd.totalWaves - 1;
+    if (isFinal) {
+      setFinalWaveVisible(true);
+      return;
+    }
+    session.startNextWave();
+  }, [session]);
+
+  const onFinalWaveAnimDone = useCallback(() => {
+    setFinalWaveVisible(false);
+    session.startNextWave();
+  }, [session]);
+
   const onPickTower = useCallback((kind: TowerKind) => {
     const cell = usePlacementStore.getState().cell;
     if (!cell || !viewport) return;
@@ -148,7 +173,11 @@ export function PlayScreen({ route, navigation }: Props) {
       const alreadyAwarded = lvlPrev?.shardsAwardedFor.includes(route.params.difficulty) ?? false;
       const shards = alreadyAwarded
         ? 0
-        : Math.round(stars * 10 * w.difficulty.shardRewardMult * (1 + 0.05 * w.level.chapter));
+        : shardRewardForMatch({
+            stars,
+            chapter: w.level.chapter,
+            shardRewardMult: w.difficulty.shardRewardMult,
+          });
       allowExit.current = true;
       navigation.replace('Win', {
         levelId: route.params.levelId,
@@ -188,7 +217,7 @@ export function PlayScreen({ route, navigation }: Props) {
     // leave a transparent overlay on the next screen that swallows touches.
     requestAnimationFrame(() => {
       if (action) navigation.dispatch(action);
-      else navigation.navigate('LevelSelect');
+      else navigation.navigate('Chapters');
     });
   };
 
@@ -212,11 +241,10 @@ export function PlayScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <HUDTop
-        worldRef={session.worldRef}
         onPause={() => { session.pause(); setPauseVisible(true); }}
         onSpeed={(s) => session.setSpeed(s)}
         onExit={requestAbort}
-        onShowNextWave={() => setNextWaveVisible(true)}
+        {...(chapterAccent !== undefined ? { accent: chapterAccent } : {})}
       />
       <View style={styles.canvasWrap} onLayout={onCanvasLayout}>
         <GestureDetector gesture={gestures}>
@@ -225,17 +253,32 @@ export function PlayScreen({ route, navigation }: Props) {
               session={session}
               onViewportReady={onViewportReady}
               cameraTransform={camera.transform}
+              {...(chapterAccent !== undefined ? { accent: chapterAccent } : {})}
             />
           </View>
         </GestureDetector>
-        <TowerPanel session={session} />
+        <View pointerEvents="box-none" style={styles.nextWaveOverlay}>
+          <NextWaveBanner
+            worldRef={session.worldRef}
+            onShowNextWave={() => setNextWaveVisible(true)}
+            {...(chapterAccent !== undefined ? { accent: chapterAccent } : {})}
+          />
+        </View>
+        <TowerPanel
+          session={session}
+          viewport={viewport}
+          camera={camera}
+          containerWidth={canvasSize.w}
+          containerHeight={canvasSize.h}
+        />
         <TowerPickerHost
           containerWidth={canvasSize.w}
           containerHeight={canvasSize.h}
           onPick={onPickTower}
           onDismiss={closePlacement}
         />
-        <StartWaveButton onPress={() => session.startNextWave()} />
+        <StartWaveButton onPress={onStartWavePress} />
+        <FinalWaveOverlay visible={finalWaveVisible} onComplete={onFinalWaveAnimDone} />
       </View>
       <TutorialOverlay />
 
@@ -250,7 +293,7 @@ export function PlayScreen({ route, navigation }: Props) {
         onExit={() => {
           setPauseVisible(false);
           allowExit.current = true;
-          requestAnimationFrame(() => navigation.navigate('LevelSelect'));
+          requestAnimationFrame(() => navigation.navigate('Chapters'));
         }}
       />
 
@@ -326,6 +369,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
   canvasWrap: { flex: 1, position: 'relative' },
   canvas: { flex: 1 },
+  nextWaveOverlay: {
+    position: 'absolute',
+    top: SPACING.sm,
+    left: SPACING.md,
+    right: SPACING.md,
+  },
   startWrap: {
     position: 'absolute',
     left: 0,
@@ -338,8 +387,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.tertiary,
-    minWidth: 140,
+    minWidth: 160,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: COLORS.tertiary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,

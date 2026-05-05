@@ -16,10 +16,12 @@ npx expo start
 
 The Skia / Reanimated / Expo SDK trio is fragile across minor bumps. The known-working pin:
 
-- `expo@52.0.11`
-- `react-native@0.76.3`
-- `@shopify/react-native-skia@1.5.10`
-- `react-native-reanimated@3.16.7`
+- `expo@~55.0.0`
+- `react-native@0.83.6`
+- `react@19.2.0`
+- `@shopify/react-native-skia@2.4.18`
+- `react-native-reanimated@4.2.1`
+- `react-native-worklets@>=0.7.0`
 
 Bumping any of the above requires re-validating the others via `npx expo install --check`.
 
@@ -29,6 +31,22 @@ Bumping any of the above requires re-validating the others via `npx expo install
 npm run test:engine    # pure TS engine, vitest, target <2s
 npm test               # RN smoke, jest-expo
 ```
+
+## Brand assets
+
+The app logo is authored as SVG and rasterized into the PNGs Expo expects.
+
+- `assets/logo-mark.svg` — square master (1024×1024). Hexagonal containment ring, 3-tier angular tower, antenna pulse, signal arcs, base selection cell, corner brackets. Brand palette: cyan `#44EEFF`, mint `#7AFCC9`, orange `#FFB14E`, dark `#0E1014`.
+- `assets/logo.svg` — full lockup (mark + "GeMax TD" wordmark) for splash / web headers.
+- `src/ui/components/Logo.tsx` — Skia-rendered in-app component (`<Logo variant="mark|lockup" size={…} animate />`).
+
+Regenerate the PNGs after editing the SVG master:
+
+```bash
+npm run gen:icons      # uses scripts/gen-icons.mjs (sharp devDep)
+```
+
+The script writes `icon.png` (1024), `adaptive-icon.png` (1024, inset to 70% safe zone, transparent surround), `splash-icon.png` (1024), `splash.png` (1024 dark plate, mark centered), `favicon.png` (256).
 
 ## Phase-A deviations from the plan
 

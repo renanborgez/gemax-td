@@ -1,28 +1,23 @@
 {
   "expo": {
-    "name": "tower-gemax",
-    "slug": "tower-gemax",
+    "name": "GeMax TD",
+    "slug": "gemax-td",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0A0E1A"
-    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "online.gemax.tower",
+      "bundleIdentifier": "online.gemax.td",
       "infoPlist": {
         "UIBackgroundModes": []
       }
     },
     "android": {
-      "package": "online.gemax.tower",
+      "package": "online.gemax.td",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0E1A"
+        "backgroundColor": "#0E1014"
       }
     },
     "assetBundlePatterns": [
@@ -31,7 +26,15 @@
     "plugins": [
       "expo-audio",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#0E1014",
+          "resizeMode": "cover"
+        }
+      ]
     ]
   }
 }

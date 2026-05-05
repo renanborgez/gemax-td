@@ -1,4 +1,4 @@
 <resources>
-  <string name="app_name">tower-gemax</string>
-  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+  <string name="app_name">GeMax TD</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">cover</string>
 </resources>

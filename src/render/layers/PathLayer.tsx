@@ -4,7 +4,17 @@ import type { World } from '@/world/World';
 import type { Viewport } from '@/engine/Viewport';
 import { COLORS } from '@/render/theme';
 
-export function PathLayer({ world, viewport }: { world: World; viewport: Viewport }) {
+export function PathLayer({
+  world,
+  viewport,
+  accent,
+}: {
+  world: World;
+  viewport: Viewport;
+  /** Chapter accent — when set, tints the path stroke. Falls back to the
+   *  default cyan-soft used on chapter-less / debug levels. */
+  accent?: string;
+}) {
   const pts = world.level.path;
 
   const path = useMemo(() => {
@@ -19,12 +29,16 @@ export function PathLayer({ world, viewport }: { world: World; viewport: Viewpor
     return p;
   }, [pts, viewport]);
 
+  // Soft tint matches the original primarySoft (~12% alpha) but in the
+  // chapter accent so the path reads as part of the chapter palette.
+  const color = accent ? `${accent}33` : COLORS.primarySoft;
+
   return (
     <SkPath
       path={path}
       style="stroke"
       strokeWidth={1}
-      color={COLORS.primarySoft}
+      color={color}
       strokeCap="round"
       strokeJoin="round"
     />

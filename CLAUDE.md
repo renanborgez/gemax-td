@@ -16,6 +16,8 @@ npm run lint:tsc:engine                  # engine-only typecheck (no .tsx, stric
 npm run test:engine                      # vitest — pure TS sim, target <2s
 npm run test:engine:watch                # vitest watch
 npm test                                 # jest-expo — RN component smoke
+
+npm run gen:icons                        # rasterize assets/logo-mark.svg → icon/splash/favicon PNGs
 ```
 
 Run a single vitest spec: `npx vitest run src/engine/__tests__/Engine.spec.ts` (or `-t "name"` to filter cases).
@@ -62,6 +64,17 @@ Key invariants:
 - `EventBus.emit` **buffers**; `bus.flush()` at the end of `simStep` drains. Never call `flush()` from inside a listener.
 - Providers (`SaveProvider`, `AudioProvider`) are mounted in `App.tsx` and consumed by screens via `useSave()`/`useAudio()`. `bootstrap()` runs once on mount.
 - `SaveStore.update(fn)` is a debounced read-modify-write. It always writes through a tmp key (`save/v1.tmp`) before the main key for crash safety. Schema migrations live in `meta/migrations/`.
+
+UI conventions worth knowing:
+
+- **World-anchored overlays use the camera's shared values, not snapshots.** `TowerPanel` and `TowerPicker` are absolutely-positioned RN views that follow a grid cell while the player pans/zooms. Pattern: convert tile → world via `Viewport.gridToWorld`, then drive an `Animated.View` transform via `useAnimatedStyle` reading `camera.zoom.value`/`panX.value`/`panY.value`. Container width/height are passed in for clamping. Don't reach into `world.entities` from the UI thread; selection state comes through `hudStore`/`world.selection`.
+- **Stat deltas are shown as percentages, not raw values.** `TowerPanel.StatCell` formats upgrade preview as `+12%` / `-5%` (mint for buff, danger for nerf). When adding a new stat row, follow the same `(next - current) / current` pattern and skip rendering when the delta rounds to 0%.
+- **TitleScreen auto-scales to fit the screen height.** All element sizes (title font, stat cards, hero size, gaps) are derived from a single `scale` multiplier computed from the measured body height vs a `REF_HEIGHT` of 720, clamped `[0.6, 1.0]`. Avoid adding fixed pixel sizes to that screen — multiply through `scale` so small devices never need to scroll.
+
+### Brand assets / icons
+
+- `assets/logo-mark.svg` is the source of truth. `npm run gen:icons` (script: `scripts/gen-icons.mjs`, devDep: `sharp`) rasterizes it into `icon.png`, `adaptive-icon.png` (70% safe-zone inset, transparent surround so Android's `adaptiveIcon.backgroundColor` shows through), `splash-icon.png`, `splash.png` (centered on `#0E1014`), and `favicon.png`. Always re-run after touching the SVG; commit the PNGs.
+- For in-app rendering of the logo (TitleScreen, splash overlays), use `src/ui/components/Logo.tsx` (Skia) — `<Logo variant="mark|lockup" size={…} animate />`. Don't import the SVG directly.
 
 ### Path alias
 

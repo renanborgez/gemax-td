@@ -62,6 +62,12 @@ describe('pickTarget', () => {
     t.targets = 'flying';
     expect(pickTarget(t, enemies, ctx)).toBeNull();
   });
+  it('skips untargetable enemies (e.g. wraith mid-phase)', () => {
+    const skipFirst = enemies.map((e) => Object.assign(e, {}));
+    skipFirst[2]!.untargetable = true; // 'first' would have picked e:3
+    expect(pickTarget(makeTower('first'), skipFirst, ctx)?.id).toBe('e:2');
+    skipFirst[2]!.untargetable = false;
+  });
 });
 
 describe('targetingSystem', () => {

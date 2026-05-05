@@ -1,0 +1,25 @@
+# tower-gemax AI Rules
+
+## Architecture Constraints
+- The `engine`, `world`, and `entities` folders must remain PURE TypeScript. Do not add React, React Native, or Skia imports there.
+- All simulation logic must be deterministic. Use the `SeededRng` provided in the `world` context.
+- Use `FIXED_DT` (1/60) for simulation steps.
+
+## Coding Standards
+- Use absolute imports starting with `@/` (aliased to `src/`).
+- Prefer functional utilities in `src/lib`.
+- Mutate `World` state only within the engine systems.
+- HUD state should be managed via `zustand` in `hudStore.ts`.
+
+## Testing
+- Engine logic MUST have vitest specs in `__tests__` folders.
+- Run `npm run test:engine` to verify simulation changes.
+- Use `npm test` for React Native smoke tests.
+
+## Dependency Management
+- Every dependency in `package.json` is pinned to an exact version.
+- When installing new packages, use `npm install --save-exact` and `--legacy-peer-deps`.
+
+## File Naming
+- Use PascalCase for React components and Classes.
+- Use camelCase for utility files and system logic.

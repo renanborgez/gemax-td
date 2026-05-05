@@ -6,14 +6,15 @@ import type { EnemyKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function HUDTop({
-  worldRef, onPause, onSpeed, onExit, onShowNextWave,
+  onPause, onSpeed, onExit, accent,
 }: {
-  worldRef: { current: World };
   onPause: () => void;
   onSpeed: (s: 1 | 2 | 3) => void;
   onExit: () => void;
-  onShowNextWave: () => void;
+  /** Chapter accent — when set, tints the speed-active button. */
+  accent?: string;
 }) {
+  const speedActiveBg = accent ?? COLORS.primary;
   const lives = useHudStore((s) => s.lives);
   const credits = useHudStore((s) => s.credits);
   const waveIndex = useHudStore((s) => s.waveIndex);
@@ -24,10 +25,6 @@ export function HUDTop({
   const speedActive = speed === 2;
   const toggleSpeed = () => onSpeed(speedActive ? 1 : 2);
 
-  const showNext = status === 'idle' || status === 'cleared';
-  const nextWave = showNext ? worldRef.current.level.waves[waveIndex + 1] : undefined;
-  const nextSummary = nextWave ? aggregate(nextWave) : null;
-
   return (
     <View style={styles.root}>
       <View style={styles.row}>
@@ -37,7 +34,7 @@ export function HUDTop({
         <View style={styles.actions}>
           <Pressable
             onPress={toggleSpeed}
-            style={[styles.btn, speedActive && styles.btnActive]}
+            style={[styles.btn, speedActive && { backgroundColor: speedActiveBg }]}
           >
             <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
           </Pressable>
@@ -51,16 +48,39 @@ export function HUDTop({
           </Pressable>
         </View>
       </View>
-      {nextSummary && (
-        <Pressable onPress={onShowNextWave} style={styles.nextRow} accessibilityLabel="Show next wave details">
-          <Text style={styles.nextLabel}>NEXT</Text>
-          <Text style={styles.nextValue} numberOfLines={1}>
-            {Object.entries(nextSummary).map(([k, c]) => `${shortName(k as EnemyKind)} ${c}`).join('  ·  ')}
-          </Text>
-          <Text style={styles.nextHint}>TAP FOR INFO</Text>
-        </Pressable>
-      )}
     </View>
+  );
+}
+
+export function NextWaveBanner({
+  worldRef, onShowNextWave, accent,
+}: {
+  worldRef: { current: World };
+  onShowNextWave: () => void;
+  /** Chapter accent — when set, tints the banner. */
+  accent?: string;
+}) {
+  const nextAccent = accent ?? COLORS.tertiary;
+  const waveIndex = useHudStore((s) => s.waveIndex);
+  const status = useHudStore((s) => s.waveStatus);
+
+  const showNext = status === 'idle' || status === 'cleared';
+  const nextWave = showNext ? worldRef.current.level.waves[waveIndex + 1] : undefined;
+  const nextSummary = nextWave ? aggregate(nextWave) : null;
+  if (!nextSummary) return null;
+
+  return (
+    <Pressable
+      onPress={onShowNextWave}
+      style={[styles.nextRow, { borderColor: `${nextAccent}66`, backgroundColor: `${nextAccent}1F` }]}
+      accessibilityLabel="Show next wave details"
+    >
+      <Text style={[styles.nextLabel, { color: nextAccent }]}>NEXT</Text>
+      <Text style={[styles.nextValue, { color: nextAccent }]} numberOfLines={1}>
+        {Object.entries(nextSummary).map(([k, c]) => `${shortName(k as EnemyKind)} ${c}`).join('  ·  ')}
+      </Text>
+      <Text style={[styles.nextHint, { color: nextAccent }]}>TAP FOR INFO</Text>
+    </Pressable>
   );
 }
 
@@ -78,6 +98,9 @@ function Stat({ label, value, icon, iconColor }: { label: string; value: string;
 
 const ENEMY_NAMES: Record<EnemyKind, string> = {
   worm: 'Worm', trojan: 'Trojan', daemon: 'Daemon', rootkit: 'Rootkit',
+  wraith: 'Wraith', hypervisor: 'Hyper', kernelghost: 'Kernel',
+  'firmware-leech': 'Leech', 'darknet-titan': 'Titan', 'quantum-shade': 'Shade',
+  'logic-gate': 'Gate', voidwalker: 'Void', apex: 'Apex',
 };
 function shortName(k: EnemyKind): string { return ENEMY_NAMES[k]; }
 

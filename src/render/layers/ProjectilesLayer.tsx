@@ -6,6 +6,7 @@ import type { WorldSnapshot } from '@/render/snapshot';
 import { COLORS } from '@/render/theme';
 import { LOGIC_BOMB_RADIUS_TILES } from '@/entities/projectiles/AoEPulseProjectile';
 import { CHAIN_ARC_TTL } from '@/entities/projectiles/ChainArcProjectile';
+import { EMP_BURST_TTL } from '@/entities/projectiles/EMPBurstProjectile';
 
 // Each slot fans out to ~24 useDerivedValue worklets (covering circle / bomb /
 // hitscan / tracer / chain modes). 24 slots is plenty: hitscan/tracer beams
@@ -47,13 +48,17 @@ function ProjectileSlot({
     if (p.kind === 'projectile:tracer-round') return 0;          // drawn as a Line
     if (p.kind === 'projectile:chain-arc') return 0;             // drawn as Lines
     if (p.kind === 'projectile:aoe-pulse') return p.currentRadius * tileSize;
+    if (p.kind === 'projectile:emp-burst') return p.currentRadius * tileSize;
     if (p.kind === 'projectile:poison-dart') return tileSize * 0.14;
+    if (p.kind === 'projectile:marker-dart') return tileSize * 0.12;
     return tileSize * 0.12;                                       // ballistic bolt
   });
   const circleColor = useDerivedValue(() => {
     const p = snapshot.value.projectiles[index];
     if (!p) return COLORS.primary;
     if (p.kind === 'projectile:poison-dart') return COLORS.acid;
+    if (p.kind === 'projectile:emp-burst') return COLORS.cyan;
+    if (p.kind === 'projectile:marker-dart') return COLORS.tertiary;
     return COLORS.primary;
   });
   const circleOpacity = useDerivedValue(() => {
@@ -62,6 +67,12 @@ function ProjectileSlot({
     if (p.kind === 'projectile:hitscan-bolt') return 0;
     if (p.kind === 'projectile:tracer-round') return 0;
     if (p.kind === 'projectile:chain-arc') return 0;
+    if (p.kind === 'projectile:beam-arc') return 0;
+    if (p.kind === 'projectile:flame-cone') return 0;
+    if (p.kind === 'projectile:emp-burst') {
+      // Fade over its ttl so the ring dissipates after the pulse lands.
+      return Math.max(0, Math.min(0.45, (p.ttl / EMP_BURST_TTL) * 0.45));
+    }
     return 0.85;
   });
 

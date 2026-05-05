@@ -16,7 +16,7 @@ export function WinScreen({ navigation, route }: Props) {
   return (
     <ScreenShell
       sectionTitle="Victory Results"
-      onBack={() => navigation.navigate('LevelSelect')}
+      onBack={() => navigation.navigate('Chapters')}
     >
       <View style={styles.hero}>
         <Text style={styles.heroLineMint}>SECTOR SECURED</Text>
@@ -53,7 +53,7 @@ export function WinScreen({ navigation, route }: Props) {
       </SectionCard>
 
       <View style={styles.continueWrap}>
-        <AngularButton label="CONTINUE" onPress={() => navigation.navigate('LevelSelect')} />
+        <AngularButton label="CONTINUE" onPress={() => navigation.navigate('Chapters')} />
       </View>
     </ScreenShell>
   );

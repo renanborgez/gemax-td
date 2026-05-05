@@ -5,6 +5,7 @@ import { ICELanceTower } from '@/entities/towers/ICELanceTower';
 import { SniperTower } from '@/entities/towers/SniperTower';
 import { TeslaCoilTower } from '@/entities/towers/TeslaCoilTower';
 import { VenomSpireTower } from '@/entities/towers/VenomSpireTower';
+import { EMPTower } from '@/entities/towers/EMPTower';
 
 describe('Tower subclasses', () => {
   const init = {
@@ -51,5 +52,11 @@ describe('Tower subclasses', () => {
     const t = new VenomSpireTower({ ...init, defKind: 'venom-spire' });
     expect(t.dotDps).toBeGreaterThan(0);
     expect(t.dotDuration).toBeGreaterThan(0);
+  });
+
+  it('EMPTower has stunDuration and stunRadius', () => {
+    const t = new EMPTower({ ...init, defKind: 'emp' });
+    expect(t.stunDuration).toBeGreaterThan(0);
+    expect(t.stunRadius).toBeGreaterThan(0);
   });
 });

@@ -13,6 +13,15 @@ const ENEMY_BLURB: Record<EnemyKind, string> = {
   trojan: 'Mid-tier carrier with light armor. Trades speed for durability.',
   daemon: 'Heavy ground unit. High HP and armor — pierce or focus fire.',
   rootkit: 'Boss-class threat. Massive HP pool; expect to commit your full grid.',
+  wraith: 'Phasing boss-class intruder. Faster than a rootkit — sustained DPS only.',
+  hypervisor: 'Slow, heavily armored hypervisor. Brings server-rack durability — bring pierce.',
+  kernelghost: 'Endgame kernel-level intruder. Largest HP pool; lock down with stuns + DoT.',
+  'firmware-leech': 'Parasitic boss that heals nearby intrusions — kill the leech first.',
+  'darknet-titan': 'Slow titan with heavy armor. Spawns adds on death — clean burst kill.',
+  'quantum-shade': 'Fast phasing boss. Sustained DPS only; bursts are wasted while phased.',
+  'logic-gate': 'Mechanical boss with extreme armor. Spawns daemons on death.',
+  voidwalker: 'Massive heal-aura. Lock down adjacent enemies before targeting the boss.',
+  apex: 'Final boss. Maximum HP, armor, and adds — bring everything you have.',
 };
 
 export function NextWaveModal({

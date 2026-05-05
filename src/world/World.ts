@@ -17,6 +17,11 @@ import { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjectile';
 import { TracerRoundProjectile } from '@/entities/projectiles/TracerRoundProjectile';
 import { ChainArcProjectile } from '@/entities/projectiles/ChainArcProjectile';
 import { PoisonDartProjectile } from '@/entities/projectiles/PoisonDartProjectile';
+import { EMPBurstProjectile } from '@/entities/projectiles/EMPBurstProjectile';
+import { MarkerDartProjectile } from '@/entities/projectiles/MarkerDartProjectile';
+import { BeamArcProjectile } from '@/entities/projectiles/BeamArcProjectile';
+import { FlameConeProjectile } from '@/entities/projectiles/FlameConeProjectile';
+import { BulletProjectile } from '@/entities/projectiles/BulletProjectile';
 import type { GridCoord } from '@/lib/types';
 import type { TileType } from '@/world/Grid';
 import type { DamageEvent } from '@/engine/systems/damageSystem';
@@ -37,15 +42,34 @@ export type EffectsContext = {
   /** Globals applied at match start. */
   globals: {
     startCreditsBonus: number;
+    /** Extra starting lives layered on top of `level.startLives`. */
+    startLivesBonus: number;
     sellRebateRatio: number;       // default 0.7
     lifeRegenPerMinute: number;
+    /** Multiplier on per-enemy bounty payouts (1 = no change). */
+    bountyMult: number;
+    /** Multiplier on EMP stun duration (and any future stun-applying tower). */
+    stunDurationMult: number;
+    /** Multiplier on end-of-match shard reward. Stacks with selector mult. */
+    shardRewardMult: number;
+    /** Multiplier on end-of-match XP reward. Stacks with selector mult. */
+    xpRewardMult: number;
   };
 };
 
 export const NULL_EFFECTS: EffectsContext = {
   towerStatMults: {},
   behaviors: {},
-  globals: { startCreditsBonus: 0, sellRebateRatio: 0.7, lifeRegenPerMinute: 0 },
+  globals: {
+    startCreditsBonus: 0,
+    startLivesBonus: 0,
+    sellRebateRatio: 0.7,
+    lifeRegenPerMinute: 0,
+    bountyMult: 1,
+    stunDurationMult: 1,
+    shardRewardMult: 1,
+    xpRewardMult: 1,
+  },
 };
 
 export type WorldStatus = 'preparing' | 'playing' | 'paused' | 'won' | 'lost';
@@ -79,6 +103,11 @@ export type World = {
     tracer: ObjectPool<TracerRoundProjectile>;
     chainArc: ObjectPool<ChainArcProjectile>;
     poisonDart: ObjectPool<PoisonDartProjectile>;
+    empBurst: ObjectPool<EMPBurstProjectile>;
+    markerDart: ObjectPool<MarkerDartProjectile>;
+    beamArc: ObjectPool<BeamArcProjectile>;
+    flameCone: ObjectPool<FlameConeProjectile>;
+    bullet: ObjectPool<BulletProjectile>;
   };
   staged: {
     damage: DamageEvent[];
@@ -136,7 +165,7 @@ export function createWorld(opts: {
   const world: World = {
     status: 'preparing',
     time: 0,
-    lives: opts.level.startLives,
+    lives: opts.level.startLives + effects.globals.startLivesBonus,
     credits,
     selectedSpeed: 1,
     level: opts.level,
@@ -181,6 +210,31 @@ export function createWorld(opts: {
         create: () => new PoisonDartProjectile({ id: idGen('proj'), kind: 'projectile:poison-dart', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
         reset: (p) => p.resetForPool(),
         initialSize: 16,
+      }),
+      empBurst: new ObjectPool<EMPBurstProjectile>({
+        create: () => new EMPBurstProjectile({ id: idGen('proj'), kind: 'projectile:emp-burst', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 4,
+      }),
+      markerDart: new ObjectPool<MarkerDartProjectile>({
+        create: () => new MarkerDartProjectile({ id: idGen('proj'), kind: 'projectile:marker-dart', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 8,
+      }),
+      beamArc: new ObjectPool<BeamArcProjectile>({
+        create: () => new BeamArcProjectile({ id: idGen('proj'), kind: 'projectile:beam-arc', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 8,
+      }),
+      flameCone: new ObjectPool<FlameConeProjectile>({
+        create: () => new FlameConeProjectile({ id: idGen('proj'), kind: 'projectile:flame-cone', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 8,
+      }),
+      bullet: new ObjectPool<BulletProjectile>({
+        create: () => new BulletProjectile({ id: idGen('proj'), kind: 'projectile:bullet', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 32,
       }),
     },
     staged: { damage: [], leaks: [], fireIntents: [] },

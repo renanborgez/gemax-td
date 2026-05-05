@@ -31,6 +31,7 @@ export function pickTarget(
 
   for (const e of enemies) {
     if (!e.alive) continue;
+    if (e.untargetable) continue;
     if (e.flying && tower.targets === 'ground') continue;
     if (!e.flying && tower.targets === 'flying') continue;
     const d = distance(tower, e);
@@ -58,6 +59,9 @@ export function targetingSystem(
 ): void {
   for (const t of towers) {
     if (!t.alive) continue;
+    // Aura towers (e.g. Cryo Field) don't fire intents — their effect is
+    // applied directly by the engine before targeting runs.
+    if (t.defKind === 'cryo-field') continue;
     if (t.cooldown > 0) { t.cooldown = Math.max(0, t.cooldown - dt); continue; }
     const target = pickTarget(t, enemies, ctx);
     if (!target) continue;

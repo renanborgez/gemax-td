@@ -44,6 +44,80 @@ export const ENEMY_ICON_SVG: Record<EnemyKind, string> = {
     'M 8 21 L 6 23 ' +
     'M 12 21 L 12 23 ' +
     'M 16 21 L 18 23',
+  // Wraith (boss): hooded phantom — round shroud top, hollow eye sockets,
+  // wavering vapor tail. The "phases out" netrunner ghost motif.
+  wraith:
+    'M 12 3 C 7 3 4 7 4 12 L 4 18 ' +
+    'C 5 17 6 19 7 18 C 8 17 9 19 10 18 C 11 17 12 19 13 18 ' +
+    'C 14 17 15 19 16 18 C 17 17 18 19 19 18 C 19 19 20 17 20 18 L 20 12 ' +
+    'C 20 7 17 3 12 3 Z ' +
+    'M 9 10 A 1.2 1.6 0 1 0 9 10.01 ' +
+    'M 15 10 A 1.2 1.6 0 1 0 15 10.01 ' +
+    'M 9 14 C 10.5 15.5 13.5 15.5 15 14',
+  // Hypervisor (boss): server-rack body with three blade tiers, side struts,
+  // and four cooling-vent slots. Reads as "infrastructure boss."
+  hypervisor:
+    'M 5 4 L 19 4 L 19 20 L 5 20 Z ' +
+    'M 5 9 L 19 9 ' +
+    'M 5 14 L 19 14 ' +
+    'M 7 6.5 L 9 6.5 M 11 6.5 L 13 6.5 M 15 6.5 L 17 6.5 ' +
+    'M 7 11.5 L 9 11.5 M 11 11.5 L 13 11.5 M 15 11.5 L 17 11.5 ' +
+    'M 7 16.5 L 9 16.5 M 11 16.5 L 13 16.5 M 15 16.5 L 17 16.5 ' +
+    'M 5 20 L 4 23 M 19 20 L 20 23',
+  // Kernelghost (boss): hooded skull glyph wrapped by a dotted code-stream
+  // halo. Kernel-level intrusion + ghost tail = endgame boss read.
+  kernelghost:
+    'M 6 14 C 6 8 9 5 12 5 C 15 5 18 8 18 14 L 18 18 ' +
+    'L 16 18 L 16 20 L 14 20 L 14 18 L 10 18 L 10 20 L 8 20 L 8 18 L 6 18 Z ' +
+    'M 9.5 11 L 11 12.5 M 11 11 L 9.5 12.5 ' +
+    'M 13 11 L 14.5 12.5 M 14.5 11 L 13 12.5 ' +
+    'M 11 15 L 13 15 ' +
+    'M 4 8 L 4 8.01 M 3 12 L 3 12.01 M 4 16 L 4 16.01 ' +
+    'M 20 8 L 20 8.01 M 21 12 L 21 12.01 M 20 16 L 20 16.01 ' +
+    'M 8 22 L 6 23 M 12 22 L 12 23 M 16 22 L 18 23',
+  // Firmware Leech — barbed parasite. Segmented body curving downward with
+  // hooked head and dripping syphons.
+  'firmware-leech':
+    'M 4 6 C 8 6 8 12 12 12 C 16 12 16 18 20 18 ' +
+    'M 4 4 L 4 8 ' +
+    'M 6 5 L 7 7 ' +
+    'M 18 16 L 18 20 ' +
+    'M 12 11 L 12 14 ' +
+    'M 8 9 L 8 11',
+  // Darknet Titan — colossal helm with mandibles. Heavy armored skull glyph.
+  'darknet-titan':
+    'M 4 8 L 8 4 L 16 4 L 20 8 L 20 14 L 18 16 L 16 20 L 8 20 L 6 16 L 4 14 Z ' +
+    'M 8 10 L 10 12 M 10 10 L 8 12 ' +
+    'M 14 10 L 16 12 M 16 10 L 14 12 ' +
+    'M 9 17 L 11 18 L 12 17 L 13 18 L 15 17 ' +
+    'M 6 8 L 4 5 M 18 8 L 20 5',
+  // Quantum Shade — phasing diamond with dual outline (interference pattern).
+  'quantum-shade':
+    'M 12 3 L 19 12 L 12 21 L 5 12 Z ' +
+    'M 12 6 L 16 12 L 12 18 L 8 12 Z ' +
+    'M 5 12 L 19 12 ' +
+    'M 12 3 L 12 21',
+  // Logic Gate — NAND-shaped silhouette with inputs and inverted output bubble.
+  'logic-gate':
+    'M 5 6 L 12 6 C 17 6 19 9 19 12 C 19 15 17 18 12 18 L 5 18 Z ' +
+    'M 5 9 L 7 9 M 5 15 L 7 15 ' +
+    'M 19 12 L 21 12 ' +
+    'M 22 12 A 1 1 0 1 0 22 12.01',
+  // Voidwalker — tall featureless silhouette with twin glowing voids and a tail.
+  voidwalker:
+    'M 9 4 L 15 4 L 16 8 L 16 18 L 14 22 L 10 22 L 8 18 L 8 8 Z ' +
+    'M 11 9 A 0.8 1 0 1 0 11 9.01 ' +
+    'M 13 9 A 0.8 1 0 1 0 13 9.01 ' +
+    'M 12 13 L 12 17',
+  // Apex — final boss. Crowned skull with radiating spikes.
+  apex:
+    'M 5 14 C 5 8 8 4 12 4 C 16 4 19 8 19 14 L 19 18 ' +
+    'L 16 18 L 16 21 L 13 21 L 13 18 L 11 18 L 11 21 L 8 21 L 8 18 L 5 18 Z ' +
+    'M 8 11 L 10 13 M 10 11 L 8 13 ' +
+    'M 14 11 L 16 13 M 16 11 L 14 13 ' +
+    'M 9 16 L 11 17 L 12 16 L 13 17 L 15 16 ' +
+    'M 12 4 L 12 0 M 8 5 L 6 1 M 16 5 L 18 1 ' +
+    'M 5 8 L 1 6 M 19 8 L 23 6',
 };
 
 export const ENEMY_ICON_COLORS: Record<EnemyKind, string> = {
@@ -51,6 +125,15 @@ export const ENEMY_ICON_COLORS: Record<EnemyKind, string> = {
   trojan: COLORS.tertiary,
   daemon: COLORS.danger,
   rootkit: COLORS.magenta,
+  wraith: COLORS.cyan,
+  hypervisor: COLORS.amber,
+  kernelghost: COLORS.acid,
+  'firmware-leech': COLORS.tertiary,
+  'darknet-titan': COLORS.danger,
+  'quantum-shade': COLORS.primary,
+  'logic-gate': COLORS.amber,
+  voidwalker: COLORS.textMuted,
+  apex: COLORS.textPrimary,
 };
 
 /**
@@ -61,14 +144,23 @@ export const ENEMY_ICON_COLORS: Record<EnemyKind, string> = {
 export function makeEnemyIconPath(kind: EnemyKind, sizePx: number): SkPath {
   const path = Skia.Path.MakeFromSVGString(ENEMY_ICON_SVG[kind]);
   if (!path) throw new Error(`Invalid SVG path for enemy icon: ${kind}`);
+  // Center on the glyph's actual bounding box rather than the nominal
+  // viewBox — same fix as the tower icons (see towerIcons.ts).
+  const bounds = path.computeTightBounds();
+  const cxRaw = bounds.x + bounds.width / 2;
+  const cyRaw = bounds.y + bounds.height / 2;
   const center = Skia.Matrix();
-  center.translate(-ENEMY_ICON_VIEWBOX / 2, -ENEMY_ICON_VIEWBOX / 2);
+  center.translate(-cxRaw, -cyRaw);
   path.transform(center);
+  const span = Math.max(bounds.width, bounds.height) || ENEMY_ICON_VIEWBOX;
   const scale = Skia.Matrix();
-  const s = sizePx / ENEMY_ICON_VIEWBOX;
+  const s = sizePx / span;
   scale.scale(s, s);
   path.transform(scale);
   return path;
 }
 
-export const ENEMY_ICON_KINDS: readonly EnemyKind[] = ['worm', 'trojan', 'daemon', 'rootkit'];
+export const ENEMY_ICON_KINDS: readonly EnemyKind[] = [
+  'worm', 'trojan', 'daemon', 'rootkit', 'wraith', 'hypervisor', 'kernelghost',
+  'firmware-leech', 'darknet-titan', 'quantum-shade', 'logic-gate', 'voidwalker', 'apex',
+];

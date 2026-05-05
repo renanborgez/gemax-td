@@ -116,6 +116,26 @@ function renderLeaf(layer: OscLayer | NoiseLayer, rng: () => number): Float32Arr
 }
 
 export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
+  // Bullet Turret: classic dry pop — short noise burst with a square thump.
+  'tower-fire-bullet-turret': {
+    totalSec: 0.10,
+    layers: [
+      { kind: 'noise', color: 'white', duration: 0.04, lowpassHz: 4500,
+        envelope: { attack: 0.001, decay: 0.015, sustain: 0, release: 0.025 } },
+      { kind: 'osc', wave: 'square', freqStart: 240, freqEnd: 130, duration: 0.06,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0, release: 0.030 }, gainDb: -6 },
+    ],
+  },
+  // Machine Gun: rapid clicky pop — short noise tick, very small body.
+  'tower-fire-machine-gun': {
+    totalSec: 0.06,
+    layers: [
+      { kind: 'noise', color: 'white', duration: 0.025, lowpassHz: 5000,
+        envelope: { attack: 0.001, decay: 0.010, sustain: 0, release: 0.015 } },
+      { kind: 'osc', wave: 'square', freqStart: 320, freqEnd: 200, duration: 0.04,
+        envelope: { attack: 0.001, decay: 0.012, sustain: 0, release: 0.020 }, gainDb: -10 },
+    ],
+  },
   'tower-fire-firewall': {
     totalSec: 0.10,
     layers: [
@@ -178,6 +198,72 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
         envelope: { attack: 0.005, decay: 0.040, sustain: 0.3, release: 0.080 }, gainDb: -4 },
       { kind: 'osc', wave: 'sine', freqStart: 440, freqEnd: 220, duration: 0.10,
         envelope: { attack: 0.003, decay: 0.040, sustain: 0.2, release: 0.060 }, gainDb: -12 },
+    ],
+  },
+  // EMP: capacitor discharge — quick rising whine + low boom.
+  'tower-fire-emp': {
+    totalSec: 0.22,
+    layers: [
+      { kind: 'osc', wave: 'sine', freqStart: 220, freqEnd: 880, duration: 0.06,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0.4, release: 0.040 }, gainDb: -4 },
+      { kind: 'osc', wave: 'sine', freqStart: 60, freqEnd: 30, duration: 0.20,
+        envelope: { attack: 0.005, decay: 0.080, sustain: 0.3, release: 0.110 }, gainDb: -2 },
+      { kind: 'noise', color: 'white', duration: 0.10, lowpassHz: 4000,
+        envelope: { attack: 0.001, decay: 0.030, sustain: 0.2, release: 0.060 }, gainDb: -8 },
+    ],
+  },
+  // Plasma cannon: heavy whoomp — square sweep + thumping low end.
+  'tower-fire-plasma-cannon': {
+    totalSec: 0.28,
+    layers: [
+      { kind: 'osc', wave: 'square', freqStart: 380, freqEnd: 80, duration: 0.18,
+        envelope: { attack: 0.003, decay: 0.060, sustain: 0.3, release: 0.100 }, gainDb: -4 },
+      { kind: 'osc', wave: 'sine', freqStart: 70, freqEnd: 35, duration: 0.24,
+        envelope: { attack: 0.005, decay: 0.080, sustain: 0.4, release: 0.140 }, gainDb: -2 },
+      { kind: 'noise', color: 'white', duration: 0.06, lowpassHz: 3000,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0, release: 0.040 }, gainDb: -8 },
+    ],
+  },
+  // Mortar: deep thump + airborne whoosh.
+  'tower-fire-mortar': {
+    totalSec: 0.32,
+    layers: [
+      { kind: 'osc', wave: 'sine', freqStart: 90, freqEnd: 40, duration: 0.28,
+        envelope: { attack: 0.005, decay: 0.080, sustain: 0.4, release: 0.180 }, gainDb: -2 },
+      { kind: 'noise', color: 'pink', duration: 0.16, lowpassHz: 1800,
+        envelope: { attack: 0.005, decay: 0.060, sustain: 0.3, release: 0.100 }, gainDb: -8 },
+      { kind: 'osc', wave: 'square', freqStart: 200, freqEnd: 60, duration: 0.06,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0, release: 0.030 }, gainDb: -10 },
+    ],
+  },
+  // Marker: short blip — tracker lock.
+  'tower-fire-marker': {
+    totalSec: 0.10,
+    layers: [
+      { kind: 'osc', wave: 'sine', freqStart: 1200, freqEnd: 1600, duration: 0.05,
+        envelope: { attack: 0.001, decay: 0.015, sustain: 0.4, release: 0.030 } },
+      { kind: 'osc', wave: 'sine', freqStart: 600, duration: 0.04,
+        envelope: { attack: 0.001, decay: 0.010, sustain: 0.2, release: 0.020 }, gainDb: -8 },
+    ],
+  },
+  // Beam cannon: sustained sizzle that ramps; short tick per pulse.
+  'tower-fire-beam-cannon': {
+    totalSec: 0.12,
+    layers: [
+      { kind: 'osc', wave: 'saw', freqStart: 800, freqEnd: 1100, duration: 0.10,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0.5, release: 0.040 }, gainDb: -8 },
+      { kind: 'noise', color: 'white', duration: 0.08, lowpassHz: 6000,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0.3, release: 0.040 }, gainDb: -10 },
+    ],
+  },
+  // Flamer: pressurized whoosh with fluttering low rumble.
+  'tower-fire-flamer': {
+    totalSec: 0.18,
+    layers: [
+      { kind: 'noise', color: 'pink', duration: 0.16, lowpassHz: 1500,
+        envelope: { attack: 0.005, decay: 0.040, sustain: 0.4, release: 0.080 }, gainDb: -2 },
+      { kind: 'osc', wave: 'sine', freqStart: 140, freqEnd: 90, duration: 0.14,
+        envelope: { attack: 0.005, decay: 0.040, sustain: 0.3, release: 0.080 }, gainDb: -10 },
     ],
   },
   'enemy-hit': {

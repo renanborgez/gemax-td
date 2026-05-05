@@ -4,6 +4,8 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
+const APP_VERSION = '1.0.0-BETA';
+
 export function SettingsScreen() {
   const { data, store, refresh } = useSave();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -41,6 +43,8 @@ export function SettingsScreen() {
           </Pressable>
         </>
       ) : null}
+
+      <Text style={styles.version}>V. {APP_VERSION}</Text>
     </ScreenShell>
   );
 }
@@ -123,4 +127,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dangerText: { ...TEXT.button, color: COLORS.danger },
+  version: {
+    ...TEXT.labelSmall,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: SPACING.md,
+  },
 });

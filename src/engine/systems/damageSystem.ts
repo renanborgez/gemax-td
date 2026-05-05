@@ -1,5 +1,6 @@
 import type { Enemy } from '@/entities/Enemy';
 import type { EventBus, SimEventMap } from '@/engine/EventBus';
+import { damageTakenMult } from '@/entities/StatusEffect';
 
 export type DamageEvent = {
   targetEnemyId: string;
@@ -20,8 +21,10 @@ export function damageSystem(
   for (const ev of events) {
     const e = byId.get(ev.targetEnemyId);
     if (!e || !e.alive) continue;
+    // Mark status (Marker tower): scale incoming damage before armor.
+    const incoming = ev.damage * damageTakenMult(e.statuses);
     // Armor: flat reduction, minimum 1 damage.
-    const dealt = Math.max(1, ev.damage - e.base.armor);
+    const dealt = Math.max(1, incoming - e.base.armor);
     e.hp -= dealt;
     e.lastDamagedBy = ev.attackerTowerId;
     if (e.hp <= 0) {

@@ -32,6 +32,13 @@ export function getEnemyDef(kind: EnemyKind): EnemyDef {
   return d;
 }
 
+/** Soft lookup — returns undefined for unregistered kinds. Used by engine
+ *  feature paths that should no-op when an enemy class isn't installed
+ *  (e.g. boss specials in tests with subset registries). */
+export function tryGetEnemyDef(kind: string): EnemyDef | undefined {
+  return enemies.get(kind as EnemyKind);
+}
+
 export function getProjectileDef(kind: ProjectileKind): ProjectileDef {
   const d = projectiles.get(kind);
   invariant(d, `projectile not registered: ${kind}`);

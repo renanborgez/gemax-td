@@ -4,7 +4,7 @@ import { getSelectorMults, SELECTOR_MULTS } from '@/difficulty/selector';
 describe('selector', () => {
   it('Normal is the identity', () => {
     expect(getSelectorMults('normal')).toEqual({
-      enemyHpMult: 1, enemySpeedMult: 1, startCreditsMult: 1, shardRewardMult: 1,
+      enemyHpMult: 1, enemySpeedMult: 1, startCreditsMult: 1, shardRewardMult: 1, xpRewardMult: 1,
     });
   });
   it('Insane matches the spec table', () => {

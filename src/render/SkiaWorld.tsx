@@ -23,10 +23,12 @@ function SkiaWorldImpl({
   session,
   onViewportReady,
   cameraTransform,
+  accent,
 }: {
   session: GameSession;
   onViewportReady?: (vp: Viewport) => void;
   cameraTransform: SharedValue<CameraTransform>;
+  accent?: string;
 }) {
   const world = session.worldRef.current;
   const [size, setSize] = useState<{ w: number; h: number; x: number; y: number } | null>(null);
@@ -60,9 +62,9 @@ function SkiaWorldImpl({
         <>
           {/* Bottom Canvas: static map + worklet-driven hint. */}
           <Canvas style={StyleSheet.absoluteFillObject}>
-            <BackgroundLayer viewport={viewport} />
+            <BackgroundLayer viewport={viewport} {...(accent !== undefined ? { accent } : {})} />
             <Group transform={cameraTransform}>
-              <PathLayer world={world} viewport={viewport} />
+              <PathLayer world={world} viewport={viewport} {...(accent !== undefined ? { accent } : {})} />
               <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
               <BaseLayer world={world} viewport={viewport} />
               <SpawnLayer world={world} viewport={viewport} />

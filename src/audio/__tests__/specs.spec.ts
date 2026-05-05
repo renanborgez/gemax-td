@@ -103,8 +103,11 @@ describe('specHash', () => {
 describe('SOUND_SPECS', () => {
   it('covers all SFX keys', () => {
     const expected = [
+      'tower-fire-bullet-turret', 'tower-fire-machine-gun',
       'tower-fire-firewall', 'tower-fire-logic-bomb', 'tower-fire-ice-lance',
       'tower-fire-sniper', 'tower-fire-tesla-coil', 'tower-fire-venom-spire',
+      'tower-fire-emp', 'tower-fire-plasma-cannon', 'tower-fire-mortar',
+      'tower-fire-marker', 'tower-fire-beam-cannon', 'tower-fire-flamer',
       'enemy-hit', 'enemy-death', 'wave-start', 'life-lost', 'win', 'lose',
       'ui-click', 'tower-placed',
     ] as const;

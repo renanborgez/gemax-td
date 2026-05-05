@@ -89,7 +89,10 @@ function EnemySlot({
   // SharedValue for cx/cy and Group transform without spawning extra worklets.
   const cx = useDerivedValue(() => (snapshot.value.enemies[index]?.x ?? -1000) * tileSize);
   const cy = useDerivedValue(() => (snapshot.value.enemies[index]?.y ?? -1000) * tileSize);
-  const opacity = useDerivedValue(() => (index < snapshot.value.enemies.length ? 1 : 0));
+  const opacity = useDerivedValue(() => {
+    if (index >= snapshot.value.enemies.length) return 0;
+    return snapshot.value.enemies[index]?.untargetable ? 0.35 : 1;
+  });
   // Per-kind procedural motion folded into the existing transform worklet —
   // no new derived values per slot. Phase staggered by index so a swarm of the
   // same kind doesn't pulse in lockstep.
@@ -108,6 +111,48 @@ function EnemySlot({
     } else if (kind === 'rootkit') {
       const p = 1 + 0.08 * Math.sin(t * 3);
       sx = p; sy = p;
+    } else if (kind === 'wraith') {
+      ty = Math.sin(t * 2.5) * bob * 1.4;
+      const p = 1 + 0.05 * Math.sin(t * 5);
+      sx = p; sy = p;
+    } else if (kind === 'hypervisor') {
+      // Heavy server-rack — slow lateral judder, no scale pulse (stoic).
+      tx = Math.sin(t * 2) * bob * 0.6;
+      const p = 1 + 0.04 * Math.sin(t * 1.5);
+      sy = p;
+    } else if (kind === 'kernelghost') {
+      // Endgame ghost — large bob + slow rotation + scale pulse.
+      ty = Math.sin(t * 2.2) * bob * 1.6;
+      rot = Math.sin(t * 1.5) * 0.05;
+      const p = 1 + 0.07 * Math.sin(t * 2.5);
+      sx = p; sy = p;
+    } else if (kind === 'firmware-leech') {
+      // Slithering parasite — strong horizontal wave.
+      tx = Math.sin(t * 5) * bob * 1.2;
+      sy = 1 + 0.12 * Math.sin(t * 7);
+    } else if (kind === 'darknet-titan') {
+      // Heavy stomp — deliberate vertical compression.
+      sy = 1 + 0.08 * Math.sin(t * 1.5);
+      sx = 1 - 0.04 * Math.sin(t * 1.5);
+    } else if (kind === 'quantum-shade') {
+      // Phasing diamond — fast pulse + small rot.
+      const p = 1 + 0.1 * Math.sin(t * 6);
+      sx = p; sy = p;
+      rot = Math.sin(t * 3) * 0.06;
+    } else if (kind === 'logic-gate') {
+      // Mechanical gate — discrete twitches.
+      rot = Math.sin(t * 0.8) * 0.03;
+      tx = Math.sin(t * 4) * bob * 0.4;
+    } else if (kind === 'voidwalker') {
+      // Slow imposing drift.
+      ty = Math.sin(t * 1.2) * bob * 1.8;
+      const p = 1 + 0.04 * Math.sin(t * 1.0);
+      sy = p;
+    } else if (kind === 'apex') {
+      // Final boss — slow majestic pulse.
+      const p = 1 + 0.09 * Math.sin(t * 1.5);
+      sx = p; sy = p;
+      rot = Math.sin(t * 0.7) * 0.04;
     }
     return [
       { translateX: cx.value + tx },
