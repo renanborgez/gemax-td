@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,30 +7,35 @@ import type { NavigationAction } from '@react-navigation/native';
 import type { RootStackParamList } from '@/app/RootNav';
 import { SkiaWorld } from '@/render/SkiaWorld';
 import { useGameSession } from '@/render/useGameSession';
-import { useWorldGestures } from '@/render/useWorldGestures';
+import { useWorldGestures, type TapResult } from '@/render/useWorldGestures';
 import { useCamera } from '@/render/useCamera';
 import { HUDTop } from '@/ui/components/HUDTop';
-import { HUDBottom } from '@/ui/components/HUDBottom';
 import { TowerPanel } from '@/ui/components/TowerPanel';
-import { WavePreview } from '@/ui/components/WavePreview';
+import { TowerPicker } from '@/ui/components/TowerPicker';
 import { PauseModal } from '@/ui/modals/PauseModal';
+import { NextWaveModal } from '@/ui/modals/NextWaveModal';
 import { AbortMissionModal } from '@/ui/modals/AbortMissionModal';
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
+import { useHudStore } from '@/ui/hudStore';
+import { useSave } from '@/app/providers/SaveProvider';
 import type { TowerKind } from '@/content/types';
+import type { GridCoord } from '@/lib/types';
 import type { Viewport } from '@/engine/Viewport';
-import { COLORS } from '@/render/theme';
+import { COLORS, RADIUS, SPACING, TEXT } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Play'>;
 
 export function PlayScreen({ route, navigation }: Props) {
+  const { store } = useSave();
   const session = useGameSession({
     levelId: route.params.levelId,
     difficulty: route.params.difficulty,
     seed: 1,
   });
-  const [buyKind, setBuyKind] = useState<TowerKind | null>(null);
   const [pauseVisible, setPauseVisible] = useState(false);
   const [abortVisible, setAbortVisible] = useState(false);
+  const [nextWaveVisible, setNextWaveVisible] = useState(false);
+  const [placementCell, setPlacementCell] = useState<GridCoord | null>(null);
   const pendingNavAction = useRef<NavigationAction | null>(null);
   const allowExit = useRef(false);
   const pausedByAbort = useRef(false);
@@ -39,14 +44,39 @@ export function PlayScreen({ route, navigation }: Props) {
 
   const onViewportReady = useCallback((vp: Viewport) => setViewport(vp), []);
 
+  const closePlacement = useCallback(() => {
+    setPlacementCell(null);
+    session.setBuildHint(null);
+  }, [session]);
+
+  const handleTap = useCallback((r: TapResult) => {
+    if (r.type === 'buildable') {
+      setPlacementCell(r.cell);
+      session.setBuildHint({ col: r.cell.col, row: r.cell.row, valid: true });
+      session.selectTower(null);
+      return;
+    }
+    if (r.type === 'occupied') {
+      closePlacement();
+      session.selectTower(r.towerId);
+      return;
+    }
+    closePlacement();
+    session.selectTower(null);
+  }, [session, closePlacement]);
+
   const gestures = useWorldGestures({
     worldRef: session.worldRef,
     viewport,
     camera,
-    getBuyKind: () => buyKind,
-    setBuyKind,
-    selectTower: session.selectTower,
+    onTap: handleTap,
   });
+
+  const onPickTower = useCallback((kind: TowerKind) => {
+    if (!placementCell || !viewport) return;
+    const ok = session.placeTower(kind, placementCell, viewport);
+    if (ok) closePlacement();
+  }, [placementCell, viewport, session, closePlacement]);
 
   // Intercept back-navigation (iOS swipe, hardware back, tab bar) and ask
   // to confirm. allowExit lets us bypass the prompt for programmatic exits
@@ -72,7 +102,15 @@ export function PlayScreen({ route, navigation }: Props) {
       const lives = w.lives;
       const t = w.level.starThresholds;
       const stars: 0|1|2|3 = lives >= t.stars3 ? 3 : lives >= t.stars2 ? 2 : lives > 0 ? 1 : 0;
-      const shards = Math.round(stars * 10 * w.difficulty.shardRewardMult * (1 + 0.05 * w.level.chapter));
+      // Bus listeners fire during simStep's bus.flush(), before the engine's
+      // onMatchEnded hook mutates the save — so store.current() still reflects
+      // the pre-update state and tells us if shards were already collected
+      // for this (level, difficulty) pair on a prior clear.
+      const lvlPrev = store.current().campaign[route.params.levelId];
+      const alreadyAwarded = lvlPrev?.shardsAwardedFor.includes(route.params.difficulty) ?? false;
+      const shards = alreadyAwarded
+        ? 0
+        : Math.round(stars * 10 * w.difficulty.shardRewardMult * (1 + 0.05 * w.level.chapter));
       allowExit.current = true;
       navigation.replace('Win', {
         levelId: route.params.levelId,
@@ -90,7 +128,7 @@ export function PlayScreen({ route, navigation }: Props) {
       });
     });
     return () => { offW(); offL(); };
-  }, [session, navigation, route.params.levelId, route.params.difficulty]);
+  }, [session, navigation, store, route.params.levelId, route.params.difficulty]);
 
   const confirmAbort = () => {
     setAbortVisible(false);
@@ -124,10 +162,11 @@ export function PlayScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <HUDTop
+        worldRef={session.worldRef}
         onPause={() => { session.pause(); setPauseVisible(true); }}
         onSpeed={(s) => session.setSpeed(s)}
-        onSendNextWave={() => session.startNextWave()}
         onExit={requestAbort}
+        onShowNextWave={() => setNextWaveVisible(true)}
       />
       <View style={styles.canvasWrap}>
         <GestureDetector gesture={gestures}>
@@ -135,15 +174,18 @@ export function PlayScreen({ route, navigation }: Props) {
             <SkiaWorld
               session={session}
               onViewportReady={onViewportReady}
-              buyKind={buyKind}
               cameraTransform={camera.transform}
             />
           </View>
         </GestureDetector>
         <TowerPanel session={session} />
-        <WavePreview worldRef={session.worldRef} />
+        <TowerPicker
+          visible={placementCell !== null}
+          onPick={onPickTower}
+          onDismiss={closePlacement}
+        />
+        <StartWaveButton onPress={() => session.startNextWave()} />
       </View>
-      <HUDBottom selected={buyKind} onSelect={setBuyKind} />
       <TutorialOverlay />
 
       <PauseModal
@@ -166,7 +208,44 @@ export function PlayScreen({ route, navigation }: Props) {
         onCancel={cancelAbort}
         onConfirm={confirmAbort}
       />
+
+      <NextWavePreviewBridge
+        visible={nextWaveVisible}
+        worldRef={session.worldRef}
+        onDismiss={() => setNextWaveVisible(false)}
+      />
     </SafeAreaView>
+  );
+}
+
+function NextWavePreviewBridge({
+  visible, worldRef, onDismiss,
+}: {
+  visible: boolean;
+  worldRef: { current: import('@/world/World').World };
+  onDismiss: () => void;
+}) {
+  const waveIndex = useHudStore((s) => s.waveIndex);
+  const wave = worldRef.current.level.waves[waveIndex + 1] ?? null;
+  return (
+    <NextWaveModal
+      visible={visible}
+      wave={wave}
+      waveNumber={waveIndex + 2}
+      onDismiss={onDismiss}
+    />
+  );
+}
+
+function StartWaveButton({ onPress }: { onPress: () => void }) {
+  const status = useHudStore((s) => s.waveStatus);
+  if (status !== 'idle' && status !== 'cleared') return null;
+  return (
+    <View pointerEvents="box-none" style={styles.startWrap}>
+      <Pressable onPress={onPress} style={styles.startBtn} accessibilityLabel="Start next wave">
+        <Text style={styles.startText}>START</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -174,4 +253,25 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
   canvasWrap: { flex: 1, position: 'relative' },
   canvas: { flex: 1 },
+  startWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: SPACING.xl,
+    alignItems: 'center',
+  },
+  startBtn: {
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tertiary,
+    minWidth: 140,
+    alignItems: 'center',
+    shadowColor: COLORS.tertiary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  startText: { ...TEXT.button, color: COLORS.textOnAccent, fontSize: 16, letterSpacing: 1 },
 });

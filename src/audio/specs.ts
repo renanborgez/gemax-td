@@ -143,6 +143,43 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
         envelope: { attack: 0.001, decay: 0.030, sustain: 0, release: 0.030 }, gainDb: -10 },
     ],
   },
+  // Sniper: a sharp crack with a low-end thump. Short noise burst rides on top
+  // of a short downward sine to give the body of a heavy round being fired.
+  'tower-fire-sniper': {
+    totalSec: 0.22,
+    layers: [
+      { kind: 'noise', color: 'white', duration: 0.05, lowpassHz: 6000,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0, release: 0.030 }, gainDb: -2 },
+      { kind: 'osc', wave: 'sine', freqStart: 90, freqEnd: 45, duration: 0.18,
+        envelope: { attack: 0.002, decay: 0.060, sustain: 0.2, release: 0.110 }, gainDb: -4 },
+      { kind: 'osc', wave: 'square', freqStart: 180, freqEnd: 60, duration: 0.05,
+        envelope: { attack: 0.001, decay: 0.020, sustain: 0, release: 0.030 }, gainDb: -10 },
+    ],
+  },
+  // Tesla coil: fast electric zap. Brief noise pop layered with a rising,
+  // buzzy square sweep to evoke a high-voltage arc.
+  'tower-fire-tesla-coil': {
+    totalSec: 0.18,
+    layers: [
+      { kind: 'noise', color: 'white', duration: 0.03, lowpassHz: 8000,
+        envelope: { attack: 0.001, decay: 0.010, sustain: 0, release: 0.020 }, gainDb: -6 },
+      { kind: 'osc', wave: 'square', freqStart: 600, freqEnd: 1800, duration: 0.10,
+        envelope: { attack: 0.001, decay: 0.030, sustain: 0.4, release: 0.060 }, gainDb: -10 },
+      { kind: 'osc', wave: 'saw', freqStart: 1200, freqEnd: 400, duration: 0.12,
+        envelope: { attack: 0.001, decay: 0.040, sustain: 0.2, release: 0.080 }, gainDb: -14 },
+    ],
+  },
+  // Venom spire: pressurized hiss with a slight downward pitch. Pink noise gives
+  // the splatter, the muted sine adds a wet thump for the dart impacting air.
+  'tower-fire-venom-spire': {
+    totalSec: 0.16,
+    layers: [
+      { kind: 'noise', color: 'pink', duration: 0.12, lowpassHz: 2200,
+        envelope: { attack: 0.005, decay: 0.040, sustain: 0.3, release: 0.080 }, gainDb: -4 },
+      { kind: 'osc', wave: 'sine', freqStart: 440, freqEnd: 220, duration: 0.10,
+        envelope: { attack: 0.003, decay: 0.040, sustain: 0.2, release: 0.060 }, gainDb: -12 },
+    ],
+  },
   'enemy-hit': {
     totalSec: 0.07,
     layers: [

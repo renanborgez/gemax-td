@@ -5,10 +5,10 @@ import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 const STEPS = [
   'Welcome to the netrunner sim. Defend the network from intrusions.',
-  'Tap a tower in the bottom bar to buy. Tap a buildable tile to place.',
+  'Tap a buildable tile to open the tower picker, then choose a tower to deploy.',
   'Tap SEND in the top bar to launch the next wave early — and earn bonus credits.',
   'Tap a placed tower to upgrade, sell, or change targeting priority.',
-  'Earn shards by clearing levels — spend them in the Tech Tree to install upgrades.',
+  'Earn shards by clearing levels.',
 ];
 
 export function TutorialOverlay() {

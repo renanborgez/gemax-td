@@ -1,31 +1,52 @@
-import React from 'react';
-import { Group, Rect } from '@shopify/react-native-skia';
+import React, { useMemo } from 'react';
+import { Group, Path, Rect } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
 import type { BuildHintSnap } from '@/render/snapshot';
+import { makeBuildableOutlinePath } from '@/render/buildableGridPath';
+import type { BuildGrid } from '@/world/Grid';
 import { COLORS } from '@/render/theme';
 
 export function GridOverlayLayer({
-  viewport, buildHint,
-}: { viewport: Viewport; buildHint: SharedValue<BuildHintSnap> }) {
+  viewport, grid, buildHint,
+}: {
+  viewport: Viewport;
+  grid: BuildGrid;
+  buildHint: SharedValue<BuildHintSnap>;
+}) {
   const tileSize = viewport.tileSize;
-  const x = useDerivedValue(() => {
+  // Static path of every buildable cell. Built once per viewport/grid pair so
+  // the layer renders all hints in a single Skia draw call.
+  const outlinePath = useMemo(() => makeBuildableOutlinePath(grid, tileSize), [grid, tileSize]);
+
+  const hintX = useDerivedValue(() => {
     const h = buildHint.value;
     return h ? h.col * tileSize : 0;
   });
-  const y = useDerivedValue(() => {
+  const hintY = useDerivedValue(() => {
     const h = buildHint.value;
     return h ? h.row * tileSize : 0;
   });
-  const color = useDerivedValue(() => {
+  const hintColor = useDerivedValue(() => {
     const h = buildHint.value;
     return h && !h.valid ? COLORS.invalidHint : COLORS.buildableHint;
   });
-  const opacity = useDerivedValue(() => (buildHint.value ? 0.6 : 0));
+  const hintOpacity = useDerivedValue(() => (buildHint.value ? 0.7 : 0));
 
   return (
     <Group>
-      <Rect x={x} y={y} width={tileSize} height={tileSize} color={color} opacity={opacity} />
+      <Path
+        path={outlinePath}
+        style="stroke"
+        strokeWidth={Math.max(1, tileSize * 0.04)}
+        color={COLORS.buildableHint}
+        opacity={0.45}
+      />
+      <Rect
+        x={hintX} y={hintY}
+        width={tileSize} height={tileSize}
+        color={hintColor} opacity={hintOpacity}
+      />
     </Group>
   );
 }

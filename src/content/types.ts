@@ -4,9 +4,21 @@ import { type Projectile, type ProjectileInit } from '@/entities/Projectile';
 import { type GridCoord, type DeepReadonly } from '@/lib/types';
 import { type TileType } from '@/world/Grid';
 
-export type TowerKind = 'firewall' | 'logic-bomb' | 'ice-lance';
+export type TowerKind =
+  | 'firewall'
+  | 'logic-bomb'
+  | 'ice-lance'
+  | 'sniper'
+  | 'tesla-coil'
+  | 'venom-spire';
 export type EnemyKind = 'worm' | 'trojan' | 'daemon' | 'rootkit';
-export type ProjectileKind = 'hitscan-bolt' | 'ballistic-pulse' | 'aoe-pulse';
+export type ProjectileKind =
+  | 'hitscan-bolt'
+  | 'ballistic-pulse'
+  | 'aoe-pulse'
+  | 'tracer-round'
+  | 'chain-arc'
+  | 'poison-dart';
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'insane';
 
 export type TowerDef = DeepReadonly<{
@@ -19,6 +31,10 @@ export type TowerDef = DeepReadonly<{
   defaultTargetPriority: TargetPriority;
   targets: TowerTargets;
   classRef: new (init: TowerInit) => Tower;
+  /** One-line pitch shown in the Towers screen. */
+  description?: string;
+  /** Shards required to permanently unlock this tower. Omitted = free starter. */
+  unlockCost?: number;
 }>;
 
 export type EnemyDef = DeepReadonly<{
@@ -68,20 +84,3 @@ export type LevelDef = DeepReadonly<{
   starThresholds: { stars3: number; stars2: number; stars1: number };
 }>;
 
-export type TechEffect =
-  | { kind: 'tower-behavior-chain'; tower: TowerKind; chainCount: number }
-  | { kind: 'tower-behavior-slow-field'; tower: 'logic-bomb'; duration: number; dotPerSecond?: number }
-  | { kind: 'tower-behavior-crit'; tower: 'ice-lance'; chance: number; mult: number }
-  | { kind: 'global-start-credits'; bonus: number }
-  | { kind: 'global-sell-rebate'; ratio: number }
-  | { kind: 'global-life-regen'; perMinute: number };
-
-export type TechNode = DeepReadonly<{
-  id: string;
-  category: 'tower' | 'global';
-  cost: number;
-  requires: ReadonlyArray<string>;
-  effect: TechEffect;
-  displayName: string;
-  description: string;
-}>;

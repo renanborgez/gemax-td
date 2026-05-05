@@ -38,7 +38,7 @@ describe('Viewport', () => {
     expect(vp.worldToGrid({ x: 99999, y: 99999 })).toEqual({ col: 8, row: 17 });
   });
 
-  it('fit-to-width: tall map overflows vertically on landscape canvas', () => {
+  it('fit-to-width: tall map top-anchors with row padding above spawn', () => {
     // 800w × 400h canvas, 10 cols × 20 rows map → tile sized by width.
     const tall = new Viewport({
       canvasWidthPx: 800, canvasHeightPx: 400,
@@ -48,11 +48,13 @@ describe('Viewport', () => {
     expect(tall.tileSize).toBe(80);                  // 800 / 10
     expect(tall.mapWidthPx).toBe(800);
     expect(tall.mapHeightPx).toBe(1600);
+    expect(tall.topPaddingPx).toBe(160);             // 2 rows × 80
+    expect(tall.bottomPaddingPx).toBe(160);          // 2 rows × 80
     expect(tall.defaultPanX).toBe(0);
-    expect(tall.defaultPanY).toBe(-600);             // (400 - 1600) / 2
+    expect(tall.defaultPanY).toBe(160);              // top-anchored with 2-row padding
   });
 
-  it('fit-to-width: short map letterboxes vertically on portrait canvas', () => {
+  it('fit-to-width: short map also top-anchors with row padding', () => {
     // 400w × 800h canvas, 16 cols × 10 rows map → tile sized by width.
     const wide = new Viewport({
       canvasWidthPx: 400, canvasHeightPx: 800,
@@ -62,7 +64,9 @@ describe('Viewport', () => {
     expect(wide.tileSize).toBe(25);                  // 400 / 16
     expect(wide.mapWidthPx).toBe(400);
     expect(wide.mapHeightPx).toBe(250);
+    expect(wide.topPaddingPx).toBe(50);              // 2 rows × 25
+    expect(wide.bottomPaddingPx).toBe(50);           // 2 rows × 25
     expect(wide.defaultPanX).toBe(0);
-    expect(wide.defaultPanY).toBe(275);              // (800 - 250) / 2
+    expect(wide.defaultPanY).toBe(50);               // top-anchored with 2-row padding
   });
 });

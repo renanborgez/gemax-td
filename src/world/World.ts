@@ -14,6 +14,9 @@ import { makeIdGen, type IdGen } from '@/lib/id';
 import { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
 import { BallisticProjectile } from '@/entities/projectiles/BallisticProjectile';
 import { AoEPulseProjectile } from '@/entities/projectiles/AoEPulseProjectile';
+import { TracerRoundProjectile } from '@/entities/projectiles/TracerRoundProjectile';
+import { ChainArcProjectile } from '@/entities/projectiles/ChainArcProjectile';
+import { PoisonDartProjectile } from '@/entities/projectiles/PoisonDartProjectile';
 import type { GridCoord } from '@/lib/types';
 import type { TileType } from '@/world/Grid';
 import type { DamageEvent } from '@/engine/systems/damageSystem';
@@ -73,6 +76,9 @@ export type World = {
     hitscan: ObjectPool<HitscanProjectile>;
     ballistic: ObjectPool<BallisticProjectile>;
     aoe: ObjectPool<AoEPulseProjectile>;
+    tracer: ObjectPool<TracerRoundProjectile>;
+    chainArc: ObjectPool<ChainArcProjectile>;
+    poisonDart: ObjectPool<PoisonDartProjectile>;
   };
   staged: {
     damage: DamageEvent[];
@@ -148,6 +154,21 @@ export function createWorld(opts: {
         create: () => new AoEPulseProjectile({ id: idGen('proj'), kind: 'projectile:aoe-pulse', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
         reset: (p) => p.resetForPool(),
         initialSize: 8,
+      }),
+      tracer: new ObjectPool<TracerRoundProjectile>({
+        create: () => new TracerRoundProjectile({ id: idGen('proj'), kind: 'projectile:tracer-round', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 8,
+      }),
+      chainArc: new ObjectPool<ChainArcProjectile>({
+        create: () => new ChainArcProjectile({ id: idGen('proj'), kind: 'projectile:chain-arc', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 8,
+      }),
+      poisonDart: new ObjectPool<PoisonDartProjectile>({
+        create: () => new PoisonDartProjectile({ id: idGen('proj'), kind: 'projectile:poison-dart', x: 0, y: 0, damage: 0, sourceTowerId: '', ttl: 0 }),
+        reset: (p) => p.resetForPool(),
+        initialSize: 16,
       }),
     },
     staged: { damage: [], leaks: [], fireIntents: [] },

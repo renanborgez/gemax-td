@@ -1,4 +1,4 @@
-import { type SaveDataLatest, blankSaveDataV1, CURRENT_VERSION, type PersistedBlobV1 } from '@/meta/schema';
+import { type SaveDataLatest, blankSaveDataLatest, CURRENT_VERSION, type PersistedBlobLatest } from '@/meta/schema';
 import { runMigrations } from '@/meta/migrations';
 import { debounce } from '@/lib/debounce';
 
@@ -27,7 +27,7 @@ export class SaveStore {
       await this.flush();         // rewrite main from tmp
       return this.cache;
     }
-    this.cache = blankSaveDataV1();
+    this.cache = blankSaveDataLatest();
     await this.flush();           // persist initial save
     return this.cache;
   }
@@ -48,7 +48,7 @@ export class SaveStore {
   /** Force immediate persistence (e.g. on app background). */
   async flush(): Promise<void> {
     if (!this.cache) return;
-    const blob: PersistedBlobV1 = { version: CURRENT_VERSION, data: this.cache };
+    const blob: PersistedBlobLatest = { version: CURRENT_VERSION, data: this.cache };
     const json = JSON.stringify(blob);
     await this.kv.setItem(KEY_TMP, json);
     await this.kv.setItem(KEY_MAIN, json);
@@ -56,7 +56,7 @@ export class SaveStore {
   }
 
   async reset(): Promise<void> {
-    this.cache = blankSaveDataV1();
+    this.cache = blankSaveDataLatest();
     await this.flush();
   }
 

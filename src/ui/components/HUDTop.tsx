@@ -1,15 +1,18 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useHudStore } from '@/ui/hudStore';
+import type { World } from '@/world/World';
+import type { EnemyKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function HUDTop({
-  onPause, onSpeed, onSendNextWave, onExit,
+  worldRef, onPause, onSpeed, onExit, onShowNextWave,
 }: {
+  worldRef: { current: World };
   onPause: () => void;
   onSpeed: (s: 1 | 2 | 3) => void;
-  onSendNextWave: () => void;
   onExit: () => void;
+  onShowNextWave: () => void;
 }) {
   const lives = useHudStore((s) => s.lives);
   const credits = useHudStore((s) => s.credits);
@@ -21,32 +24,42 @@ export function HUDTop({
   const speedActive = speed === 2;
   const toggleSpeed = () => onSpeed(speedActive ? 1 : 2);
 
+  const showNext = status === 'idle' || status === 'cleared';
+  const nextWave = showNext ? worldRef.current.level.waves[waveIndex + 1] : undefined;
+  const nextSummary = nextWave ? aggregate(nextWave) : null;
+
   return (
     <View style={styles.root}>
-      <Stat label="LIVES" value={String(lives)} />
-      <Stat label="CREDITS" value={String(credits)} />
-      <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
-      <View style={styles.actions}>
-        <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
-          <Text style={[styles.btnText, styles.btnExitText]}>✕</Text>
-        </Pressable>
-        {status === 'in-progress' && (
-          <Pressable onPress={onPause} style={styles.btn}>
-            <Text style={styles.btnText}>‖</Text>
+      <View style={styles.row}>
+        <Stat label="LIVES" value={String(lives)} />
+        <Stat label="CREDITS" value={String(credits)} />
+        <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
+        <View style={styles.actions}>
+          <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
+            <Text style={[styles.btnText, styles.btnExitText]}>✕</Text>
           </Pressable>
-        )}
-        <Pressable
-          onPress={toggleSpeed}
-          style={[styles.btn, speedActive && styles.btnActive]}
-        >
-          <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
-        </Pressable>
-        {(status === 'idle' || status === 'cleared') && (
-          <Pressable onPress={onSendNextWave} style={[styles.btn, styles.send]}>
-            <Text style={[styles.btnText, styles.sendText]}>SEND</Text>
+          {status === 'in-progress' && (
+            <Pressable onPress={onPause} style={styles.btn}>
+              <Text style={styles.btnText}>‖</Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={toggleSpeed}
+            style={[styles.btn, speedActive && styles.btnActive]}
+          >
+            <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
           </Pressable>
-        )}
+        </View>
       </View>
+      {nextSummary && (
+        <Pressable onPress={onShowNextWave} style={styles.nextRow} accessibilityLabel="Show next wave details">
+          <Text style={styles.nextLabel}>NEXT</Text>
+          <Text style={styles.nextValue} numberOfLines={1}>
+            {Object.entries(nextSummary).map(([k, c]) => `${shortName(k as EnemyKind)} ${c}`).join('  ·  ')}
+          </Text>
+          <Text style={styles.nextHint}>TAP FOR INFO</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -60,18 +73,46 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+const ENEMY_NAMES: Record<EnemyKind, string> = {
+  worm: 'Worm', trojan: 'Trojan', daemon: 'Daemon', rootkit: 'Rootkit',
+};
+function shortName(k: EnemyKind): string { return ENEMY_NAMES[k]; }
+
+function aggregate(wave: World['level']['waves'][number]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const g of wave.groups) out[g.enemyKind] = (out[g.enemyKind] ?? 0) + g.count;
+  return out;
+}
+
 const styles = StyleSheet.create({
   root: {
-    flexDirection: 'row',
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.bgCard,
+    gap: SPACING.sm,
+  },
+  row: {
+    flexDirection: 'row',
     gap: SPACING.lg,
     alignItems: 'center',
-    backgroundColor: COLORS.bgCard,
   },
   col: { alignItems: 'flex-start' },
   label: { ...TEXT.labelSmall },
   value: { ...TEXT.hudValue },
+  nextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.tertiaryDim,
+    backgroundColor: COLORS.tertiarySoft,
+  },
+  nextLabel: { ...TEXT.labelSmall, color: COLORS.tertiary },
+  nextValue: { ...TEXT.hudValue, fontSize: 13, color: COLORS.tertiary, flex: 1 },
+  nextHint: { ...TEXT.labelSmall, color: COLORS.tertiary, opacity: 0.8 },
   actions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
   btn: {
     paddingVertical: 6,
@@ -84,8 +125,6 @@ const styles = StyleSheet.create({
   btnActive: { backgroundColor: COLORS.primary },
   btnText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
   btnTextActive: { color: COLORS.textOnAccent },
-  send: { backgroundColor: COLORS.tertiary },
-  sendText: { color: COLORS.textOnAccent },
   btnExit: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.danger },
   btnExitText: { color: COLORS.danger },
 });

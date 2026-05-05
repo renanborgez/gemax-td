@@ -5,6 +5,7 @@ export type SimEventMap = {
   'wave-started': { waveIndex: number };
   'wave-cleared': { waveIndex: number };
   'tower-placed': { towerId: string; kind: string };
+  'tower-fired': { towerId: string; kind: string };
   'tower-sold': { towerId: string; refund: number };
   'tower-upgraded': { towerId: string; toLevel: 1 | 2 | 3 };
   'credits-changed': { credits: number };

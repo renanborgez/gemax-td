@@ -2,13 +2,11 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { AppState } from 'react-native';
 import { Engine, type Clock } from '@/engine/Engine';
-import { createWorld, type World, type RedrawPort } from '@/world/World';
+import { createWorld, NULL_EFFECTS, type World, type RedrawPort } from '@/world/World';
 import {
   EMPTY_SNAPSHOT, buildSnapshot, rangeFromSelection,
   type WorldSnapshot, type RangeSnap, type BuildHintSnap,
 } from '@/render/snapshot';
-import { buildEffectsContext } from '@/meta/TechTree';
-import { TECH_NODES } from '@/content/techNodes';
 import { LEVEL_BY_ID } from '@/content/levels';
 import { attachEventBridge } from '@/ui/eventBridge';
 import { useHudStore } from '@/ui/hudStore';
@@ -47,7 +45,7 @@ export type GameSession = {
 };
 
 export function useGameSession(opts: { levelId: string; difficulty: Difficulty; seed: number }): GameSession {
-  const { data, store, refresh } = useSave();
+  const { store, refresh } = useSave();
   const audio = useAudio();
   const snapshot = useSharedValue<WorldSnapshot>(EMPTY_SNAPSHOT);
   const range = useSharedValue<RangeSnap>(null);
@@ -59,7 +57,7 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
   if (!worldRef.current) {
     const level = LEVEL_BY_ID[opts.levelId];
     if (!level) throw new Error(`unknown level ${opts.levelId}`);
-    const effects = buildEffectsContext(TECH_NODES, data);
+    const effects = NULL_EFFECTS;
     let prevEnemyCount = 0;
     let prevProjectileCount = 0;
     const redraw: RedrawPort = {

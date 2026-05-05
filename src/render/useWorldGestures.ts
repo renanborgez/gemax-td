@@ -3,18 +3,24 @@ import { Gesture } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
 import type { World } from '@/world/World';
-import type { TowerKind } from '@/content/types';
-import { getTowerDef } from '@/entities/registry';
+import type { GridCoord } from '@/lib/types';
 import { type Camera, MIN_ZOOM, MAX_ZOOM, clampPan } from '@/render/useCamera';
+
+/**
+ * Result of resolving a tap to a world location. PlayScreen consumes this to
+ * drive UI state (selection, placement picker, etc.) — gestures stay
+ * concerned only with input → semantic outcome translation.
+ */
+export type TapResult =
+  | { type: 'buildable'; cell: GridCoord; screenX: number; screenY: number }
+  | { type: 'occupied'; towerId: string }
+  | { type: 'empty' };
 
 type GestureOpts = {
   worldRef: { current: World };
   viewport: Viewport | null;
   camera: Camera;
-  getBuyKind: () => TowerKind | null;
-  setBuyKind: (k: TowerKind | null) => void;
-  /** Updates world.selection, range SharedValue, and HUD store atomically. */
-  selectTower: (towerId: string | null) => void;
+  onTap: (r: TapResult) => void;
 };
 
 export function useWorldGestures(opts: GestureOpts) {
@@ -33,6 +39,8 @@ export function useWorldGestures(opts: GestureOpts) {
   const mapH = viewport?.mapHeightPx ?? 0;
   const canvasW = viewport?.canvasWidthPx ?? 0;
   const canvasH = viewport?.canvasHeightPx ?? 0;
+  const topPadY = viewport?.topPaddingPx ?? 0;
+  const bottomPadY = viewport?.bottomPaddingPx ?? 0;
 
   return useMemo(() => {
     function handleTap(screenX: number, screenY: number) {
@@ -46,37 +54,20 @@ export function useWorldGestures(opts: GestureOpts) {
       const world = { x: (screenX - px) / z, y: (screenY - py) / z };
       // Reject taps outside the map bounds (slack area when fit-to-view).
       if (world.x < 0 || world.x >= vp.mapWidthPx || world.y < 0 || world.y >= vp.mapHeightPx) {
+        o.onTap({ type: 'empty' });
         return;
       }
       const grid = vp.worldToGrid(world);
-      const buyKind = o.getBuyKind();
-
-      if (buyKind) {
-        const def = getTowerDef(buyKind);
-        if (!w.grid.canBuild(grid) || w.credits < def.cost) return;
-        w.credits -= def.cost;
-        const center = vp.gridToWorld(grid);
-        const id = w.idGen('tower');
-        const tower = new def.classRef({
-          id, defKind: def.kind, level: 1,
-          x: center.x / vp.tileSize, y: center.y / vp.tileSize,
-          tileCoord: grid,
-          baseStats: { ...def.baseStats },
-          projectileKind: def.projectileKind,
-          targets: def.targets,
-          defaultTargetPriority: def.defaultTargetPriority,
-        });
-        w.grid.occupy(grid, id);
-        w.entities.towers.push(tower);
-        w.bus.emit('tower-placed', { towerId: id, kind: def.kind });
-        w.bus.emit('credits-changed', { credits: w.credits });
-        o.setBuyKind(null);
+      const occ = w.grid.occupantAt(grid);
+      if (occ) {
+        o.onTap({ type: 'occupied', towerId: occ });
         return;
       }
-
-      // No buy intent — try to select a tower at the tapped tile.
-      const occ = w.grid.occupantAt(grid);
-      o.selectTower(occ ?? null);
+      if (w.grid.canBuild(grid)) {
+        o.onTap({ type: 'buildable', cell: grid, screenX, screenY });
+        return;
+      }
+      o.onTap({ type: 'empty' });
     }
 
     // No maxDuration cap — default lets slower presses still register as tap.
@@ -98,7 +89,7 @@ export function useWorldGestures(opts: GestureOpts) {
       .onUpdate((e) => {
         const z = camera.zoom.value;
         camera.panX.value = clampPan(startPanX.value + e.translationX, z, mapW, canvasW);
-        camera.panY.value = clampPan(startPanY.value + e.translationY, z, mapH, canvasH);
+        camera.panY.value = clampPan(startPanY.value + e.translationY, z, mapH, canvasH, topPadY, bottomPadY);
       });
 
     const pinch = Gesture.Pinch()
@@ -114,9 +105,9 @@ export function useWorldGestures(opts: GestureOpts) {
         const nextY = e.focalY - (e.focalY - startPanY.value) * factor;
         camera.zoom.value = newZoom;
         camera.panX.value = clampPan(nextX, newZoom, mapW, canvasW);
-        camera.panY.value = clampPan(nextY, newZoom, mapH, canvasH);
+        camera.panY.value = clampPan(nextY, newZoom, mapH, canvasH, topPadY, bottomPadY);
       });
 
     return Gesture.Race(tap, Gesture.Simultaneous(pan, pinch));
-  }, [mapW, mapH, canvasW, canvasH, camera, startZoom, startPanX, startPanY]);
+  }, [mapW, mapH, canvasW, canvasH, topPadY, bottomPadY, camera, startZoom, startPanX, startPanY]);
 }

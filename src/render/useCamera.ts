@@ -25,22 +25,29 @@ export type Camera = {
 };
 
 /**
- * Keeps the map within the canvas. If the scaled map is larger than the
- * canvas in this dimension, pan is bounded so edges can't pull inside.
- * Otherwise the pan is forced to the centered offset for the current zoom.
+ * Keeps the map within the canvas. `leadPad`/`trailPad` reserve blank space
+ * at the leading/trailing edges (used for the Y axis to leave breathing room
+ * above the spawn row and below the base). When the scaled map plus padding
+ * fits inside the canvas, pan is forced to either the lead-anchored offset
+ * (any pad > 0) or the centered offset (both pads zero — legacy X behavior).
  */
 export function clampPan(
   pan: number,
   zoom: number,
   mapPx: number,
   canvasPx: number,
+  leadPad: number = 0,
+  trailPad: number = 0,
 ): number {
   'worklet';
   const scaled = mapPx * zoom;
-  if (scaled >= canvasPx) {
-    return Math.max(canvasPx - scaled, Math.min(0, pan));
+  const max = leadPad;
+  const min = canvasPx - scaled - trailPad;
+  if (min >= max) {
+    if (leadPad > 0 || trailPad > 0) return leadPad;
+    return (canvasPx - scaled) / 2;
   }
-  return (canvasPx - scaled) / 2;
+  return Math.max(min, Math.min(max, pan));
 }
 
 export function useCamera(viewport: Viewport | null): Camera {

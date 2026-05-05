@@ -101,9 +101,10 @@ describe('specHash', () => {
 });
 
 describe('SOUND_SPECS', () => {
-  it('covers all 11 SFX keys', () => {
+  it('covers all SFX keys', () => {
     const expected = [
       'tower-fire-firewall', 'tower-fire-logic-bomb', 'tower-fire-ice-lance',
+      'tower-fire-sniper', 'tower-fire-tesla-coil', 'tower-fire-venom-spire',
       'enemy-hit', 'enemy-death', 'wave-start', 'life-lost', 'win', 'lose',
       'ui-click', 'tower-placed',
     ] as const;

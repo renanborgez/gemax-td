@@ -18,7 +18,19 @@ export function SaveProvider({ children }: { children: React.ReactNode }) {
   const [store] = useState(() => new SaveStore(asyncStorageKv));
   const [data, setData] = useState<SaveDataLatest | null>(null);
 
-  useEffect(() => { void store.load().then(setData); }, [store]);
+  useEffect(() => {
+    void store.load().then((loaded) => {
+      // Dev-only: keep at least 1000 shards on every launch so we can exercise
+      // the tech tree without grinding. Higher balances (after earning shards
+      // in dev) are preserved.
+      if (__DEV__ && loaded.meta.shards < 1000) {
+        store.update((d) => { d.meta.shards = 1000; });
+        setData({ ...store.current() });
+        return;
+      }
+      setData(loaded);
+    });
+  }, [store]);
 
   if (!data) {
     return (

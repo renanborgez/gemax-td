@@ -25,7 +25,7 @@ export function PersistentTabBar({
   if (!routeName || routeName === 'Play') return null;
 
   const activeTab: TabKey =
-    routeName === 'TechTree' ? 'towers' :
+    routeName === 'Towers' ? 'towers' :
     routeName === 'Settings' ? 'settings' :
     'battle';
 
@@ -34,7 +34,7 @@ export function PersistentTabBar({
     if (k === 'market') return; // not yet implemented
     const target: keyof RootStackParamList | null =
       k === 'battle' ? 'Title' :
-      k === 'towers' ? 'TechTree' :
+      k === 'towers' ? 'Towers' :
       k === 'settings' ? 'Settings' :
       null;
     if (!target) return;

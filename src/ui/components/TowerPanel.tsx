@@ -40,17 +40,34 @@ export function TowerPanel({ session }: { session: GameSession }) {
     bump();
   };
 
-  const upgradeCost = t && def && t.level < 3 ? def.upgrades[t.level - 1]?.cost : null;
+  const nextUpgrade = t && def && t.level < 3 ? def.upgrades[t.level - 1] ?? null : null;
 
   return (
     <View style={[styles.root, !visible && styles.hidden]} pointerEvents={visible ? 'auto' : 'none'}>
       {t && def && (
         <>
           <Text style={styles.title}>{def.displayName} <Text style={styles.level}>L{t.level}</Text></Text>
+          <View style={styles.statRow}>
+            <StatCell
+              label="DMG"
+              current={t.base.damage}
+              {...(nextUpgrade ? { next: nextUpgrade.damage } : {})}
+            />
+            <StatCell
+              label="RNG"
+              current={t.base.range}
+              {...(nextUpgrade ? { next: nextUpgrade.range } : {})}
+            />
+            <StatCell
+              label="RPS"
+              current={t.base.fireRate}
+              {...(nextUpgrade ? { next: nextUpgrade.fireRate } : {})}
+            />
+          </View>
           <View style={styles.actions}>
-            {upgradeCost != null && (
+            {nextUpgrade && (
               <Pressable onPress={onUpgrade} style={styles.upgrade}>
-                <Text style={styles.upgradeText}>UPGRADE {upgradeCost} ¢</Text>
+                <Text style={styles.upgradeText}>UPGRADE {nextUpgrade.cost} ¢</Text>
               </Pressable>
             )}
             <Pressable onPress={onSell} style={styles.sell}>
@@ -61,6 +78,25 @@ export function TowerPanel({ session }: { session: GameSession }) {
       )}
     </View>
   );
+}
+
+function StatCell({ label, current, next }: { label: string; current: number; next?: number }) {
+  const showDelta = next !== undefined && next !== current;
+  return (
+    <View style={styles.statCell}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.statValueRow}>
+        <Text style={styles.statValue}>{fmt(current)}</Text>
+        {showDelta && (
+          <Text style={styles.statNext}>→ {fmt(next!)}</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function fmt(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 const styles = StyleSheet.create({
@@ -77,6 +113,12 @@ const styles = StyleSheet.create({
   hidden: { opacity: 0 },
   title: { ...TEXT.label, fontSize: 13 },
   level: { color: COLORS.primary },
+  statRow: { flexDirection: 'row', gap: SPACING.sm },
+  statCell: { flex: 1, gap: 2 },
+  statLabel: { ...TEXT.labelSmall },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  statValue: { ...TEXT.hudValue, fontSize: 13, color: COLORS.textPrimary },
+  statNext: { ...TEXT.labelSmall, color: COLORS.secondary, fontSize: 9 },
   actions: { gap: SPACING.xs },
   upgrade: {
     paddingVertical: SPACING.sm,

@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { FirewallTower } from '@/entities/towers/FirewallTower';
 import { LogicBombTower } from '@/entities/towers/LogicBombTower';
 import { ICELanceTower } from '@/entities/towers/ICELanceTower';
+import { SniperTower } from '@/entities/towers/SniperTower';
+import { TeslaCoilTower } from '@/entities/towers/TeslaCoilTower';
+import { VenomSpireTower } from '@/entities/towers/VenomSpireTower';
 
 describe('Tower subclasses', () => {
   const init = {
@@ -29,5 +32,24 @@ describe('Tower subclasses', () => {
   it('ICELanceTower has freezeDuration', () => {
     const t = new ICELanceTower({ ...init, defKind: 'ice-lance' });
     expect(t.freezeDuration).toBeGreaterThan(0);
+  });
+
+  it('SniperTower constructs', () => {
+    const t = new SniperTower({ ...init, defKind: 'sniper' });
+    expect(t.kind).toBe('tower:sniper');
+  });
+
+  it('TeslaCoilTower has chain config', () => {
+    const t = new TeslaCoilTower({ ...init, defKind: 'tesla-coil' });
+    expect(t.chainCount).toBeGreaterThan(1);
+    expect(t.chainFalloff).toBeGreaterThan(0);
+    expect(t.chainFalloff).toBeLessThanOrEqual(1);
+    expect(t.chainJumpRadius).toBeGreaterThan(0);
+  });
+
+  it('VenomSpireTower has DoT config', () => {
+    const t = new VenomSpireTower({ ...init, defKind: 'venom-spire' });
+    expect(t.dotDps).toBeGreaterThan(0);
+    expect(t.dotDuration).toBeGreaterThan(0);
   });
 });

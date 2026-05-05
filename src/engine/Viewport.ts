@@ -2,6 +2,11 @@ import { type Vec2 } from '@/lib/vec2';
 import { type GridCoord } from '@/lib/types';
 import { clamp } from '@/lib/lerp';
 
+/** Empty rows of breathing room rendered above grid row 0 (spawn area). */
+export const TOP_PADDING_ROWS = 2;
+/** Empty rows of breathing room rendered below the last grid row (base area). */
+export const BOTTOM_PADDING_ROWS = 2;
+
 export type ViewportOptions = {
   canvasWidthPx: number;
   canvasHeightPx: number;
@@ -21,7 +26,11 @@ export class Viewport {
   readonly tileSize: number;
   readonly mapWidthPx: number;
   readonly mapHeightPx: number;
-  /** Default pan offsets that center the map within the canvas at zoom=1. */
+  /** Top-of-canvas blank space above grid row 0 at zoom=1. */
+  readonly topPaddingPx: number;
+  /** Bottom-of-canvas blank space below the final grid row at zoom=1. */
+  readonly bottomPaddingPx: number;
+  /** Default pan offsets — top-anchored with padding so the spawn row is visible from the start. */
   readonly defaultPanX: number;
   readonly defaultPanY: number;
 
@@ -39,8 +48,10 @@ export class Viewport {
     this.tileSize = opts.canvasWidthPx / opts.gridCols;
     this.mapWidthPx = this.tileSize * opts.gridCols;
     this.mapHeightPx = this.tileSize * opts.gridRows;
+    this.topPaddingPx = TOP_PADDING_ROWS * this.tileSize;
+    this.bottomPaddingPx = BOTTOM_PADDING_ROWS * this.tileSize;
     this.defaultPanX = (opts.canvasWidthPx - this.mapWidthPx) / 2;
-    this.defaultPanY = (opts.canvasHeightPx - this.mapHeightPx) / 2;
+    this.defaultPanY = this.topPaddingPx;
   }
 
   gridToWorld(g: GridCoord): Vec2 {

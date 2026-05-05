@@ -1,14 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, PanResponder, type LayoutChangeEvent } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/app/RootNav';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
-
-export function SettingsScreen({ navigation }: Props) {
+export function SettingsScreen() {
   const { data, store, refresh } = useSave();
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -23,10 +19,7 @@ export function SettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenShell
-      sectionTitle="System Settings"
-      onBack={() => navigation.goBack()}
-    >
+    <ScreenShell sectionTitle="System Settings">
       <Section label={`EFFECTS  ${pct(data.settings.sfx)}`}>
         <VolumeBar value={data.settings.sfx} onChange={(v) => setVol('sfx', v)} />
       </Section>
@@ -35,16 +28,19 @@ export function SettingsScreen({ navigation }: Props) {
         <VolumeBar value={data.settings.music} onChange={(v) => setVol('music', v)} />
       </Section>
 
-      <View style={{ height: SPACING.md }} />
-
-      <Pressable
-        onPress={() => (confirmReset ? onReset() : setConfirmReset(true))}
-        style={styles.danger}
-      >
-        <Text style={styles.dangerText}>
-          {confirmReset ? 'TAP AGAIN TO CONFIRM' : 'RESET SAVE DATA'}
-        </Text>
-      </Pressable>
+      {__DEV__ ? (
+        <>
+          <View style={{ height: SPACING.md }} />
+          <Pressable
+            onPress={() => (confirmReset ? onReset() : setConfirmReset(true))}
+            style={styles.danger}
+          >
+            <Text style={styles.dangerText}>
+              {confirmReset ? 'TAP AGAIN TO CONFIRM' : 'RESET PROGRESS (DEV)'}
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
     </ScreenShell>
   );
 }

@@ -4,7 +4,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TitleScreen } from '@/app/screens/TitleScreen';
 import { LevelSelectScreen } from '@/app/screens/LevelSelectScreen';
-import { TechTreeScreen } from '@/app/screens/TechTreeScreen';
+import { TowersScreen } from '@/app/screens/TowersScreen';
 import { PlayScreen } from '@/app/screens/PlayScreen';
 import { SettingsScreen } from '@/app/screens/SettingsScreen';
 import { WinScreen } from '@/app/screens/WinScreen';
@@ -17,7 +17,7 @@ import { COLORS, FONTS } from '@/render/theme';
 export type RootStackParamList = {
   Title: undefined;
   LevelSelect: undefined;
-  TechTree: undefined;
+  Towers: undefined;
   Settings: undefined;
   Play: { levelId: string; difficulty: Difficulty };
   Win: { levelId: string; difficulty: Difficulty; stars: 0 | 1 | 2 | 3; shards: number; totalWaves: number };
@@ -69,10 +69,10 @@ export function RootNav() {
     >
       <View style={styles.root}>
         <View style={styles.stackWrap}>
-          <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.bg } }}>
+          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: COLORS.bg } }}>
             <Stack.Screen name="Title" component={TitleScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="LevelSelect" component={LevelSelectScreen} />
-            <Stack.Screen name="TechTree" component={TechTreeScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
+            <Stack.Screen name="Towers" component={TowersScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="Play" component={PlayScreen} />
             <Stack.Screen name="Win" component={WinScreen} />

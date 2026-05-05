@@ -6,6 +6,8 @@ import { Viewport } from '@/engine/Viewport';
 import { BackgroundLayer } from '@/render/layers/BackgroundLayer';
 import { PathLayer } from '@/render/layers/PathLayer';
 import { GridOverlayLayer } from '@/render/layers/GridOverlayLayer';
+import { BaseLayer } from '@/render/layers/BaseLayer';
+import { SpawnLayer } from '@/render/layers/SpawnLayer';
 import { TowersLayer } from '@/render/layers/TowersLayer';
 import { EnemiesLayer } from '@/render/layers/EnemiesLayer';
 import { ProjectilesLayer } from '@/render/layers/ProjectilesLayer';
@@ -58,6 +60,8 @@ export function SkiaWorld({
           <Group transform={cameraTransform}>
             <PathLayer world={world} viewport={viewport} />
             <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
+            <BaseLayer world={world} viewport={viewport} />
+            <SpawnLayer world={world} viewport={viewport} />
             <TowersLayer viewport={viewport} worldRef={session.worldRef} />
             <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />
             <ProjectilesLayer viewport={viewport} snapshot={session.snapshot} />
