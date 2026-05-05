@@ -231,12 +231,50 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
 // pattern layers ensure the last note's envelope completes before the loop
 // boundary so there's no audible click on repeat.
 
+// --- Menu theme ----------------------------------------------------------
+// 60 BPM, 24-beat loop = 24s. Soft, sparse, A minor.
+//   • arpeggio of broken-chord sine notes every 2 beats (12 total)
+//   • 4-note pentatonic melody up top (beats 4 / 10 / 16 / 22)
+//   • 4 quiet sub-bass swells underneath (beats 0 / 6 / 12 / 18)
+// All envelopes close before t = 24s so the loop joins click-free.
 const MENU_LOOP_SEC = 24;
-// Soft pad — chord lifted to A3 / E4 / A4 with a quiet A5 sparkle on top.
-// All integer Hz, so cycles per 24s are integer (seamless loop).
-const menuPad = (freq: number, gainDb: number): OscLayer => ({
-  kind: 'osc', wave: 'sine', freqStart: freq, duration: MENU_LOOP_SEC, gainDb,
-});
+const MENU_BEAT_SEC = 1; // 60 BPM → 1s per beat
+
+const menuArpPitches = [
+  220.0, 261.6256, 329.6276, 440.0,
+  329.6276, 261.6256, 220.0, 261.6256,
+  329.6276, 440.0, 329.6276, 261.6256,
+];
+const menuArp: PatternNote[] = menuArpPitches.map((freq, i) => ({
+  time: i * 2 * MENU_BEAT_SEC,
+  freq,
+  duration: 1.5,
+  wave: 'sine',
+  envelope: { attack: 0.04, decay: 0.15, sustain: 0.5, release: 0.4 },
+  gainDb: -14,
+}));
+
+const menuMelody: PatternNote[] = [
+  { time: 4,  freq: 659.2551, duration: 1.2, wave: 'sine',
+    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // E5
+  { time: 10, freq: 880.0,    duration: 1.2, wave: 'sine',
+    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // A5
+  { time: 16, freq: 783.9909, duration: 1.2, wave: 'sine',
+    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // G5
+  { time: 22, freq: 659.2551, duration: 1.2, wave: 'sine',
+    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // E5
+];
+
+const menuBass: PatternNote[] = [
+  { time: 0,  freq: 110.0,    duration: 4, wave: 'sine',
+    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
+  { time: 6,  freq: 110.0,    duration: 4, wave: 'sine',
+    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
+  { time: 12, freq: 82.4069,  duration: 4, wave: 'sine',
+    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // E2
+  { time: 18, freq: 110.0,    duration: 4, wave: 'sine',
+    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
+];
 
 const GAME_BEATS = 32;
 const GAME_BPM = 100;
@@ -276,10 +314,9 @@ export const MUSIC_SPECS: Readonly<Record<MusicKey, SoundSpec>> = {
   'main-menu': {
     totalSec: MENU_LOOP_SEC,
     layers: [
-      menuPad(220, -14), // A3 — root, gentle
-      menuPad(330, -16), // E4 — fifth, quieter
-      menuPad(440, -18), // A4 — octave, quieter still
-      menuPad(880, -26), // A5 — barely-there sparkle
+      { kind: 'pattern', notes: menuArp },
+      { kind: 'pattern', notes: menuMelody },
+      { kind: 'pattern', notes: menuBass },
     ],
   },
   'in-game': {

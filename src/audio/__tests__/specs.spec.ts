@@ -119,22 +119,27 @@ describe('MUSIC_SPECS', () => {
     expect(MUSIC_SPECS['in-game'].totalSec).toBeGreaterThan(10);
   });
 
-  it('main-menu pad uses freqs with integer cycles per loop (seamless)', () => {
-    const spec = MUSIC_SPECS['main-menu'];
-    for (const layer of spec.layers) {
-      if (layer.kind !== 'osc') continue;
-      const cycles = layer.freqStart * spec.totalSec;
-      expect(Math.abs(cycles - Math.round(cycles))).toBeLessThan(1e-6);
+  it('sustained osc layers use freqs with integer cycles per loop (seamless)', () => {
+    for (const key of ['main-menu', 'in-game'] as const) {
+      const spec = MUSIC_SPECS[key];
+      for (const layer of spec.layers) {
+        if (layer.kind !== 'osc') continue;
+        if (layer.duration < spec.totalSec) continue; // only pads cover the whole loop
+        const cycles = layer.freqStart * spec.totalSec;
+        expect(Math.abs(cycles - Math.round(cycles))).toBeLessThan(1e-6);
+      }
     }
   });
 
-  it('in-game pattern notes (envelopes included) finish before the loop boundary', () => {
-    const spec = MUSIC_SPECS['in-game'];
-    for (const layer of spec.layers) {
-      if (layer.kind !== 'pattern') continue;
-      for (const note of layer.notes) {
-        const release = note.envelope?.release ?? 0;
-        expect(note.time + note.duration + release).toBeLessThanOrEqual(spec.totalSec);
+  it('pattern notes (envelopes included) finish before the loop boundary', () => {
+    for (const key of ['main-menu', 'in-game'] as const) {
+      const spec = MUSIC_SPECS[key];
+      for (const layer of spec.layers) {
+        if (layer.kind !== 'pattern') continue;
+        for (const note of layer.notes) {
+          const release = note.envelope?.release ?? 0;
+          expect(note.time + note.duration + release).toBeLessThanOrEqual(spec.totalSec);
+        }
       }
     }
   });
