@@ -232,7 +232,8 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
 // boundary so there's no audible click on repeat.
 
 const MENU_LOOP_SEC = 24;
-// Seed pad — A2 / E3 / A3, all integer-Hz so cycles per 24s are integer.
+// Soft pad — chord lifted to A3 / E4 / A4 with a quiet A5 sparkle on top.
+// All integer Hz, so cycles per 24s are integer (seamless loop).
 const menuPad = (freq: number, gainDb: number): OscLayer => ({
   kind: 'osc', wave: 'sine', freqStart: freq, duration: MENU_LOOP_SEC, gainDb,
 });
@@ -275,9 +276,10 @@ export const MUSIC_SPECS: Readonly<Record<MusicKey, SoundSpec>> = {
   'main-menu': {
     totalSec: MENU_LOOP_SEC,
     layers: [
-      menuPad(110, -10), // A2
-      menuPad(165, -12), // E3 (≈ E)
-      menuPad(220, -14), // A3
+      menuPad(220, -14), // A3 — root, gentle
+      menuPad(330, -16), // E4 — fifth, quieter
+      menuPad(440, -18), // A4 — octave, quieter still
+      menuPad(880, -26), // A5 — barely-there sparkle
     ],
   },
   'in-game': {
