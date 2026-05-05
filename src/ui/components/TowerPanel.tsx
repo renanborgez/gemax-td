@@ -6,7 +6,9 @@ import { getTowerDef } from '@/entities/registry';
 import type { TowerKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
-export function TowerPanel({ session }: { session: GameSession }) {
+export const TowerPanel = React.memo(TowerPanelImpl);
+
+function TowerPanelImpl({ session }: { session: GameSession }) {
   const selectedId = useHudStore((s) => s.selectedTowerId);
   // Force re-render after upgrade/sell so derived values (level, cost) refresh.
   const [, bump] = React.useReducer((n: number) => n + 1, 0);

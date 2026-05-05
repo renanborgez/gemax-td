@@ -146,7 +146,12 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     });
     w.bus.on('life-lost', () => audio.playSfx('life-lost'));
     w.bus.on('wave-started', () => audio.playSfx('wave-start'));
-    w.bus.on('tower-placed', () => audio.playSfx('tower-placed'));
+    // Defer placement SFX off the simStep tick — the same bus.flush that fires
+    // this listener also bumps TowersLayer, which mounts a new Skia subtree.
+    // Letting the audio call share that frame causes a visible micro-stall.
+    w.bus.on('tower-placed', () => {
+      setTimeout(() => audio.playSfx('tower-placed'), 0);
+    });
 
     // Per-tower fire SFX. Coalesce rapid same-kind shots so a wave of fire
     // intents in a single tick doesn't fan out into N synchronous audio calls.

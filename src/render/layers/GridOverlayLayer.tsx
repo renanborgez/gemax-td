@@ -39,8 +39,8 @@ export function GridOverlayLayer({
         path={outlinePath}
         style="stroke"
         strokeWidth={Math.max(1, tileSize * 0.04)}
-        color={COLORS.buildableHint}
-        opacity={0.45}
+        color={COLORS.primaryDim}
+        opacity={0.9}
       />
       <Rect
         x={hintX} y={hintY}

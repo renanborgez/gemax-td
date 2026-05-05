@@ -23,8 +23,8 @@ export function PathLayer({ world, viewport }: { world: World; viewport: Viewpor
     <SkPath
       path={path}
       style="stroke"
-      strokeWidth={1.5}
-      color={COLORS.cyan}
+      strokeWidth={1}
+      color={COLORS.primarySoft}
       strokeCap="round"
       strokeJoin="round"
     />

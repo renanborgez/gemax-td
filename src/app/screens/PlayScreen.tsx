@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { create } from 'zustand';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,6 +26,24 @@ import { COLORS, RADIUS, SPACING, TEXT } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Play'>;
 
+type PickerAnchor = { x: number; y: number; tile: number };
+type PlacementState = {
+  cell: GridCoord | null;
+  anchor: PickerAnchor | null;
+  set: (cell: GridCoord, anchor: PickerAnchor) => void;
+  clear: () => void;
+};
+
+// Picker open/close state lives outside PlayScreen so opening or closing the
+// placement picker doesn't re-render PlayScreen and its non-memoized children
+// (HUD, modals, etc.) — the freeze on tower-pick was driven by that cascade.
+const usePlacementStore = create<PlacementState>((setS) => ({
+  cell: null,
+  anchor: null,
+  set: (cell, anchor) => setS({ cell, anchor }),
+  clear: () => setS({ cell: null, anchor: null }),
+}));
+
 export function PlayScreen({ route, navigation }: Props) {
   const { store } = useSave();
   const session = useGameSession({
@@ -35,8 +54,6 @@ export function PlayScreen({ route, navigation }: Props) {
   const [pauseVisible, setPauseVisible] = useState(false);
   const [abortVisible, setAbortVisible] = useState(false);
   const [nextWaveVisible, setNextWaveVisible] = useState(false);
-  const [placementCell, setPlacementCell] = useState<GridCoord | null>(null);
-  const [pickerAnchor, setPickerAnchor] = useState<{ x: number; y: number; tile: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const pendingNavAction = useRef<NavigationAction | null>(null);
   const allowExit = useRef(false);
@@ -46,24 +63,24 @@ export function PlayScreen({ route, navigation }: Props) {
 
   const onViewportReady = useCallback((vp: Viewport) => setViewport(vp), []);
 
+  useEffect(() => () => { usePlacementStore.getState().clear(); }, []);
+
   const onCanvasLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setCanvasSize({ w: width, h: height });
   }, []);
 
   const closePlacement = useCallback(() => {
-    setPlacementCell(null);
-    setPickerAnchor(null);
+    usePlacementStore.getState().clear();
     session.setBuildHint(null);
   }, [session]);
 
   const handleTap = useCallback((r: TapResult) => {
     if (r.type === 'buildable') {
-      setPlacementCell(r.cell);
       if (viewport) {
         const w = viewport.gridToWorld(r.cell);
         const z = camera.zoom.value;
-        setPickerAnchor({
+        usePlacementStore.getState().set(r.cell, {
           x: camera.panX.value + w.x * z,
           y: camera.panY.value + w.y * z,
           tile: viewport.tileSize * z,
@@ -91,10 +108,11 @@ export function PlayScreen({ route, navigation }: Props) {
   });
 
   const onPickTower = useCallback((kind: TowerKind) => {
-    if (!placementCell || !viewport) return;
-    const ok = session.placeTower(kind, placementCell, viewport);
+    const cell = usePlacementStore.getState().cell;
+    if (!cell || !viewport) return;
+    const ok = session.placeTower(kind, cell, viewport);
     if (ok) closePlacement();
-  }, [placementCell, viewport, session, closePlacement]);
+  }, [viewport, session, closePlacement]);
 
   // Intercept back-navigation (iOS swipe, hardware back, tab bar) and ask
   // to confirm. allowExit lets us bypass the prompt for programmatic exits
@@ -197,9 +215,7 @@ export function PlayScreen({ route, navigation }: Props) {
           </View>
         </GestureDetector>
         <TowerPanel session={session} />
-        <TowerPicker
-          visible={placementCell !== null}
-          anchor={pickerAnchor}
+        <TowerPickerHost
           containerWidth={canvasSize.w}
           containerHeight={canvasSize.h}
           onPick={onPickTower}
@@ -236,6 +252,28 @@ export function PlayScreen({ route, navigation }: Props) {
         onDismiss={() => setNextWaveVisible(false)}
       />
     </SafeAreaView>
+  );
+}
+
+function TowerPickerHost({
+  containerWidth, containerHeight, onPick, onDismiss,
+}: {
+  containerWidth: number;
+  containerHeight: number;
+  onPick: (k: TowerKind) => void;
+  onDismiss: () => void;
+}) {
+  const cell = usePlacementStore((s) => s.cell);
+  const anchor = usePlacementStore((s) => s.anchor);
+  return (
+    <TowerPicker
+      visible={cell !== null}
+      anchor={anchor}
+      containerWidth={containerWidth}
+      containerHeight={containerHeight}
+      onPick={onPick}
+      onDismiss={onDismiss}
+    />
   );
 }
 

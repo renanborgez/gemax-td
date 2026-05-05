@@ -14,7 +14,7 @@ type TabDef = {
 const TABS: readonly TabDef[] = [
   { key: 'battle', label: 'BATTLE', icon: 'flash' },
   { key: 'towers', label: 'TOWERS', icon: 'rocket' },
-  { key: 'market', label: 'MARKET', icon: 'storefront' },
+  // { key: 'market', label: 'MARKET', icon: 'storefront' }, // hidden until implemented
   { key: 'settings', label: 'SETTINGS', icon: 'settings-outline' },
 ];
 

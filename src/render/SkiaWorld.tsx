@@ -17,7 +17,9 @@ import type { GameSession } from '@/render/useGameSession';
 import type { CameraTransform } from '@/render/useCamera';
 import { COLORS } from '@/render/theme';
 
-export function SkiaWorld({
+export const SkiaWorld = React.memo(SkiaWorldImpl);
+
+function SkiaWorldImpl({
   session,
   onViewportReady,
   cameraTransform,
@@ -55,20 +57,36 @@ export function SkiaWorld({
   return (
     <View style={styles.root} onLayout={onLayout}>
       {viewport && (
-        <Canvas style={StyleSheet.absoluteFillObject}>
-          <BackgroundLayer viewport={viewport} />
-          <Group transform={cameraTransform}>
-            <PathLayer world={world} viewport={viewport} />
-            <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
-            <BaseLayer world={world} viewport={viewport} />
-            <SpawnLayer world={world} viewport={viewport} />
-            <TowersLayer viewport={viewport} worldRef={session.worldRef} />
-            <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />
-            <ProjectilesLayer viewport={viewport} snapshot={session.snapshot} />
-            <FXLayer />
-            <RangeIndicatorLayer viewport={viewport} range={session.range} />
-          </Group>
-        </Canvas>
+        <>
+          {/* Bottom Canvas: static map + worklet-driven hint. */}
+          <Canvas style={StyleSheet.absoluteFillObject}>
+            <BackgroundLayer viewport={viewport} />
+            <Group transform={cameraTransform}>
+              <PathLayer world={world} viewport={viewport} />
+              <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
+              <BaseLayer world={world} viewport={viewport} />
+              <SpawnLayer world={world} viewport={viewport} />
+            </Group>
+          </Canvas>
+          {/* Tower Canvas: React-reactive. Isolating towers here means
+              place / sell / upgrade React commits don't walk the enemy or
+              projectile subtrees, which was producing a visible micro-stall
+              on tower placement during active waves. */}
+          <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            <Group transform={cameraTransform}>
+              <TowersLayer viewport={viewport} worldRef={session.worldRef} />
+            </Group>
+          </Canvas>
+          {/* Top Canvas: worklet-driven entities + FX. */}
+          <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            <Group transform={cameraTransform}>
+              <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />
+              <ProjectilesLayer viewport={viewport} snapshot={session.snapshot} />
+              <FXLayer />
+              <RangeIndicatorLayer viewport={viewport} range={session.range} />
+            </Group>
+          </Canvas>
+        </>
       )}
     </View>
   );

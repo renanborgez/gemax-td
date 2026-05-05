@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { Canvas, Path } from '@shopify/react-native-skia';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 import { getEnemyDef } from '@/entities/registry';
+import { ENEMY_ICON_COLORS, makeEnemyIconPath } from '@/render/enemyIcons';
 import type { EnemyKind, WaveDef } from '@/content/types';
+
+const ICON_SIZE = 28;
 
 const ENEMY_BLURB: Record<EnemyKind, string> = {
   worm: 'Fast, fragile crawler. Arrives in swarms — splash damage shines here.',
@@ -34,7 +38,10 @@ export function NextWaveModal({
                 return (
                   <View key={kind} style={styles.row}>
                     <View style={styles.rowHead}>
-                      <Text style={styles.name}>{def.displayName}</Text>
+                      <View style={styles.nameWrap}>
+                        <EnemyIcon kind={kind as EnemyKind} />
+                        <Text style={styles.name}>{def.displayName}</Text>
+                      </View>
                       <Text style={styles.count}>×{count}</Text>
                     </View>
                     <Text style={styles.blurb}>{ENEMY_BLURB[kind as EnemyKind]}</Text>
@@ -55,6 +62,23 @@ export function NextWaveModal({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+function EnemyIcon({ kind }: { kind: EnemyKind }) {
+  const path = useMemo(() => makeEnemyIconPath(kind, ICON_SIZE), [kind]);
+  return (
+    <Canvas style={styles.icon}>
+      <Path
+        path={path}
+        transform={[{ translateX: ICON_SIZE / 2 }, { translateY: ICON_SIZE / 2 }]}
+        style="stroke"
+        strokeWidth={1.5}
+        strokeJoin="round"
+        strokeCap="round"
+        color={ENEMY_ICON_COLORS[kind]}
+      />
+    </Canvas>
   );
 }
 
@@ -92,7 +116,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgElevated,
     gap: SPACING.xs,
   },
-  rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  nameWrap: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flexShrink: 1 },
+  icon: { width: ICON_SIZE, height: ICON_SIZE },
   name: { ...TEXT.title, fontSize: 16, color: COLORS.textPrimary },
   count: { ...TEXT.hudValue, color: COLORS.tertiary },
   blurb: { ...TEXT.bodySmall, color: COLORS.textMuted },

@@ -1,6 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Group, Path, Rect } from '@shopify/react-native-skia';
-import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import {
+  runOnJS,
+  useAnimatedReaction,
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
 import type { WorldSnapshot } from '@/render/snapshot';
 import { COLORS } from '@/render/theme';
@@ -30,37 +37,86 @@ export function EnemiesLayer({
     ) as Record<EnemyKind, ReturnType<typeof makeEnemyIconPath>>;
   }, [tileSize]);
 
+  // Single shared clock (seconds) drives all per-kind procedural motion. Gated
+  // by enemy presence so paused states don't fire 64 transform worklets/frame.
+  const clock = useSharedValue(0);
+  const frame = useFrameCallback((info) => {
+    'worklet';
+    clock.value = info.timestamp / 1000;
+  }, false);
+  const setFrameActive = useCallback((a: boolean) => frame.setActive(a), [frame]);
+  useAnimatedReaction(
+    () => snapshot.value.enemies.length > 0,
+    (curr, prev) => {
+      if (curr !== prev) runOnJS(setFrameActive)(curr);
+    },
+  );
+
   return (
     <Group>
       {Array.from({ length: MAX_ENEMIES }, (_, i) => (
-        <EnemySlot key={i} index={i} snapshot={snapshot} viewport={viewport} iconPaths={iconPaths} />
+        <EnemySlot
+          key={i}
+          index={i}
+          snapshot={snapshot}
+          viewport={viewport}
+          iconPaths={iconPaths}
+          clock={clock}
+        />
       ))}
     </Group>
   );
 }
 
 function EnemySlot({
-  index, snapshot, viewport, iconPaths,
+  index, snapshot, viewport, iconPaths, clock,
 }: {
   index: number;
   snapshot: SharedValue<WorldSnapshot>;
   viewport: Viewport;
   iconPaths: Record<EnemyKind, ReturnType<typeof makeEnemyIconPath>>;
+  clock: SharedValue<number>;
 }) {
   const tileSize = viewport.tileSize;
   // Half-extent of the icon — used to position the HP bar above the glyph.
   const r = tileSize * 0.3;
   const strokeWidth = Math.max(1.1, tileSize * 0.035);
+  // Per-kind bob/scale magnitudes scale with tile size so motion stays
+  // proportional across zoom levels.
+  const bob = tileSize * 0.06;
 
   // Single derived position+visibility — Skia layers can read the same
   // SharedValue for cx/cy and Group transform without spawning extra worklets.
   const cx = useDerivedValue(() => (snapshot.value.enemies[index]?.x ?? -1000) * tileSize);
   const cy = useDerivedValue(() => (snapshot.value.enemies[index]?.y ?? -1000) * tileSize);
   const opacity = useDerivedValue(() => (index < snapshot.value.enemies.length ? 1 : 0));
-  const transform = useDerivedValue(() => [
-    { translateX: cx.value },
-    { translateY: cy.value },
-  ]);
+  // Per-kind procedural motion folded into the existing transform worklet —
+  // no new derived values per slot. Phase staggered by index so a swarm of the
+  // same kind doesn't pulse in lockstep.
+  const transform = useDerivedValue(() => {
+    const kind = snapshot.value.enemies[index]?.defKind;
+    const t = clock.value + index * 0.37;
+    let tx = 0, ty = 0, sx = 1, sy = 1, rot = 0;
+    if (kind === 'worm') {
+      const w = Math.sin(t * 8);
+      sy = 1 + 0.18 * w;
+      sx = 1 - 0.08 * w;
+    } else if (kind === 'daemon') {
+      ty = Math.sin(t * 4) * bob;
+    } else if (kind === 'trojan') {
+      rot = Math.sin(t * 2) * 0.08;
+    } else if (kind === 'rootkit') {
+      const p = 1 + 0.08 * Math.sin(t * 3);
+      sx = p; sy = p;
+    }
+    return [
+      { translateX: cx.value + tx },
+      { translateY: cy.value + ty },
+      { rotate: rot },
+      { scaleX: sx },
+      { scaleY: sy },
+    ];
+  });
   const hpFrac = useDerivedValue(() => {
     const s = snapshot.value.enemies[index];
     return s ? Math.max(0, Math.min(1, s.hp / s.maxHp)) : 0;

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { Canvas, Path } from '@shopify/react-native-skia';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
@@ -45,7 +45,7 @@ export function TowerPicker({
 
   // Place picker centered horizontally on cell, above by default; flip below
   // if no room above. Clamp horizontally within the container.
-  const position = useMemo(() => {
+  const computed = useMemo(() => {
     if (!anchor || !size || containerWidth <= 0 || containerHeight <= 0) return null;
     const halfTile = anchor.tile / 2;
     const wantTop = anchor.y - halfTile - GAP - size.h;
@@ -55,7 +55,14 @@ export function TowerPicker({
     return { left, top };
   }, [anchor, size, containerWidth, containerHeight]);
 
-  const ready = visible && position !== null;
+  // Hold last computed position so closing the picker (anchor → null) doesn't
+  // snap the subtree back to (0, 0). RN layout shifts on hide were causing
+  // Skia Canvases inside to refresh native surfaces, freezing for a frame on
+  // close — pin to last position and just flip opacity/pointerEvents.
+  const lastPosRef = useRef<{ left: number; top: number } | null>(null);
+  if (computed) lastPosRef.current = computed;
+  const position = computed ?? lastPosRef.current;
+  const ready = position !== null;
 
   return (
     <View
@@ -96,7 +103,9 @@ export function TowerPicker({
   );
 }
 
-function TowerIcon({ kind }: { kind: TowerKind }) {
+const TowerIcon = React.memo(TowerIconImpl);
+
+function TowerIconImpl({ kind }: { kind: TowerKind }) {
   const path = useMemo(() => makeTowerIconPath(kind, ICON_SIZE), [kind]);
   return (
     <Canvas style={styles.icon}>
@@ -162,7 +171,7 @@ const styles = StyleSheet.create({
   cellDisabled: { opacity: 0.45 },
   hidden: { opacity: 0 },
   icon: { width: ICON_SIZE, height: ICON_SIZE },
-  name: { ...TEXT.labelSmall, color: COLORS.textPrimary, fontSize: 11 },
+  name: { ...TEXT.labelSmall, color: COLORS.textPrimary, fontSize: 11, textAlign: 'center' },
   cost: { ...TEXT.buttonSmall, color: COLORS.tertiary },
   costShort: { color: COLORS.danger },
 });

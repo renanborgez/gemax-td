@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Canvas, Path, Skia, vec, LinearGradient, Rect } from '@shopify/react-native-skia';
+import { Canvas, Image, Path, Skia, vec, LinearGradient, Rect, useImage } from '@shopify/react-native-skia';
 import { COLORS } from '@/render/theme';
 
 const GRID_SPACING = 28;
 const DOT_RADIUS = 0.7;
+const BG_SOURCE = require('../../../assets/bg_02_h.png');
 
 /**
  * Subtle dotted-grid backdrop for menu screens. Draws a faint grid of dots
@@ -15,11 +16,16 @@ export function GridBackground() {
   const { width, height } = useWindowDimensions();
   const path = useMemo(() => buildDotGrid(width, height), [width, height]);
   const glowX = width * 0.5;
+  const bgImage = useImage(BG_SOURCE);
   return (
     <View style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.bg }]} pointerEvents="none">
       <Canvas style={StyleSheet.absoluteFill}>
+        {bgImage && (
+          <Image image={bgImage} x={0} y={0} width={width} height={height} fit="cover" />
+        )}
+        <Rect x={0} y={0} width={width} height={height} color="rgba(0,0,0,0.7)" />
         {/* Page-wide vertical gradient — slightly brighter at top, fades to pure bg. */}
-        <Rect x={0} y={0} width={width} height={height}>
+        <Rect x={0} y={0} width={width} height={height} opacity={0.6}>
           <LinearGradient
             start={vec(0, 0)}
             end={vec(0, height)}
