@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { SettingsScreen } from '@/app/screens/SettingsScreen';
 import { WinScreen } from '@/app/screens/WinScreen';
 import { LoseScreen } from '@/app/screens/LoseScreen';
 import { PersistentTabBar } from '@/ui/components/PersistentTabBar';
+import { useAudio } from '@/app/providers/AudioProvider';
 import type { Difficulty } from '@/content/types';
 import { COLORS, FONTS } from '@/render/theme';
 
@@ -28,6 +29,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export function RootNav() {
   const navRef = useNavigationContainerRef<RootStackParamList>();
   const [routeName, setRouteName] = useState<string | undefined>(undefined);
+  const audio = useAudio();
+
+  useEffect(() => {
+    if (routeName === undefined) return;
+    void audio.playMusic(routeName === 'Play' ? 'in-game' : 'main-menu');
+  }, [routeName, audio]);
 
   return (
     <NavigationContainer
