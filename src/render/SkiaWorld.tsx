@@ -6,7 +6,6 @@ import { Viewport } from '@/engine/Viewport';
 import { BackgroundLayer } from '@/render/layers/BackgroundLayer';
 import { PathLayer } from '@/render/layers/PathLayer';
 import { GridOverlayLayer } from '@/render/layers/GridOverlayLayer';
-import { BuildableLayer } from '@/render/layers/BuildableLayer';
 import { TowersLayer } from '@/render/layers/TowersLayer';
 import { EnemiesLayer } from '@/render/layers/EnemiesLayer';
 import { ProjectilesLayer } from '@/render/layers/ProjectilesLayer';
@@ -15,17 +14,14 @@ import { RangeIndicatorLayer } from '@/render/layers/RangeIndicatorLayer';
 import type { GameSession } from '@/render/useGameSession';
 import type { CameraTransform } from '@/render/useCamera';
 import { COLORS } from '@/render/theme';
-import type { TowerKind } from '@/content/types';
 
 export function SkiaWorld({
   session,
   onViewportReady,
-  buyKind = null,
   cameraTransform,
 }: {
   session: GameSession;
   onViewportReady?: (vp: Viewport) => void;
-  buyKind?: TowerKind | null;
   cameraTransform: SharedValue<CameraTransform>;
 }) {
   const world = session.worldRef.current;
@@ -61,9 +57,8 @@ export function SkiaWorld({
           <BackgroundLayer viewport={viewport} />
           <Group transform={cameraTransform}>
             <PathLayer world={world} viewport={viewport} />
-            <BuildableLayer viewport={viewport} world={world} buyKind={buyKind} />
-            <GridOverlayLayer viewport={viewport} buildHint={session.buildHint} />
-            <TowersLayer viewport={viewport} snapshot={session.snapshot} />
+            <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
+            <TowersLayer viewport={viewport} worldRef={session.worldRef} />
             <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />
             <ProjectilesLayer viewport={viewport} snapshot={session.snapshot} />
             <FXLayer />

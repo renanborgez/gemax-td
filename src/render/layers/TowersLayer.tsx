@@ -1,98 +1,84 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useReducer } from 'react';
 import { Group, Circle, Path } from '@shopify/react-native-skia';
-import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
-import type { WorldSnapshot } from '@/render/snapshot';
+import type { World } from '@/world/World';
+import { snapshotTowers, type TowerSnap } from '@/render/snapshot';
 import { COLORS } from '@/render/theme';
 import {
-  TOWER_ICON_KINDS,
   TOWER_ICON_COLORS,
   makeTowerIconPath,
 } from '@/render/towerIcons';
 import type { TowerKind } from '@/content/types';
 
-const MAX_TOWERS = 80;
-
+/**
+ * Towers don't move, so render them via plain React props instead of pre-allocated
+ * worklet slots. Re-render only when the tower list changes (place / sell / upgrade).
+ * This drops ~80×9 useDerivedValue worklets that previously fired every frame.
+ */
 export function TowersLayer({
-  viewport, snapshot,
-}: { viewport: Viewport; snapshot: SharedValue<WorldSnapshot> }) {
+  viewport, worldRef,
+}: { viewport: Viewport; worldRef: { current: World } }) {
+  const [, bump] = useReducer((n: number) => n + 1, 0);
+
+  useEffect(() => {
+    const w = worldRef.current;
+    const offs = [
+      w.bus.on('tower-placed', bump),
+      w.bus.on('tower-sold', bump),
+      w.bus.on('tower-upgraded', bump),
+    ];
+    return () => { for (const off of offs) off(); };
+  }, [worldRef]);
+
+  const towers: TowerSnap[] = snapshotTowers(worldRef.current);
+
   const tileSize = viewport.tileSize;
-  // Bake one Skia path per tower kind, sized to the tower's drawing area.
-  // Memoized on tileSize (stable for the world's lifetime).
-  const iconPaths = useMemo(() => {
-    const iconSize = tileSize * 0.62;
-    return Object.fromEntries(
-      TOWER_ICON_KINDS.map((k) => [k, makeTowerIconPath(k, iconSize)]),
-    ) as Record<TowerKind, ReturnType<typeof makeTowerIconPath>>;
-  }, [tileSize]);
+  const iconSize = tileSize * 0.62;
+  const r = tileSize * 0.36;
+  const strokeWidth = Math.max(1.2, tileSize * 0.04);
 
   return (
     <Group>
-      {Array.from({ length: MAX_TOWERS }, (_, i) => (
-        <TowerSlot key={i} index={i} snapshot={snapshot} viewport={viewport} iconPaths={iconPaths} />
+      {towers.map((t) => (
+        <TowerNode
+          key={t.id}
+          tower={t}
+          tileSize={tileSize}
+          iconSize={iconSize}
+          r={r}
+          strokeWidth={strokeWidth}
+        />
       ))}
     </Group>
   );
 }
 
-function TowerSlot({
-  index, snapshot, viewport, iconPaths,
+function TowerNode({
+  tower, tileSize, iconSize, r, strokeWidth,
 }: {
-  index: number;
-  snapshot: SharedValue<WorldSnapshot>;
-  viewport: Viewport;
-  iconPaths: Record<TowerKind, ReturnType<typeof makeTowerIconPath>>;
-}) {
-  const tileSize = viewport.tileSize;
-  const r = tileSize * 0.36;
-  const cx = useDerivedValue(() => (snapshot.value.towers[index]?.x ?? -1000) * tileSize);
-  const cy = useDerivedValue(() => (snapshot.value.towers[index]?.y ?? -1000) * tileSize);
-  const opacity = useDerivedValue(() => (index < snapshot.value.towers.length ? 1 : 0));
-  const transform = useDerivedValue(() => [
-    { translateX: cx.value },
-    { translateY: cy.value },
-  ]);
-  return (
-    <Group opacity={opacity}>
-      <Circle cx={cx} cy={cy} r={r} color={COLORS.cyan} opacity={0.18} />
-      <Circle cx={cx} cy={cy} r={r * 0.7} color={COLORS.cyan} opacity={0.5} />
-      <Group transform={transform}>
-        {TOWER_ICON_KINDS.map((kind) => (
-          <TowerIconGlyph
-            key={kind}
-            kind={kind}
-            index={index}
-            snapshot={snapshot}
-            path={iconPaths[kind]}
-            strokeWidth={Math.max(1.2, tileSize * 0.04)}
-          />
-        ))}
-      </Group>
-    </Group>
-  );
-}
-
-function TowerIconGlyph({
-  kind, index, snapshot, path, strokeWidth,
-}: {
-  kind: TowerKind;
-  index: number;
-  snapshot: SharedValue<WorldSnapshot>;
-  path: ReturnType<typeof makeTowerIconPath>;
+  tower: TowerSnap;
+  tileSize: number;
+  iconSize: number;
+  r: number;
   strokeWidth: number;
 }) {
-  const visible = useDerivedValue(() =>
-    snapshot.value.towers[index]?.defKind === kind ? 1 : 0,
-  );
+  const cx = tower.x * tileSize;
+  const cy = tower.y * tileSize;
+  const kind = tower.defKind as TowerKind;
+  const path = useMemo(() => makeTowerIconPath(kind, iconSize), [kind, iconSize]);
   return (
-    <Path
-      path={path}
-      style="stroke"
-      strokeWidth={strokeWidth}
-      strokeJoin="round"
-      strokeCap="round"
-      color={TOWER_ICON_COLORS[kind]}
-      opacity={visible}
-    />
+    <Group>
+      <Circle cx={cx} cy={cy} r={r} color={COLORS.cyan} opacity={0.18} />
+      <Circle cx={cx} cy={cy} r={r * 0.7} color={COLORS.cyan} opacity={0.5} />
+      <Path
+        path={path}
+        transform={[{ translateX: cx }, { translateY: cy }]}
+        style="stroke"
+        strokeWidth={strokeWidth}
+        strokeJoin="round"
+        strokeCap="round"
+        color={TOWER_ICON_COLORS[kind]}
+      />
+    </Group>
   );
 }

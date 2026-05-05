@@ -14,7 +14,10 @@ import { attachEventBridge } from '@/ui/eventBridge';
 import { useHudStore } from '@/ui/hudStore';
 import { useSave } from '@/app/providers/SaveProvider';
 import { useAudio } from '@/app/providers/AudioProvider';
-import type { Difficulty } from '@/content/types';
+import type { Difficulty, TowerKind } from '@/content/types';
+import type { GridCoord } from '@/lib/types';
+import type { Viewport } from '@/engine/Viewport';
+import { getTowerDef } from '@/entities/registry';
 
 export type GameSession = {
   worldRef: { current: World };
@@ -33,6 +36,14 @@ export type GameSession = {
   selectTower(towerId: string | null): void;
   /** Re-read selected tower's range into the SharedValue (e.g. after upgrade). */
   refreshRange(): void;
+  /**
+   * Place `kind` on `cell`. Returns `true` if placement succeeded; `false` if
+   * the cell is no longer buildable or credits are insufficient (UI gates
+   * upfront, but the world can drift between picker open and tap).
+   */
+  placeTower(kind: TowerKind, cell: GridCoord, viewport: Viewport): boolean;
+  /** Update the hint cell that GridOverlayLayer renders. Pass null to clear. */
+  setBuildHint(hint: { col: number; row: number; valid: boolean } | null): void;
 };
 
 export function useGameSession(opts: { levelId: string; difficulty: Difficulty; seed: number }): GameSession {
@@ -49,22 +60,24 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     const level = LEVEL_BY_ID[opts.levelId];
     if (!level) throw new Error(`unknown level ${opts.levelId}`);
     const effects = buildEffectsContext(TECH_NODES, data);
+    let prevEnemyCount = 0;
+    let prevProjectileCount = 0;
     const redraw: RedrawPort = {
       bump: () => {
         const w = worldRef.current;
         if (!w) return;
-        snapshot.value = buildSnapshot(w);
-        // Selected-tower position can drift (no movement today, but cheap and
-        // future-proof). Only re-emit range if selection still alive.
-        if (w.selection.tower) {
-          const t = w.selection.tower;
-          if (t.alive) {
-            const cur = range.value;
-            if (!cur || cur.x !== t.x || cur.y !== t.y || cur.r !== t.base.range) {
-              range.value = { x: t.x, y: t.y, r: t.base.range };
-            }
-          }
-        }
+        // Idle-skip: when both enemy and projectile lists are empty AND were
+        // empty last frame, don't reassign the SharedValue. This avoids waking
+        // every layer's useDerivedValue worklet during pre-wave / post-wave
+        // idle. The cleanupSystem compacts both arrays at the end of every
+        // simStep, so `length` already equals the alive count here.
+        const enemyCount = w.entities.enemies.length;
+        const projCount = w.entities.projectiles.length;
+        const changed = enemyCount > 0 || projCount > 0
+          || prevEnemyCount > 0 || prevProjectileCount > 0;
+        prevEnemyCount = enemyCount;
+        prevProjectileCount = projCount;
+        if (changed) snapshot.value = buildSnapshot(w);
       },
     };
     worldRef.current = createWorld({
@@ -137,6 +150,18 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     w.bus.on('wave-started', () => audio.playSfx('wave-start'));
     w.bus.on('tower-placed', () => audio.playSfx('tower-placed'));
 
+    // Per-tower fire SFX. Coalesce rapid same-kind shots so a wave of fire
+    // intents in a single tick doesn't fan out into N synchronous audio calls.
+    const lastFireAt = new Map<string, number>();
+    w.bus.on('tower-fired', ({ kind }) => {
+      const sfxKey = `tower-fire-${kind}` as const;
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const prev = lastFireAt.get(kind) ?? 0;
+      if (now - prev < 30) return;
+      lastFireAt.set(kind, now);
+      audio.playSfx(sfxKey as Parameters<typeof audio.playSfx>[0]);
+    });
+
     engine.start();
 
     const selectTower = (towerId: string | null) => {
@@ -162,6 +187,32 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
       range.value = rangeFromSelection(w);
     };
 
+    const placeTower = (kind: TowerKind, cell: GridCoord, viewport: Viewport): boolean => {
+      const def = getTowerDef(kind);
+      if (!w.grid.canBuild(cell) || w.credits < def.cost) return false;
+      w.credits -= def.cost;
+      const center = viewport.gridToWorld(cell);
+      const id = w.idGen('tower');
+      const tower = new def.classRef({
+        id, defKind: def.kind, level: 1,
+        x: center.x / viewport.tileSize, y: center.y / viewport.tileSize,
+        tileCoord: cell,
+        baseStats: { ...def.baseStats },
+        projectileKind: def.projectileKind,
+        targets: def.targets,
+        defaultTargetPriority: def.defaultTargetPriority,
+      });
+      w.grid.occupy(cell, id);
+      w.entities.towers.push(tower);
+      w.bus.emit('tower-placed', { towerId: id, kind: def.kind });
+      w.bus.emit('credits-changed', { credits: w.credits });
+      return true;
+    };
+
+    const setBuildHint = (hint: { col: number; row: number; valid: boolean } | null) => {
+      buildHint.value = hint;
+    };
+
     return {
       worldRef: worldRef as { current: World },
       snapshot,
@@ -185,6 +236,8 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
       isPaused: () => w.status === 'paused',
       selectTower,
       refreshRange,
+      placeTower,
+      setBuildHint,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

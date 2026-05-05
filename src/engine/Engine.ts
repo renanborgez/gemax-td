@@ -9,7 +9,13 @@ import { distance } from '@/lib/vec2';
 import type { BallisticProjectile } from '@/entities/projectiles/BallisticProjectile';
 import { type AoEPulseProjectile, LOGIC_BOMB_TTL_SAFETY } from '@/entities/projectiles/AoEPulseProjectile';
 import type { HitscanProjectile } from '@/entities/projectiles/HitscanProjectile';
+import type { TracerRoundProjectile } from '@/entities/projectiles/TracerRoundProjectile';
+import type { ChainArcProjectile, ChainSegment } from '@/entities/projectiles/ChainArcProjectile';
+import { CHAIN_ARC_TTL } from '@/entities/projectiles/ChainArcProjectile';
+import type { PoisonDartProjectile } from '@/entities/projectiles/PoisonDartProjectile';
 import type { ICELanceTower } from '@/entities/towers/ICELanceTower';
+import type { TeslaCoilTower } from '@/entities/towers/TeslaCoilTower';
+import type { VenomSpireTower } from '@/entities/towers/VenomSpireTower';
 
 export type Clock = {
   now(): number;                              // ms
@@ -93,6 +99,15 @@ export class Engine {
     const w = this.world;
     w.time += dt;
 
+    // Build id→entity maps once per tick so per-projectile damage / chain
+    // logic can resolve attackers and targets in O(1) instead of O(N) finds.
+    // Rebuilt fresh each tick because `compactInPlace` may have moved entries
+    // and bus listeners can't safely mutate these.
+    const enemyById = new Map<string, typeof w.entities.enemies[number]>();
+    for (const e of w.entities.enemies) if (e.alive) enemyById.set(e.id, e);
+    const towerById = new Map<string, typeof w.entities.towers[number]>();
+    for (const t of w.entities.towers) if (t.alive) towerById.set(t.id, t);
+
     // 1. Wave director: spawn enemies, emit wave events.
     const newSpawns: typeof w.entities.enemies = [];
     w.waveDirector.tick(w.time, dt, w.entities.enemies, newSpawns);
@@ -115,6 +130,7 @@ export class Engine {
     // 3. Convert fire intents into damage events / projectiles.
     w.staged.damage.length = 0;
     for (const intent of w.staged.fireIntents) {
+      w.bus.emit('tower-fired', { towerId: intent.towerId, kind: intent.towerDefKind });
       // Hitscan: instant damage, no projectile entity persisted.
       if (intent.projectileKind === 'hitscan-bolt') {
         const damage = intent.damage;
@@ -169,6 +185,86 @@ export class Engine {
         p.damage = intent.damage; p.sourceTowerId = intent.towerId;
         p.ttl = 2;
         w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'tracer-round') {
+        // Sniper: instant hit, big single-target damage. Visual is a thicker
+        // tracer that lingers slightly longer than the firewall hitscan beam.
+        w.staged.damage.push({
+          targetEnemyId: intent.targetEnemyId,
+          damage: intent.damage,
+          attackerTowerId: intent.towerId,
+        });
+        const p = w.pools.tracer.acquire();
+        p.alive = true;
+        p.fromX = intent.fromX; p.fromY = intent.fromY;
+        p.x = intent.targetX; p.y = intent.targetY;
+        p.targetEnemyId = intent.targetEnemyId;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.ttl = 0.16;
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'chain-arc') {
+        // Tesla Coil: damage primary target, then jump to N-1 further enemies
+        // within chainJumpRadius of the previous link, applying compounding falloff.
+        const sourceTower = towerById.get(intent.towerId) as TeslaCoilTower | undefined;
+        const chainCount = sourceTower?.chainCount ?? 1;
+        const falloff = sourceTower?.chainFalloff ?? 1;
+        const jumpRadius = sourceTower?.chainJumpRadius ?? 0;
+        const segments: ChainSegment[] = [];
+        const hit = new Set<string>();
+        hit.add(intent.targetEnemyId);
+        let currentDamage = intent.damage;
+        w.staged.damage.push({
+          targetEnemyId: intent.targetEnemyId,
+          damage: currentDamage,
+          attackerTowerId: intent.towerId,
+        });
+        segments.push({
+          fromX: intent.fromX, fromY: intent.fromY,
+          toX: intent.targetX, toY: intent.targetY,
+        });
+        let cursorX = intent.targetX, cursorY = intent.targetY;
+        for (let i = 1; i < chainCount; i++) {
+          let bestId: string | null = null;
+          let bestDist = Infinity;
+          let bestX = 0, bestY = 0;
+          for (const e of w.entities.enemies) {
+            if (!e.alive || hit.has(e.id)) continue;
+            if (e.flying && sourceTower?.targets === 'ground') continue;
+            if (!e.flying && sourceTower?.targets === 'flying') continue;
+            const d = Math.hypot(e.x - cursorX, e.y - cursorY);
+            if (d > jumpRadius) continue;
+            if (d < bestDist) { bestDist = d; bestId = e.id; bestX = e.x; bestY = e.y; }
+          }
+          if (!bestId) break;
+          hit.add(bestId);
+          currentDamage *= falloff;
+          w.staged.damage.push({
+            targetEnemyId: bestId,
+            damage: currentDamage,
+            attackerTowerId: intent.towerId,
+          });
+          segments.push({ fromX: cursorX, fromY: cursorY, toX: bestX, toY: bestY });
+          cursorX = bestX; cursorY = bestY;
+        }
+        const p = w.pools.chainArc.acquire();
+        p.alive = true;
+        p.x = intent.targetX; p.y = intent.targetY;
+        p.damage = 0; p.sourceTowerId = intent.towerId;
+        p.ttl = CHAIN_ARC_TTL;
+        p.segments.length = 0;
+        for (const s of segments) p.segments.push(s);
+        w.entities.projectiles.push(p);
+      } else if (intent.projectileKind === 'poison-dart') {
+        const p = w.pools.poisonDart.acquire();
+        p.alive = true;
+        p.x = intent.fromX; p.y = intent.fromY;
+        const dx = intent.targetX - intent.fromX;
+        const dy = intent.targetY - intent.fromY;
+        const len = Math.hypot(dx, dy) || 1;
+        p.vx = (dx / len) * p.speed; p.vy = (dy / len) * p.speed;
+        p.targetEnemyId = intent.targetEnemyId;
+        p.damage = intent.damage; p.sourceTowerId = intent.towerId;
+        p.ttl = 2;
+        w.entities.projectiles.push(p);
       }
     }
 
@@ -184,12 +280,13 @@ export class Engine {
       if (p.kind === 'projectile:ballistic-pulse') {
         const bp = p as BallisticProjectile;
         bp.x += bp.vx * dt; bp.y += bp.vy * dt;
-        const target = w.entities.enemies.find((e) => e.id === bp.targetEnemyId && e.alive);
+        const candidate = bp.targetEnemyId ? enemyById.get(bp.targetEnemyId) : undefined;
+        const target = candidate && candidate.alive ? candidate : undefined;
         if (target) {
           const d = distance(bp, target);
           if (d < 0.4) {
             // Apply ICE Lance freeze + crit if eligible (source tower defKind == 'ice-lance').
-            const sourceTower = w.entities.towers.find((t) => t.id === bp.sourceTowerId);
+            const sourceTower = towerById.get(bp.sourceTowerId);
             let dmg = bp.damage;
             if (sourceTower?.defKind === 'ice-lance' && w.effects.behaviors.iceLanceCrit) {
               if (w.rng.chance(w.effects.behaviors.iceLanceCrit.chance)) dmg *= w.effects.behaviors.iceLanceCrit.mult;
@@ -205,6 +302,34 @@ export class Engine {
           }
         } else {
           bp.alive = false;
+        }
+      } else if (p.kind === 'projectile:poison-dart') {
+        const pd = p as PoisonDartProjectile;
+        pd.x += pd.vx * dt; pd.y += pd.vy * dt;
+        const candidate = pd.targetEnemyId ? enemyById.get(pd.targetEnemyId) : undefined;
+        const target = candidate && candidate.alive ? candidate : undefined;
+        if (target) {
+          const d = distance(pd, target);
+          if (d < 0.4) {
+            w.staged.damage.push({
+              targetEnemyId: target.id,
+              damage: pd.damage,
+              attackerTowerId: pd.sourceTowerId,
+            });
+            const sourceTower = towerById.get(pd.sourceTowerId) as VenomSpireTower | undefined;
+            if (sourceTower) {
+              target.statuses.push({
+                kind: 'dot',
+                magnitude: sourceTower.dotDps,
+                duration: sourceTower.dotDuration,
+                remaining: sourceTower.dotDuration,
+                appliedByTowerId: sourceTower.id,
+              });
+            }
+            pd.alive = false;
+          }
+        } else {
+          pd.alive = false;
         }
       } else if (p.kind === 'projectile:aoe-pulse') {
         const ap = p as AoEPulseProjectile;
@@ -251,10 +376,10 @@ export class Engine {
       const alreadyHit = new Set<string>();
       for (const ev of w.staged.damage) {
         if (ev.damage <= 0) continue;
-        const tower = w.entities.towers.find((t) => t.id === ev.attackerTowerId);
+        const tower = towerById.get(ev.attackerTowerId);
         if (!tower || tower.defKind !== 'firewall') continue;
-        const dead = w.entities.enemies.find((e) => e.id === ev.targetEnemyId && !e.alive && e.hp <= 0);
-        if (!dead) continue;
+        const dead = enemyById.get(ev.targetEnemyId);
+        if (!dead || dead.alive || dead.hp > 0) continue;
         let cursor = { x: dead.x, y: dead.y };
         const lastTowerId = tower.id;
         for (let i = 1; i < totalChain; i++) {
@@ -270,7 +395,7 @@ export class Engine {
           if (!bestId) break;
           alreadyHit.add(bestId);
           chainEvents.push({ targetEnemyId: bestId, damage: ev.damage, attackerTowerId: lastTowerId });
-          const next = w.entities.enemies.find((e) => e.id === bestId);
+          const next = enemyById.get(bestId);
           if (next) cursor = { x: next.x, y: next.y };
         }
       }
@@ -309,6 +434,9 @@ export class Engine {
       if (p.kind === 'projectile:hitscan-bolt') w.pools.hitscan.release(p as HitscanProjectile);
       else if (p.kind === 'projectile:ballistic-pulse') w.pools.ballistic.release(p as BallisticProjectile);
       else if (p.kind === 'projectile:aoe-pulse') w.pools.aoe.release(p as AoEPulseProjectile);
+      else if (p.kind === 'projectile:tracer-round') w.pools.tracer.release(p as TracerRoundProjectile);
+      else if (p.kind === 'projectile:chain-arc') w.pools.chainArc.release(p as ChainArcProjectile);
+      else if (p.kind === 'projectile:poison-dart') w.pools.poisonDart.release(p as PoisonDartProjectile);
     });
 
     // 10. Life regen tech node.
