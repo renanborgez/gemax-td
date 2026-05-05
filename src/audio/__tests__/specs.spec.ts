@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SoundSpec } from '@/audio/specs';
-import { renderSpec, specHash, SOUND_SPECS } from '@/audio/specs';
+import { renderSpec, specHash, SOUND_SPECS, MUSIC_SPECS } from '@/audio/specs';
 import { SAMPLE_RATE } from '@/audio/synth';
 
 describe('renderSpec', () => {
@@ -24,6 +24,38 @@ describe('renderSpec', () => {
     const a = renderSpec(spec);
     const b = renderSpec(spec);
     for (let i = 0; i < a.length; i++) expect(a[i]).toBe(b[i]);
+  });
+
+  it('expands a pattern into per-note placements', () => {
+    const spec: SoundSpec = {
+      totalSec: 0.1,
+      layers: [{
+        kind: 'pattern',
+        notes: [
+          { time: 0,    freq: 880, duration: 0.005, wave: 'sine' },
+          { time: 0.05, freq: 880, duration: 0.005, wave: 'sine' },
+        ],
+      }],
+    };
+    const out = renderSpec(spec);
+    const energy = (start: number, end: number) => {
+      let e = 0;
+      for (let i = start; i < end; i++) e += out[i]! * out[i]!;
+      return e;
+    };
+    expect(energy(0, 220)).toBeGreaterThan(energy(500, 2000));
+    expect(energy(2205, 2425)).toBeGreaterThan(energy(500, 2000));
+  });
+
+  it('renders an empty pattern as silence', () => {
+    const spec: SoundSpec = {
+      totalSec: 0.05,
+      layers: [{ kind: 'pattern', notes: [] }],
+    };
+    const out = renderSpec(spec);
+    let max = 0;
+    for (let i = 0; i < out.length; i++) max = Math.max(max, Math.abs(out[i]!));
+    expect(max).toBe(0);
   });
 
   it('time-shifts sequence offsets', () => {
@@ -77,5 +109,33 @@ describe('SOUND_SPECS', () => {
     ] as const;
     for (const k of expected) expect(SOUND_SPECS[k]).toBeDefined();
     expect(Object.keys(SOUND_SPECS).sort()).toEqual([...expected].sort());
+  });
+});
+
+describe('MUSIC_SPECS', () => {
+  it('covers both music keys with non-trivial loops', () => {
+    expect(Object.keys(MUSIC_SPECS).sort()).toEqual(['in-game', 'main-menu']);
+    expect(MUSIC_SPECS['main-menu'].totalSec).toBeGreaterThan(10);
+    expect(MUSIC_SPECS['in-game'].totalSec).toBeGreaterThan(10);
+  });
+
+  it('main-menu pad uses freqs with integer cycles per loop (seamless)', () => {
+    const spec = MUSIC_SPECS['main-menu'];
+    for (const layer of spec.layers) {
+      if (layer.kind !== 'osc') continue;
+      const cycles = layer.freqStart * spec.totalSec;
+      expect(Math.abs(cycles - Math.round(cycles))).toBeLessThan(1e-6);
+    }
+  });
+
+  it('in-game pattern notes (envelopes included) finish before the loop boundary', () => {
+    const spec = MUSIC_SPECS['in-game'];
+    for (const layer of spec.layers) {
+      if (layer.kind !== 'pattern') continue;
+      for (const note of layer.notes) {
+        const release = note.envelope?.release ?? 0;
+        expect(note.time + note.duration + release).toBeLessThanOrEqual(spec.totalSec);
+      }
+    }
   });
 });

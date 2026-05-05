@@ -1,4 +1,4 @@
-import type { SfxKey } from '@/audio/catalog';
+import type { SfxKey, MusicKey } from '@/audio/catalog';
 import {
   SAMPLE_RATE, makeRng, osc, noise, applyAdsr, lowpass, mix, pad, gain,
   type Wave, type NoiseColor, type Adsr,
@@ -29,7 +29,21 @@ export type SequenceLayer = {
   layer: OscLayer | NoiseLayer;
 };
 
-export type Layer = OscLayer | NoiseLayer | SequenceLayer;
+export type PatternNote = {
+  time: number;     // seconds, relative to layer start
+  freq: number;
+  duration: number; // seconds
+  wave: Wave;
+  envelope?: Adsr;
+  gainDb?: number;
+};
+
+export type PatternLayer = {
+  kind: 'pattern';
+  notes: PatternNote[];
+};
+
+export type Layer = OscLayer | NoiseLayer | SequenceLayer | PatternLayer;
 
 export type SoundSpec = {
   totalSec: number;
@@ -67,6 +81,17 @@ export function renderSpec(spec: SoundSpec): Float32Array {
 function collectLayer(layer: Layer, offsetSec: number, out: Float32Array[], rng: () => number): void {
   if (layer.kind === 'sequence') {
     for (const off of layer.offsets) collectLayer(layer.layer, offsetSec + off, out, rng);
+    return;
+  }
+  if (layer.kind === 'pattern') {
+    for (const note of layer.notes) {
+      const noteLayer: OscLayer = {
+        kind: 'osc', wave: note.wave, freqStart: note.freq, duration: note.duration,
+        ...(note.envelope !== undefined ? { envelope: note.envelope } : {}),
+        ...(note.gainDb !== undefined ? { gainDb: note.gainDb } : {}),
+      };
+      collectLayer(noteLayer, offsetSec + note.time, out, rng);
+    }
     return;
   }
   const buf = renderLeaf(layer, rng);
@@ -196,6 +221,76 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
     layers: [
       { kind: 'osc', wave: 'sine', freqStart: 300, freqEnd: 500, duration: 0.08,
         envelope: { attack: 0.005, decay: 0.020, sustain: 0.4, release: 0.040 } },
+    ],
+  },
+};
+
+// --- Music ---------------------------------------------------------------
+// Loops bake to disk like SFX. For seamless joins, sustained osc layers use
+// frequencies whose period divides the loop length (integer cycles per loop);
+// pattern layers ensure the last note's envelope completes before the loop
+// boundary so there's no audible click on repeat.
+
+const MENU_LOOP_SEC = 24;
+// Seed pad — A2 / E3 / A3, all integer-Hz so cycles per 24s are integer.
+const menuPad = (freq: number, gainDb: number): OscLayer => ({
+  kind: 'osc', wave: 'sine', freqStart: freq, duration: MENU_LOOP_SEC, gainDb,
+});
+
+const GAME_BEATS = 32;
+const GAME_BPM = 100;
+const GAME_BEAT_SEC = 60 / GAME_BPM;          // 0.6
+const GAME_LOOP_SEC = GAME_BEATS * GAME_BEAT_SEC; // 19.2
+// A minor pad freqs tuned for integer cycles in 19.2s (≤ 5 cents off equal-temperament).
+const GAME_PAD_A = 220;                       // 4224 cycles
+const GAME_PAD_C = 5023 / GAME_LOOP_SEC;      // ≈ 261.61
+const GAME_PAD_E = 6329 / GAME_LOOP_SEC;      // ≈ 329.64
+
+const gameBass: PatternNote[] = [];
+for (let i = 0; i < GAME_BEATS; i++) {
+  gameBass.push({
+    time: i * GAME_BEAT_SEC,
+    freq: 110, // A2
+    duration: 0.4,
+    wave: 'square',
+    envelope: { attack: 0.005, decay: 0.10, sustain: 0, release: 0.05 },
+    gainDb: -8,
+  });
+}
+
+// Sparse melody — A minor pentatonic, beats 0/8/16/24 with note shape.
+const PENT = [440, 523.25, 587.33, 659.25, 783.99]; // A4 C5 D5 E5 G5
+const gameMelody: PatternNote[] = [
+  { time: 0  * GAME_BEAT_SEC, freq: PENT[0]!, duration: 0.4, wave: 'sine',
+    envelope: { attack: 0.02, decay: 0.10, sustain: 0.4, release: 0.20 }, gainDb: -10 },
+  { time: 8  * GAME_BEAT_SEC, freq: PENT[2]!, duration: 0.4, wave: 'sine',
+    envelope: { attack: 0.02, decay: 0.10, sustain: 0.4, release: 0.20 }, gainDb: -10 },
+  { time: 16 * GAME_BEAT_SEC, freq: PENT[4]!, duration: 0.4, wave: 'sine',
+    envelope: { attack: 0.02, decay: 0.10, sustain: 0.4, release: 0.20 }, gainDb: -10 },
+  { time: 24 * GAME_BEAT_SEC, freq: PENT[3]!, duration: 0.4, wave: 'sine',
+    envelope: { attack: 0.02, decay: 0.10, sustain: 0.4, release: 0.20 }, gainDb: -10 },
+];
+
+export const MUSIC_SPECS: Readonly<Record<MusicKey, SoundSpec>> = {
+  'main-menu': {
+    totalSec: MENU_LOOP_SEC,
+    layers: [
+      menuPad(110, -10), // A2
+      menuPad(165, -12), // E3 (≈ E)
+      menuPad(220, -14), // A3
+    ],
+  },
+  'in-game': {
+    totalSec: GAME_LOOP_SEC,
+    layers: [
+      // Held A minor chord pad
+      { kind: 'osc', wave: 'sine', freqStart: GAME_PAD_A, duration: GAME_LOOP_SEC, gainDb: -14 },
+      { kind: 'osc', wave: 'sine', freqStart: GAME_PAD_C, duration: GAME_LOOP_SEC, gainDb: -16 },
+      { kind: 'osc', wave: 'sine', freqStart: GAME_PAD_E, duration: GAME_LOOP_SEC, gainDb: -16 },
+      // Bass arpeggio
+      { kind: 'pattern', notes: gameBass },
+      // Sparse melody
+      { kind: 'pattern', notes: gameMelody },
     ],
   },
 };

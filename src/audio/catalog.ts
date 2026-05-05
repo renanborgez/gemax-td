@@ -1,6 +1,4 @@
-// SFX keys are synthesized at runtime — see specs.ts and bake.ts.
-// Music still uses a placeholder silent WAV; replacing music is out of scope here.
-const silent = require('./assets/silent-100ms.wav');
+// SFX and music are synthesized at runtime — see specs.ts and bake.ts.
 
 export const SFX_KEYS = [
   'tower-fire-firewall',
@@ -17,11 +15,8 @@ export const SFX_KEYS = [
 ] as const;
 export type SfxKey = typeof SFX_KEYS[number];
 
-export const MUSIC_SOURCES = {
-  'main-menu': silent,
-  'in-game':   silent,
-} as const;
-export type MusicKey = keyof typeof MUSIC_SOURCES;
+export const MUSIC_KEYS = ['main-menu', 'in-game'] as const;
+export type MusicKey = typeof MUSIC_KEYS[number];
 
 /** Pool size per SFX. */
 export const SFX_POOL_SIZE: Readonly<Record<SfxKey, number>> = {

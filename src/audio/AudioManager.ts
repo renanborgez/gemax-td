@@ -1,6 +1,6 @@
 import { setAudioModeAsync, createAudioPlayer, type AudioPlayer } from 'expo-audio';
-import { SFX_KEYS, MUSIC_SOURCES, SFX_POOL_SIZE, type SfxKey, type MusicKey } from '@/audio/catalog';
-import { bakeSfx } from '@/audio/bake';
+import { SFX_KEYS, SFX_POOL_SIZE, type SfxKey, type MusicKey } from '@/audio/catalog';
+import { bakeSfx, bakeMusic } from '@/audio/bake';
 import { makeRng } from '@/audio/synth';
 
 export type Volumes = { master: number; sfx: number; music: number };
@@ -19,6 +19,7 @@ export class AudioManager {
   private sfxPools = new Map<SfxKey, { players: AudioPlayer[]; cursor: number }>();
   private musicPlayer: AudioPlayer | null = null;
   private currentMusic: MusicKey | null = null;
+  private musicUris: Record<MusicKey, string> | null = null;
   private initialized = false;
   private jitterRng = makeRng(0xa17d10);
   private supportsPlaybackRate = false;
@@ -30,7 +31,9 @@ export class AudioManager {
     } catch {
       // Audio mode failure is non-fatal — SFX may still work.
     }
-    const uris = await bakeSfx();
+    const [sfxUris, musicUris] = await Promise.all([bakeSfx(), bakeMusic()]);
+    this.musicUris = musicUris;
+    const uris = sfxUris;
     for (const key of SFX_KEYS) {
       const players: AudioPlayer[] = [];
       const poolSize = SFX_POOL_SIZE[key];
@@ -79,8 +82,10 @@ export class AudioManager {
       try { this.musicPlayer.remove(); } catch {}
       this.musicPlayer = null;
     }
+    const uri = this.musicUris?.[key];
+    if (!uri) return;
     try {
-      this.musicPlayer = createAudioPlayer(MUSIC_SOURCES[key]);
+      this.musicPlayer = createAudioPlayer({ uri });
       this.musicPlayer.loop = true;
       this.musicPlayer.volume = this.volumes.master * this.volumes.music;
       this.musicPlayer.play();

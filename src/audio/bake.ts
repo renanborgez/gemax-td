@@ -1,19 +1,17 @@
 import {
   cacheDirectory, getInfoAsync, makeDirectoryAsync, writeAsStringAsync, EncodingType,
 } from 'expo-file-system/legacy';
-import { SFX_KEYS, type SfxKey } from '@/audio/catalog';
-import { SOUND_SPECS, renderSpec, specHash } from '@/audio/specs';
+import { SFX_KEYS, MUSIC_KEYS, type SfxKey, type MusicKey } from '@/audio/catalog';
+import { SOUND_SPECS, MUSIC_SPECS, renderSpec, specHash, type SoundSpec } from '@/audio/specs';
 import { encodeWav } from '@/audio/wavEncoder';
 import { SAMPLE_RATE } from '@/audio/synth';
 
-/**
- * Bake every SFX to `${cacheDirectory}sfx/<key>-<specHash>.wav` if missing,
- * and return a map of key → file URI. Failures for individual keys fall back
- * to a tiny empty-WAV URI so `playSfx` never throws — silence-on-error matches
- * the AudioManager's existing "audio failure is non-fatal" philosophy.
- */
-export async function bakeSfx(): Promise<Record<SfxKey, string>> {
-  const baseDir = (cacheDirectory ?? '') + 'sfx/';
+async function bakeSpecMap<K extends string>(
+  subdir: string,
+  specs: Readonly<Record<K, SoundSpec>>,
+  keys: readonly K[],
+): Promise<Record<K, string>> {
+  const baseDir = (cacheDirectory ?? '') + subdir + '/';
   try {
     const info = await getInfoAsync(baseDir);
     if (!info.exists) await makeDirectoryAsync(baseDir, { intermediates: true });
@@ -21,10 +19,10 @@ export async function bakeSfx(): Promise<Record<SfxKey, string>> {
     // If we can't even create the directory, every key will fall back to silence.
   }
 
-  const result = {} as Record<SfxKey, string>;
-  for (const key of SFX_KEYS) {
+  const result = {} as Record<K, string>;
+  for (const key of keys) {
     try {
-      const spec = SOUND_SPECS[key];
+      const spec = specs[key];
       const hash = specHash(spec);
       const path = `${baseDir}${key}-${hash}.wav`;
       const info = await getInfoAsync(path);
@@ -40,6 +38,16 @@ export async function bakeSfx(): Promise<Record<SfxKey, string>> {
     }
   }
   return result;
+}
+
+/** Bake all SFX to `${cacheDirectory}sfx/<key>-<hash>.wav`. */
+export async function bakeSfx(): Promise<Record<SfxKey, string>> {
+  return bakeSpecMap('sfx', SOUND_SPECS, SFX_KEYS);
+}
+
+/** Bake all music loops to `${cacheDirectory}music/<key>-<hash>.wav`. */
+export async function bakeMusic(): Promise<Record<MusicKey, string>> {
+  return bakeSpecMap('music', MUSIC_SPECS, MUSIC_KEYS);
 }
 
 /** Tiny inline silent WAV (44 bytes header + 0 data) as a data: URI. Used as a fallback. */
