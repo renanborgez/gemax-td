@@ -6,6 +6,8 @@ import { clamp } from '@/lib/lerp';
 export const TOP_PADDING_ROWS = 2;
 /** Empty rows of breathing room rendered below the last grid row (base area). */
 export const BOTTOM_PADDING_ROWS = 2;
+/** Horizontal canvas margin so spawn/base bubbles at col 0 / last col aren't clipped by canvas edge. */
+export const HORIZONTAL_MARGIN_PX = 12;
 
 export type ViewportOptions = {
   canvasWidthPx: number;
@@ -41,11 +43,11 @@ export class Viewport {
     this.gridRows = opts.gridRows;
     this.canvasOriginScreen = opts.canvasOriginScreen;
     this.dpr = opts.dpr;
-    // Square tiles sized to fill canvas width. Levels are taller-than-wide,
-    // so vertical overflow is expected and handled by pan/zoom. Picking
-    // width-only (instead of min(w,h)) stretches the grid edge-to-edge
-    // horizontally and avoids letterboxing on the sides.
-    this.tileSize = opts.canvasWidthPx / opts.gridCols;
+    // Square tiles sized to fill canvas width minus a horizontal margin so
+    // bubbles/AOE indicators at col 0 and the last col aren't clipped by the
+    // canvas edge. Levels are taller-than-wide, so vertical overflow is
+    // expected and handled by pan/zoom.
+    this.tileSize = Math.max(1, (opts.canvasWidthPx - HORIZONTAL_MARGIN_PX * 2) / opts.gridCols);
     this.mapWidthPx = this.tileSize * opts.gridCols;
     this.mapHeightPx = this.tileSize * opts.gridRows;
     this.topPaddingPx = TOP_PADDING_ROWS * this.tileSize;

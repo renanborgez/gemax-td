@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { Viewport } from '@/engine/Viewport';
 
 describe('Viewport', () => {
+  // Test viewport sized so HORIZONTAL_MARGIN_PX (12) cleanly subtracts:
+  // (360 - 24) / 9 wouldn't be integer, so use a width that does.
+  // 384w → (384 - 24) / 9 = 40 tile.
   const vp = new Viewport({
-    canvasWidthPx: 360,
+    canvasWidthPx: 384,
     canvasHeightPx: 720,
     gridCols: 9,
     gridRows: 18,
@@ -30,7 +33,7 @@ describe('Viewport', () => {
   });
 
   it('reports tile size', () => {
-    expect(vp.tileSize).toBe(40);    // 360 / 9
+    expect(vp.tileSize).toBe(40);    // (384 - 24) / 9
   });
 
   it('clamps grid coords to bounds in worldToGrid', () => {
@@ -39,34 +42,34 @@ describe('Viewport', () => {
   });
 
   it('fit-to-width: tall map top-anchors with row padding above spawn', () => {
-    // 800w × 400h canvas, 10 cols × 20 rows map → tile sized by width.
+    // 824w × 400h canvas, 10 cols × 20 rows map → (824 - 24) / 10 = 80.
     const tall = new Viewport({
-      canvasWidthPx: 800, canvasHeightPx: 400,
+      canvasWidthPx: 824, canvasHeightPx: 400,
       gridCols: 10, gridRows: 20,
       canvasOriginScreen: { x: 0, y: 0 }, dpr: 1,
     });
-    expect(tall.tileSize).toBe(80);                  // 800 / 10
+    expect(tall.tileSize).toBe(80);                  // (824 - 24) / 10
     expect(tall.mapWidthPx).toBe(800);
     expect(tall.mapHeightPx).toBe(1600);
     expect(tall.topPaddingPx).toBe(160);             // 2 rows × 80
     expect(tall.bottomPaddingPx).toBe(160);          // 2 rows × 80
-    expect(tall.defaultPanX).toBe(0);
+    expect(tall.defaultPanX).toBe(12);               // (824 - 800) / 2
     expect(tall.defaultPanY).toBe(160);              // top-anchored with 2-row padding
   });
 
   it('fit-to-width: short map also top-anchors with row padding', () => {
-    // 400w × 800h canvas, 16 cols × 10 rows map → tile sized by width.
+    // 424w × 800h canvas, 16 cols × 10 rows map → (424 - 24) / 16 = 25.
     const wide = new Viewport({
-      canvasWidthPx: 400, canvasHeightPx: 800,
+      canvasWidthPx: 424, canvasHeightPx: 800,
       gridCols: 16, gridRows: 10,
       canvasOriginScreen: { x: 0, y: 0 }, dpr: 1,
     });
-    expect(wide.tileSize).toBe(25);                  // 400 / 16
+    expect(wide.tileSize).toBe(25);                  // (424 - 24) / 16
     expect(wide.mapWidthPx).toBe(400);
     expect(wide.mapHeightPx).toBe(250);
     expect(wide.topPaddingPx).toBe(50);              // 2 rows × 25
     expect(wide.bottomPaddingPx).toBe(50);           // 2 rows × 25
-    expect(wide.defaultPanX).toBe(0);
+    expect(wide.defaultPanX).toBe(12);               // (424 - 400) / 2
     expect(wide.defaultPanY).toBe(50);               // top-anchored with 2-row padding
   });
 });

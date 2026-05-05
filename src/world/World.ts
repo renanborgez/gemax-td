@@ -106,10 +106,22 @@ export function createWorld(opts: {
     chapterIndex: opts.level.chapter,
   });
 
+  const cells = opts.level.grid.cells.map((row) => row.slice() as TileType[]);
+  // Reserve the path-endpoint row: no tower placement on the same row as the
+  // base. Anything that isn't part of the path on that row becomes blocked.
+  const endpoint = opts.level.path[opts.level.path.length - 1];
+  if (endpoint) {
+    const endRow = cells[endpoint.row];
+    if (endRow) {
+      for (let c = 0; c < endRow.length; c++) {
+        if (endRow[c] !== 'path') endRow[c] = 'blocked';
+      }
+    }
+  }
   const grid = new BuildGrid({
     cols: opts.level.grid.cols,
     rows: opts.level.grid.rows,
-    cells: opts.level.grid.cells.map((row) => row.slice() as TileType[]),
+    cells,
   });
   const tileSize = 1; // engine uses tile units; renderer scales to pixels
   const path = new Path(opts.level.path, tileSize);

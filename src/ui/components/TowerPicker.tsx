@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   closeText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
   row: { flexDirection: 'row', gap: SPACING.sm },
   cell: {
-    width: 72,
+    width: 92,
     height: 72,
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.xs,

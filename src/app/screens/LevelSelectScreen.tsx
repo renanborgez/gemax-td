@@ -50,7 +50,7 @@ export function LevelSelectScreen({ navigation }: Props) {
   return (
     <ScreenShell
       sectionTitle="Select Target"
-      onBack={() => navigation.goBack()}
+      onBack={() => navigation.reset({ index: 0, routes: [{ name: 'Title' }] })}
     >
       <Text style={styles.heading}>MISSIONS</Text>
       {ALL_LEVELS.map((lvl) => {
