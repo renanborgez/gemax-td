@@ -21,6 +21,7 @@ type GestureOpts = {
   viewport: Viewport | null;
   camera: Camera;
   onTap: (r: TapResult) => void;
+  onCameraMoveStart?: () => void;
 };
 
 export function useWorldGestures(opts: GestureOpts) {
@@ -79,12 +80,18 @@ export function useWorldGestures(opts: GestureOpts) {
 
     // minDistance > tap.maxDistance — tap claims small drifts (≤10px); pan
     // only activates once the user has clearly committed to dragging.
+    function notifyCameraMoveStart() {
+      const cb = optsRef.current.onCameraMoveStart;
+      if (cb) cb();
+    }
+
     const pan = Gesture.Pan()
       .minDistance(14)
       .averageTouches(true)
       .onStart(() => {
         startPanX.value = camera.panX.value;
         startPanY.value = camera.panY.value;
+        runOnJS(notifyCameraMoveStart)();
       })
       .onUpdate((e) => {
         const z = camera.zoom.value;
@@ -97,6 +104,7 @@ export function useWorldGestures(opts: GestureOpts) {
         startZoom.value = camera.zoom.value;
         startPanX.value = camera.panX.value;
         startPanY.value = camera.panY.value;
+        runOnJS(notifyCameraMoveStart)();
       })
       .onUpdate((e) => {
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, startZoom.value * e.scale));

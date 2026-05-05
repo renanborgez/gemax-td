@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +36,8 @@ export function PlayScreen({ route, navigation }: Props) {
   const [abortVisible, setAbortVisible] = useState(false);
   const [nextWaveVisible, setNextWaveVisible] = useState(false);
   const [placementCell, setPlacementCell] = useState<GridCoord | null>(null);
+  const [pickerAnchor, setPickerAnchor] = useState<{ x: number; y: number; tile: number } | null>(null);
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const pendingNavAction = useRef<NavigationAction | null>(null);
   const allowExit = useRef(false);
   const pausedByAbort = useRef(false);
@@ -44,14 +46,29 @@ export function PlayScreen({ route, navigation }: Props) {
 
   const onViewportReady = useCallback((vp: Viewport) => setViewport(vp), []);
 
+  const onCanvasLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setCanvasSize({ w: width, h: height });
+  }, []);
+
   const closePlacement = useCallback(() => {
     setPlacementCell(null);
+    setPickerAnchor(null);
     session.setBuildHint(null);
   }, [session]);
 
   const handleTap = useCallback((r: TapResult) => {
     if (r.type === 'buildable') {
       setPlacementCell(r.cell);
+      if (viewport) {
+        const w = viewport.gridToWorld(r.cell);
+        const z = camera.zoom.value;
+        setPickerAnchor({
+          x: camera.panX.value + w.x * z,
+          y: camera.panY.value + w.y * z,
+          tile: viewport.tileSize * z,
+        });
+      }
       session.setBuildHint({ col: r.cell.col, row: r.cell.row, valid: true });
       session.selectTower(null);
       return;
@@ -63,13 +80,14 @@ export function PlayScreen({ route, navigation }: Props) {
     }
     closePlacement();
     session.selectTower(null);
-  }, [session, closePlacement]);
+  }, [session, closePlacement, viewport, camera]);
 
   const gestures = useWorldGestures({
     worldRef: session.worldRef,
     viewport,
     camera,
     onTap: handleTap,
+    onCameraMoveStart: closePlacement,
   });
 
   const onPickTower = useCallback((kind: TowerKind) => {
@@ -168,7 +186,7 @@ export function PlayScreen({ route, navigation }: Props) {
         onExit={requestAbort}
         onShowNextWave={() => setNextWaveVisible(true)}
       />
-      <View style={styles.canvasWrap}>
+      <View style={styles.canvasWrap} onLayout={onCanvasLayout}>
         <GestureDetector gesture={gestures}>
           <View style={styles.canvas}>
             <SkiaWorld
@@ -181,6 +199,9 @@ export function PlayScreen({ route, navigation }: Props) {
         <TowerPanel session={session} />
         <TowerPicker
           visible={placementCell !== null}
+          anchor={pickerAnchor}
+          containerWidth={canvasSize.w}
+          containerHeight={canvasSize.h}
           onPick={onPickTower}
           onDismiss={closePlacement}
         />

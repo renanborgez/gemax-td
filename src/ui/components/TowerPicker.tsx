@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { Canvas, Path } from '@shopify/react-native-skia';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
 import { useHudStore } from '@/ui/hudStore';
@@ -10,19 +10,24 @@ import { TOWER_ICON_COLORS, makeTowerIconPath } from '@/render/towerIcons';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 const ICON_SIZE = 28;
+const GAP = 8;
+
+export type PickerAnchor = { x: number; y: number; tile: number };
 
 export function TowerPicker({
-  visible, onPick, onDismiss,
+  visible, anchor, containerWidth, containerHeight, onPick, onDismiss,
 }: {
   visible: boolean;
+  anchor: PickerAnchor | null;
+  containerWidth: number;
+  containerHeight: number;
   onPick: (k: TowerKind) => void;
   onDismiss: () => void;
 }) {
   const credits = useHudStore((s) => s.credits);
   const { data } = useSave();
-  // Show only the active loadout, in slot order. Null slots (deployed-then-removed)
-  // are skipped so the picker doesn't render empty cells. If every slot is
-  // empty, fall back to the full def list so the picker is never blank.
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+
   const loadoutDefs = useMemo(() => {
     const slots = normalizeLoadout(data.meta.activeLoadout);
     const byKind = new Map(ALL_TOWER_DEFS.map((d) => [d.kind, d] as const));
@@ -32,13 +37,36 @@ export function TowerPicker({
     return filled.length === 0 ? ALL_TOWER_DEFS : filled;
   }, [data.meta.activeLoadout]);
 
-  // Stay mounted even when hidden so the per-icon Skia Canvases — each of which
-  // owns a native Metal/GL surface — don't get torn down and rebuilt on every
-  // open. Opening/closing the picker was previously visibly slow because of
-  // this mount churn. Hidden via opacity + pointerEvents.
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (size && size.w === width && size.h === height) return;
+    setSize({ w: width, h: height });
+  };
+
+  // Place picker centered horizontally on cell, above by default; flip below
+  // if no room above. Clamp horizontally within the container.
+  const position = useMemo(() => {
+    if (!anchor || !size || containerWidth <= 0 || containerHeight <= 0) return null;
+    const halfTile = anchor.tile / 2;
+    const wantTop = anchor.y - halfTile - GAP - size.h;
+    const top = wantTop >= SPACING.sm ? wantTop : anchor.y + halfTile + GAP;
+    const rawLeft = anchor.x - size.w / 2;
+    const left = Math.max(SPACING.sm, Math.min(containerWidth - size.w - SPACING.sm, rawLeft));
+    return { left, top };
+  }, [anchor, size, containerWidth, containerHeight]);
+
+  const ready = visible && position !== null;
+
   return (
     <View
-      style={[styles.root, !visible && styles.hidden]}
+      onLayout={onLayout}
+      style={[
+        styles.root,
+        ready
+          ? { left: position!.left, top: position!.top }
+          : styles.measuring,
+        !visible && styles.hidden,
+      ]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
       <View style={styles.header}>
@@ -88,21 +116,30 @@ function TowerIcon({ kind }: { kind: TowerKind }) {
 const styles = StyleSheet.create({
   root: {
     position: 'absolute',
-    left: SPACING.sm,
-    right: SPACING.sm,
-    bottom: SPACING.sm,
     backgroundColor: COLORS.bgCard,
     borderRadius: RADIUS.lg,
     padding: SPACING.sm,
     gap: SPACING.sm,
+    alignSelf: 'flex-start',
   },
+  // Pre-warm Skia Canvases at on-screen 0,0 with opacity 0 so the first reveal
+  // doesn't trigger 4 native surface paints on the same frame as the tap.
+  measuring: { left: 0, top: 0, opacity: 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.xs,
+    gap: SPACING.sm,
+    height: 24,
   },
-  title: { ...TEXT.labelSmall, color: COLORS.textMuted },
+  title: {
+    ...TEXT.labelSmall,
+    color: COLORS.textMuted,
+    lineHeight: 24,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
   close: {
     width: 24, height: 24,
     alignItems: 'center', justifyContent: 'center',
@@ -112,12 +149,14 @@ const styles = StyleSheet.create({
   closeText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
   row: { flexDirection: 'row', gap: SPACING.sm },
   cell: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
+    width: 72,
+    height: 72,
+    paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.xs,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.bgElevated,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
   cellDisabled: { opacity: 0.45 },
