@@ -62,12 +62,12 @@ export function SkiaWorld({
           <Group transform={cameraTransform}>
             <PathLayer world={world} viewport={viewport} />
             <BuildableLayer viewport={viewport} world={world} buyKind={buyKind} />
-            <GridOverlayLayer viewport={viewport} snapshot={session.snapshot} />
+            <GridOverlayLayer viewport={viewport} buildHint={session.buildHint} />
             <TowersLayer viewport={viewport} snapshot={session.snapshot} />
             <EnemiesLayer viewport={viewport} snapshot={session.snapshot} />
             <ProjectilesLayer viewport={viewport} snapshot={session.snapshot} />
             <FXLayer />
-            <RangeIndicatorLayer viewport={viewport} snapshot={session.snapshot} />
+            <RangeIndicatorLayer viewport={viewport} range={session.range} />
           </Group>
         </Canvas>
       )}

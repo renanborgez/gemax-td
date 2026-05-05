@@ -5,7 +5,6 @@ import type { Viewport } from '@/engine/Viewport';
 import type { World } from '@/world/World';
 import type { TowerKind } from '@/content/types';
 import { getTowerDef } from '@/entities/registry';
-import { useHudStore } from '@/ui/hudStore';
 import { type Camera, MIN_ZOOM, MAX_ZOOM, clampPan } from '@/render/useCamera';
 
 type GestureOpts = {
@@ -14,6 +13,8 @@ type GestureOpts = {
   camera: Camera;
   getBuyKind: () => TowerKind | null;
   setBuyKind: (k: TowerKind | null) => void;
+  /** Updates world.selection, range SharedValue, and HUD store atomically. */
+  selectTower: (towerId: string | null) => void;
 };
 
 export function useWorldGestures(opts: GestureOpts) {
@@ -75,17 +76,11 @@ export function useWorldGestures(opts: GestureOpts) {
 
       // No buy intent — try to select a tower at the tapped tile.
       const occ = w.grid.occupantAt(grid);
-      if (occ) {
-        w.selection = { towerId: occ };
-        useHudStore.getState().setSelectedTowerId(occ);
-      } else {
-        w.selection = {};
-        useHudStore.getState().setSelectedTowerId(null);
-      }
+      o.selectTower(occ ?? null);
     }
 
+    // No maxDuration cap — default lets slower presses still register as tap.
     const tap = Gesture.Tap()
-      .maxDuration(250)
       .maxDistance(10)
       .onEnd((e) => {
         runOnJS(handleTap)(e.x, e.y);

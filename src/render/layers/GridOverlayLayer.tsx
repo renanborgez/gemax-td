@@ -2,26 +2,26 @@ import React from 'react';
 import { Group, Rect } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { Viewport } from '@/engine/Viewport';
-import type { WorldSnapshot } from '@/render/snapshot';
+import type { BuildHintSnap } from '@/render/snapshot';
 import { COLORS } from '@/render/theme';
 
 export function GridOverlayLayer({
-  viewport, snapshot,
-}: { viewport: Viewport; snapshot: SharedValue<WorldSnapshot> }) {
+  viewport, buildHint,
+}: { viewport: Viewport; buildHint: SharedValue<BuildHintSnap> }) {
   const tileSize = viewport.tileSize;
   const x = useDerivedValue(() => {
-    const h = snapshot.value.buildHint;
+    const h = buildHint.value;
     return h ? h.col * tileSize : 0;
   });
   const y = useDerivedValue(() => {
-    const h = snapshot.value.buildHint;
+    const h = buildHint.value;
     return h ? h.row * tileSize : 0;
   });
   const color = useDerivedValue(() => {
-    const h = snapshot.value.buildHint;
+    const h = buildHint.value;
     return h && !h.valid ? COLORS.invalidHint : COLORS.buildableHint;
   });
-  const opacity = useDerivedValue(() => (snapshot.value.buildHint ? 0.6 : 0));
+  const opacity = useDerivedValue(() => (buildHint.value ? 0.6 : 0));
 
   return (
     <Group>

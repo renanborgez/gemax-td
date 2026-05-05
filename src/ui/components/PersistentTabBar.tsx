@@ -11,6 +11,9 @@ import { COLORS } from '@/render/theme';
  * stack transitions. Driven by a NavigationContainer ref + the route name
  * lifted into RootNav (since useNavigation/useNavigationState only work
  * inside screens, not as siblings of the navigator).
+ *
+ * Tab taps reset the stack so Title is always the root: swiping back from any
+ * secondary screen returns home, never re-stacks through prior tab choices.
  */
 export function PersistentTabBar({
   routeName,
@@ -28,10 +31,19 @@ export function PersistentTabBar({
 
   const onSelect = (k: TabKey) => {
     if (!navRef.isReady()) return;
-    if (k === 'battle') navRef.navigate('Title');
-    else if (k === 'towers') navRef.navigate('TechTree');
-    else if (k === 'settings') navRef.navigate('Settings');
-    // market: not yet implemented
+    if (k === 'market') return; // not yet implemented
+    const target: keyof RootStackParamList | null =
+      k === 'battle' ? 'Title' :
+      k === 'towers' ? 'TechTree' :
+      k === 'settings' ? 'Settings' :
+      null;
+    if (!target) return;
+    if (target === routeName) return; // already there
+    if (target === 'Title') {
+      navRef.reset({ index: 0, routes: [{ name: 'Title' }] });
+    } else {
+      navRef.reset({ index: 1, routes: [{ name: 'Title' }, { name: target }] });
+    }
   };
 
   return (

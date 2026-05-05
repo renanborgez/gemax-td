@@ -1,34 +1,33 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useHudStore } from '@/ui/hudStore';
-import type { World } from '@/world/World';
-import type { TargetPriority } from '@/entities/Tower';
+import type { GameSession } from '@/render/useGameSession';
 import { getTowerDef } from '@/entities/registry';
 import type { TowerKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
-const PRIORITIES: readonly TargetPriority[] = ['first', 'last', 'strongest', 'weakest', 'closest'];
-
-export function TowerPanel({ worldRef }: { worldRef: { current: World } }) {
+export function TowerPanel({ session }: { session: GameSession }) {
   const selectedId = useHudStore((s) => s.selectedTowerId);
-  if (!selectedId) return null;
-  const w = worldRef.current;
-  const t = w.entities.towers.find((x) => x.id === selectedId);
-  if (!t) return null;
-  const def = getTowerDef(t.defKind as TowerKind);
+  // Force re-render after upgrade/sell so derived values (level, cost) refresh.
+  const [, bump] = React.useReducer((n: number) => n + 1, 0);
+  const w = session.worldRef.current;
+  const t = selectedId ? w.selection.tower : undefined;
+  const visible = selectedId !== null && !!t;
+  const def = t ? getTowerDef(t.defKind as TowerKind) : null;
 
   const onSell = () => {
+    if (!t || !def) return;
     const refund = Math.round(def.cost * w.effects.globals.sellRebateRatio);
     t.alive = false;
     w.grid.vacate(t.tileCoord);
     w.credits += refund;
     w.bus.emit('tower-sold', { towerId: t.id, refund });
     w.bus.emit('credits-changed', { credits: w.credits });
-    w.selection = {};
-    useHudStore.getState().setSelectedTowerId(null);
+    session.selectTower(null);
   };
 
   const onUpgrade = () => {
+    if (!t || !def) return;
     if (t.level >= 3) return;
     const next = def.upgrades[t.level - 1];
     if (!next || w.credits < next.cost) return;
@@ -37,41 +36,29 @@ export function TowerPanel({ worldRef }: { worldRef: { current: World } }) {
     t.base = { range: next.range, fireRate: next.fireRate, damage: next.damage };
     w.bus.emit('tower-upgraded', { towerId: t.id, toLevel: t.level });
     w.bus.emit('credits-changed', { credits: w.credits });
+    session.refreshRange();
+    bump();
   };
 
-  const onPriority = (p: TargetPriority) => { t.targetPriority = p; };
-
-  const upgradeCost = t.level < 3 ? def.upgrades[t.level - 1]?.cost : null;
+  const upgradeCost = t && def && t.level < 3 ? def.upgrades[t.level - 1]?.cost : null;
 
   return (
-    <View style={styles.root}>
-      <Text style={styles.title}>{def.displayName} <Text style={styles.level}>L{t.level}</Text></Text>
-      <View style={styles.row}>
-        {PRIORITIES.map((p) => {
-          const active = t.targetPriority === p;
-          return (
-            <Pressable
-              key={p}
-              onPress={() => onPriority(p)}
-              style={[styles.pill, active && styles.pillActive]}
-            >
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                {p[0]!.toUpperCase()}
-              </Text>
+    <View style={[styles.root, !visible && styles.hidden]} pointerEvents={visible ? 'auto' : 'none'}>
+      {t && def && (
+        <>
+          <Text style={styles.title}>{def.displayName} <Text style={styles.level}>L{t.level}</Text></Text>
+          <View style={styles.actions}>
+            {upgradeCost != null && (
+              <Pressable onPress={onUpgrade} style={styles.upgrade}>
+                <Text style={styles.upgradeText}>UPGRADE {upgradeCost} ¢</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onSell} style={styles.sell}>
+              <Text style={styles.sellText}>SELL</Text>
             </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.actions}>
-        {upgradeCost != null && (
-          <Pressable onPress={onUpgrade} style={styles.upgrade}>
-            <Text style={styles.upgradeText}>UPGRADE {upgradeCost} ¢</Text>
-          </Pressable>
-        )}
-        <Pressable onPress={onSell} style={styles.sell}>
-          <Text style={styles.sellText}>SELL</Text>
-        </Pressable>
-      </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -87,18 +74,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     minWidth: 160,
   },
+  hidden: { opacity: 0 },
   title: { ...TEXT.label, fontSize: 13 },
   level: { color: COLORS.primary },
-  row: { flexDirection: 'row', gap: 4 },
-  pill: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.bgElevated,
-  },
-  pillActive: { backgroundColor: COLORS.tertiary },
-  pillText: { ...TEXT.buttonSmall, color: COLORS.textMuted, fontSize: 12 },
-  pillTextActive: { color: COLORS.textOnAccent },
   actions: { gap: SPACING.xs },
   upgrade: {
     paddingVertical: SPACING.sm,

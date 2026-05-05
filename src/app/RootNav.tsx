@@ -26,6 +26,14 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const NO_BACK_OPTIONS = { gestureEnabled: false } as const;
+
+const NO_BACK_LISTENERS = {
+  beforeRemove: (e: { data: { action: { type: string } }; preventDefault: () => void }) => {
+    if (e.data.action.type === 'GO_BACK') e.preventDefault();
+  },
+};
+
 export function RootNav() {
   const navRef = useNavigationContainerRef<RootStackParamList>();
   const [routeName, setRouteName] = useState<string | undefined>(undefined);
@@ -62,10 +70,10 @@ export function RootNav() {
       <View style={styles.root}>
         <View style={styles.stackWrap}>
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.bg } }}>
-            <Stack.Screen name="Title" component={TitleScreen} />
+            <Stack.Screen name="Title" component={TitleScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="LevelSelect" component={LevelSelectScreen} />
-            <Stack.Screen name="TechTree" component={TechTreeScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="TechTree" component={TechTreeScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={NO_BACK_OPTIONS} listeners={NO_BACK_LISTENERS} />
             <Stack.Screen name="Play" component={PlayScreen} />
             <Stack.Screen name="Win" component={WinScreen} />
             <Stack.Screen name="Lose" component={LoseScreen} />

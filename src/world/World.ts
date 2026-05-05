@@ -79,7 +79,7 @@ export type World = {
     leaks: LeakEvent[];
     fireIntents: FireIntent[];
   };
-  selection: { towerId?: string; buildSpot?: GridCoord };
+  selection: { towerId?: string; tower?: Tower; buildSpot?: GridCoord };
   matchSeed: number;
   /** Time since last life-regen tick, seconds (for the global tech node). */
   regenAccumulator: number;

@@ -32,13 +32,11 @@ export class Viewport {
     this.gridRows = opts.gridRows;
     this.canvasOriginScreen = opts.canvasOriginScreen;
     this.dpr = opts.dpr;
-    // Square tiles fit-to-view: the smaller of width/height ratios. The map
-    // can be wider OR taller than the canvas, so always pick the dimension
-    // that fits — pan/zoom navigates the rest.
-    this.tileSize = Math.min(
-      opts.canvasWidthPx / opts.gridCols,
-      opts.canvasHeightPx / opts.gridRows,
-    );
+    // Square tiles sized to fill canvas width. Levels are taller-than-wide,
+    // so vertical overflow is expected and handled by pan/zoom. Picking
+    // width-only (instead of min(w,h)) stretches the grid edge-to-edge
+    // horizontally and avoids letterboxing on the sides.
+    this.tileSize = opts.canvasWidthPx / opts.gridCols;
     this.mapWidthPx = this.tileSize * opts.gridCols;
     this.mapHeightPx = this.tileSize * opts.gridRows;
     this.defaultPanX = (opts.canvasWidthPx - this.mapWidthPx) / 2;

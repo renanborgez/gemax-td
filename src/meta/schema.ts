@@ -41,8 +41,8 @@ export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
     meta: { shards: 0, techTree: {} },
     settings: {
       audioMaster: 1.0,
-      sfx: 1.0,
-      music: 1.0,
+      sfx: 0.8,
+      music: 0.8,
       difficultyDefault: 'normal',
       tutorialSeen: false,
     },

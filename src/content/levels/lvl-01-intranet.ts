@@ -6,30 +6,30 @@ const SHORT = (rows: string[]): TileType[][] =>
     c === 'P' ? 'path' : c === 'B' ? 'buildable' : 'blocked'
   ) as TileType[]);
 
-// 9 cols, 16 rows. Path enters top-left, snakes down.
+// 8 cols, 16 rows. Path enters top-left, snakes down.
 const grid = SHORT([
-  // 012345678
-  'PPPPPBBBB',
-  'XXXXPBBBB',
-  'BBBBPBBBB',
-  'BBBBPBBBB',
-  'BBBBPPPPP',
-  'BBBBBBBBP',
-  'BBBBBBBBP',
-  'PPPPPPPPP',
-  'PBBBBBBBB',
-  'PBBBBBBBB',
-  'PBBBBBBBB',
-  'PPPPPPBBB',
-  'BBBBBPBBB',
-  'BBBBBPBBB',
-  'BBBBBPBBB',
-  'BBBBBPBBB',
+  // 01234567
+  'PPPPPBBB',
+  'XXXXPBBB',
+  'BBBBPBBB',
+  'BBBBPBBB',
+  'BBBBPPPP',
+  'BBBBBBBP',
+  'BBBBBBBP',
+  'PPPPPPPP',
+  'PBBBBBBB',
+  'PBBBBBBB',
+  'PBBBBBBB',
+  'PPPPPPBB',
+  'BBBBBPBB',
+  'BBBBBPBB',
+  'BBBBBPBB',
+  'BBBBBPBB',
 ]);
 
 const path = [
   { col: 0, row: 0 }, { col: 4, row: 0 }, { col: 4, row: 4 },
-  { col: 8, row: 4 }, { col: 8, row: 7 }, { col: 0, row: 7 },
+  { col: 7, row: 4 }, { col: 7, row: 7 }, { col: 0, row: 7 },
   { col: 0, row: 11 }, { col: 5, row: 11 }, { col: 5, row: 15 },
 ];
 
@@ -37,7 +37,7 @@ export const LVL_01_INTRANET: LevelDef = {
   id: 'lvl-01-intranet',
   name: 'Intranet',
   chapter: 0,
-  grid: { cols: 9, rows: 16, cells: grid },
+  grid: { cols: 8, rows: 16, cells: grid },
   spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
   path,
   startCredits: 100,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, PanResponder, type LayoutChangeEvent } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { useSave } from '@/app/providers/SaveProvider';
@@ -8,13 +8,11 @@ import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
-const VOLS = [0, 0.25, 0.5, 0.75, 1];
-
 export function SettingsScreen({ navigation }: Props) {
   const { data, store, refresh } = useSave();
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const setVol = (k: 'audioMaster' | 'sfx' | 'music', v: number) => {
+  const setVol = (k: 'sfx' | 'music', v: number) => {
     store.update((d) => { d.settings[k] = v; });
     refresh();
   };
@@ -29,34 +27,12 @@ export function SettingsScreen({ navigation }: Props) {
       sectionTitle="System Settings"
       onBack={() => navigation.goBack()}
     >
-      <Section label={`MASTER  ${pct(data.settings.audioMaster)}`}>
-        {VOLS.map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVol('audioMaster', v)}
-            style={[styles.dot, data.settings.audioMaster === v && styles.dotActive]}
-          />
-        ))}
-      </Section>
-
-      <Section label={`SFX  ${pct(data.settings.sfx)}`}>
-        {VOLS.map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVol('sfx', v)}
-            style={[styles.dot, data.settings.sfx === v && styles.dotActive]}
-          />
-        ))}
+      <Section label={`EFFECTS  ${pct(data.settings.sfx)}`}>
+        <VolumeBar value={data.settings.sfx} onChange={(v) => setVol('sfx', v)} />
       </Section>
 
       <Section label={`MUSIC  ${pct(data.settings.music)}`}>
-        {VOLS.map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVol('music', v)}
-            style={[styles.dot, data.settings.music === v && styles.dotActive]}
-          />
-        ))}
+        <VolumeBar value={data.settings.music} onChange={(v) => setVol('music', v)} />
       </Section>
 
       <View style={{ height: SPACING.md }} />
@@ -77,7 +53,36 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   return (
     <View style={styles.section}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.row}>{children}</View>
+      {children}
+    </View>
+  );
+}
+
+function VolumeBar({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const widthRef = useRef(0);
+  const onLayout = (e: LayoutChangeEvent) => { widthRef.current = e.nativeEvent.layout.width; };
+  const setFromX = (x: number) => {
+    const w = widthRef.current;
+    if (w <= 0) return;
+    const v = Math.max(0, Math.min(1, x / w));
+    onChange(Math.round(v * 100) / 100);
+  };
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => setFromX(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setFromX(e.nativeEvent.locationX),
+    })
+  ).current;
+  return (
+    <View
+      style={styles.barTrack}
+      onLayout={onLayout}
+      {...responder.panHandlers}
+    >
+      <View style={[styles.barFill, { width: `${value * 100}%` }]} />
+      <View style={[styles.barThumb, { left: `${value * 100}%` }]} />
     </View>
   );
 }
@@ -92,14 +97,28 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgCard,
   },
   label: { ...TEXT.label, color: COLORS.textMuted, fontSize: 11 },
-  row: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  barTrack: {
+    height: 20,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.bgElevated,
+    justifyContent: 'center',
   },
-  dotActive: { backgroundColor: COLORS.primary },
+  barFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.sm,
+  },
+  barThumb: {
+    position: 'absolute',
+    width: 16,
+    height: 24,
+    marginLeft: -8,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.textPrimary,
+  },
   danger: {
     paddingVertical: SPACING.md,
     alignItems: 'center',

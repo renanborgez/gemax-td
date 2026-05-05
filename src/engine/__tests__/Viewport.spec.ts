@@ -38,28 +38,28 @@ describe('Viewport', () => {
     expect(vp.worldToGrid({ x: 99999, y: 99999 })).toEqual({ col: 8, row: 17 });
   });
 
-  it('fit-to-view: tall map fits to width on landscape canvas', () => {
-    // 800w × 400h canvas, 10 cols × 20 rows map → height-bound.
+  it('fit-to-width: tall map overflows vertically on landscape canvas', () => {
+    // 800w × 400h canvas, 10 cols × 20 rows map → tile sized by width.
     const tall = new Viewport({
       canvasWidthPx: 800, canvasHeightPx: 400,
       gridCols: 10, gridRows: 20,
       canvasOriginScreen: { x: 0, y: 0 }, dpr: 1,
     });
-    expect(tall.tileSize).toBe(20);                  // min(80, 20)
-    expect(tall.mapWidthPx).toBe(200);
-    expect(tall.mapHeightPx).toBe(400);
-    expect(tall.defaultPanX).toBe(300);              // (800 - 200) / 2
-    expect(tall.defaultPanY).toBe(0);
+    expect(tall.tileSize).toBe(80);                  // 800 / 10
+    expect(tall.mapWidthPx).toBe(800);
+    expect(tall.mapHeightPx).toBe(1600);
+    expect(tall.defaultPanX).toBe(0);
+    expect(tall.defaultPanY).toBe(-600);             // (400 - 1600) / 2
   });
 
-  it('fit-to-view: wide map fits to height on portrait canvas', () => {
-    // 400w × 800h canvas, 16 cols × 10 rows map → width-bound.
+  it('fit-to-width: short map letterboxes vertically on portrait canvas', () => {
+    // 400w × 800h canvas, 16 cols × 10 rows map → tile sized by width.
     const wide = new Viewport({
       canvasWidthPx: 400, canvasHeightPx: 800,
       gridCols: 16, gridRows: 10,
       canvasOriginScreen: { x: 0, y: 0 }, dpr: 1,
     });
-    expect(wide.tileSize).toBe(25);                  // min(25, 80)
+    expect(wide.tileSize).toBe(25);                  // 400 / 16
     expect(wide.mapWidthPx).toBe(400);
     expect(wide.mapHeightPx).toBe(250);
     expect(wide.defaultPanX).toBe(0);

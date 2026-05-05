@@ -22,14 +22,17 @@ export type WorldSnapshot = {
   enemies: EnemySnap[];
   towers: TowerSnap[];
   projectiles: ProjectileSnap[];
-  buildHint: BuildHintSnap;
-  range: RangeSnap;
 };
 
 export const EMPTY_SNAPSHOT: WorldSnapshot = {
-  enemies: [], towers: [], projectiles: [], buildHint: null, range: null,
+  enemies: [], towers: [], projectiles: [],
 };
 
+// NOTE: Reanimated freezes objects assigned to a SharedValue (in __DEV__ at
+// least), so we cannot reuse a buffer across frames. Allocate fresh each
+// snapshot. The dominant perf win is decoupling range/buildHint into their
+// own event-driven SharedValues (see useGameSession.ts) — the per-frame
+// alloc cost here is small compared to the worklet churn that change avoids.
 export function buildSnapshot(world: World): WorldSnapshot {
   const enemies: EnemySnap[] = [];
   for (const e of world.entities.enemies) {
@@ -62,14 +65,11 @@ export function buildSnapshot(world: World): WorldSnapshot {
     }
     projectiles.push({ x: p.x, y: p.y, kind: p.kind, currentRadius: cr, fromX, fromY, bombPhase, flightProgress });
   }
-  let buildHint: BuildHintSnap = null;
-  const sel = world.selection.buildSpot;
-  if (sel) buildHint = { col: sel.col, row: sel.row, valid: world.grid.canBuild(sel) };
-  let range: RangeSnap = null;
-  const tid = world.selection.towerId;
-  if (tid) {
-    const t = world.entities.towers.find((x) => x.id === tid);
-    if (t) range = { x: t.x, y: t.y, r: t.base.range };
-  }
-  return { enemies, towers, projectiles, buildHint, range };
+  return { enemies, towers, projectiles };
+}
+
+export function rangeFromSelection(world: World): RangeSnap {
+  const t = world.selection.tower;
+  if (!t || !t.alive) return null;
+  return { x: t.x, y: t.y, r: t.base.range };
 }

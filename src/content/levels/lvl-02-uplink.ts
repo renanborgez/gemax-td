@@ -6,33 +6,33 @@ const SHORT = (rows: string[]): TileType[][] =>
     c === 'P' ? 'path' : c === 'B' ? 'buildable' : 'blocked'
   ) as TileType[]);
 
-// 8 cols, 18 rows. Taller-than-wide map to exercise vertical pan/zoom.
+// 7 cols, 18 rows. Taller-than-wide map to exercise vertical pan/zoom.
 const grid = SHORT([
-  // 01234567
-  'PPPPPPBB',
-  'BBBBBPBB',
-  'BBBBBPBB',
-  'BBBBBPBB',
-  'BBBBBPBB',
-  'BPPPPPBB',
-  'BPBBBBBB',
-  'BPBBBBBB',
-  'BPBBBBBB',
-  'BPBBBBBB',
-  'BPBBBBBB',
-  'BPPPPPPB',
-  'BBBBBBPB',
-  'BBBBBBPB',
-  'BBBBBBPB',
-  'BBBBBBPB',
-  'BBBBBBPB',
-  'BBBBBBPB',
+  // 0123456
+  'PPPPPBB',
+  'BBBBPBB',
+  'BBBBPBB',
+  'BBBBPBB',
+  'BBBBPBB',
+  'BPPPPBB',
+  'BPBBBBB',
+  'BPBBBBB',
+  'BPBBBBB',
+  'BPBBBBB',
+  'BPBBBBB',
+  'BPPPPPB',
+  'BBBBBPB',
+  'BBBBBPB',
+  'BBBBBPB',
+  'BBBBBPB',
+  'BBBBBPB',
+  'BBBBBPB',
 ]);
 
 const path = [
-  { col: 0, row: 0 }, { col: 5, row: 0 }, { col: 5, row: 5 },
-  { col: 1, row: 5 }, { col: 1, row: 11 }, { col: 6, row: 11 },
-  { col: 6, row: 17 },
+  { col: 0, row: 0 }, { col: 4, row: 0 }, { col: 4, row: 5 },
+  { col: 1, row: 5 }, { col: 1, row: 11 }, { col: 5, row: 11 },
+  { col: 5, row: 17 },
 ];
 
 export const LVL_02_UPLINK: LevelDef = {
@@ -40,7 +40,7 @@ export const LVL_02_UPLINK: LevelDef = {
   name: 'Uplink',
   chapter: 1,
   unlockRequires: 'lvl-01-intranet',
-  grid: { cols: 8, rows: 18, cells: grid },
+  grid: { cols: 7, rows: 18, cells: grid },
   spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
   path,
   startCredits: 120,

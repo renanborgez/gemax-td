@@ -45,6 +45,7 @@ export function PlayScreen({ route, navigation }: Props) {
     camera,
     getBuyKind: () => buyKind,
     setBuyKind,
+    selectTower: session.selectTower,
   });
 
   // Intercept back-navigation (iOS swipe, hardware back, tab bar) and ask
@@ -139,7 +140,7 @@ export function PlayScreen({ route, navigation }: Props) {
             />
           </View>
         </GestureDetector>
-        <TowerPanel worldRef={session.worldRef} />
+        <TowerPanel session={session} />
         <WavePreview worldRef={session.worldRef} />
       </View>
       <HUDBottom selected={buyKind} onSelect={setBuyKind} />
