@@ -42,6 +42,9 @@ export function SettingsScreen() {
         d.meta.chapterUnlocks = {};
         d.meta.unlockedTowers = [...DEFAULT_UNLOCKED_TOWERS];
         d.meta.activeLoadout = [...DEFAULT_LOADOUT];
+        // Wipe the seen-towers ledger so every "new tower" notification dot
+        // reappears — flipping god off is meant to recreate first-launch UX.
+        d.meta.seenTowers = [];
         delete d.meta.lastPlayedLevelId;
       }
     });

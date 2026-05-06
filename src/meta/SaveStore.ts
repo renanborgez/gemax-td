@@ -19,17 +19,35 @@ export class SaveStore {
 
   async load(): Promise<SaveDataLatest> {
     const main = await this.tryParse(await this.kv.getItem(KEY_MAIN));
-    if (main) { this.cache = runMigrations(main); return this.cache; }
+    if (main) { this.cache = runMigrations(main); this.normalizeOnLoad(); return this.cache; }
     // Recover from tmp if main is missing/corrupt.
     const tmp = await this.tryParse(await this.kv.getItem(KEY_TMP));
     if (tmp) {
       this.cache = runMigrations(tmp);
+      this.normalizeOnLoad();
       await this.flush();         // rewrite main from tmp
       return this.cache;
     }
     this.cache = blankSaveDataLatest();
     await this.flush();           // persist initial save
     return this.cache;
+  }
+
+  /** Reset session-only flags that shouldn't survive an app restart, even in
+   *  dev. Right now that's just the dev god-mode toggle: it persists during a
+   *  session so the player can take advantage of the boost across screens, but
+   *  every fresh launch should start with it off so dev defaults match
+   *  production behavior unless the dev explicitly opts back in. */
+  private normalizeOnLoad(): void {
+    if (!this.cache) return;
+    // `__DEV__` is a React Native runtime global; the engine tsconfig doesn't
+    // ship its type, and vitest's Node env doesn't define it at all. Read it
+    // through globalThis so SaveStore stays usable from pure-TS unit tests
+    // (treated as production = no-op normalize) without a type declaration.
+    const isDev = (globalThis as { __DEV__?: boolean }).__DEV__ === true;
+    if (isDev && this.cache.settings.devGodMode === true) {
+      delete this.cache.settings.devGodMode;
+    }
   }
 
   current(): SaveDataLatest {
