@@ -11,7 +11,7 @@ export function canUnlockTower(kind: TowerKind, data: SaveDataLatest): UnlockRes
   const def = getTowerDef(kind);
   const gateCh = def.unlockedByChapter;
   if (gateCh !== undefined && !data.meta.chapterUnlocks[gateCh]?.rewardClaimedAt) {
-    return { ok: false, reason: `LOCKED · CH ${gateCh + 1}` };
+    return { ok: false, reason: `LOCKED · CH ${gateCh.toString().padStart(2, '0')}` };
   }
   const cost = def.unlockCost ?? 0;
   if (cost === 0) return { ok: true };
