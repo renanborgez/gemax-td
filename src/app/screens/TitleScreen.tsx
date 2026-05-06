@@ -170,13 +170,18 @@ export function TitleScreen({ navigation }: Props) {
         onPress={() => navigation.navigate('Chapters')}
         style={[
           styles.allMissionsFab,
-          { top: BASE.titleLine * scale + SPACING.sm },
+          {
+            // Sit fully below the title's divider row: title line height +
+            // gap above the divider + divider thickness (= dot height) + a
+            // breathing margin so the icon doesn't crowd the line.
+            top: BASE.titleLine * scale + BASE.gapMd * scale + BASE.dot * scale + SPACING.md,
+          },
         ]}
         accessibilityRole="button"
         accessibilityLabel="All missions"
         hitSlop={8}
       >
-        <Ionicons name="list" size={20} color={COLORS.textPrimary} />
+        <Ionicons name="list" size={20} color={COLORS.textMuted} />
       </Pressable>
     </ScreenShell>
   );
@@ -187,13 +192,13 @@ const styles = StyleSheet.create({
   actions: {},
   allMissionsFab: {
     position: 'absolute',
-    right: 0,
+    right: SPACING.sm,
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: COLORS.border,
   },
