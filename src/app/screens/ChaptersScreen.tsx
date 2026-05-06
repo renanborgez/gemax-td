@@ -131,7 +131,7 @@ function ChapterCard({
       <AccentGradientBar primary={accent} secondary={secondary} />
       <View style={{ flex: 1, gap: SPACING.xs }}>
         <Text style={[styles.chapterIndex, { color: accent }]}>
-          CH. {def.index.toString().padStart(2, '0')}
+          CHAPTER {def.index.toString().padStart(2, '0')}
         </Text>
         <Text style={styles.chapterName}>{def.name.toUpperCase()}</Text>
         <Text style={styles.chapterSubtitle}>{def.subtitle}</Text>

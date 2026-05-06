@@ -13,7 +13,7 @@ export function canUnlockTower(kind: TowerKind, data: SaveDataLatest): UnlockRes
   const def = getTowerDef(kind);
   const gateCh = def.unlockedByChapter;
   if (gateCh !== undefined && !data.meta.chapterUnlocks[gateCh]?.rewardClaimedAt) {
-    return { ok: false, reason: `LOCKED · CH ${gateCh.toString().padStart(2, '0')}` };
+    return { ok: false, reason: `LOCKED · CHAPTER ${gateCh.toString().padStart(2, '0')}` };
   }
   const cost = def.unlockCost ?? 0;
   if (cost === 0) return { ok: true };
@@ -100,4 +100,38 @@ export function getTowerStoreEntries(data: SaveDataLatest): TowerStoreEntry[] {
     out.push({ kind: def.kind, state: 'buyable' });
   }
   return out;
+}
+
+/** Tower kinds the player can see on the Towers screen right now (owned or
+ *  buyable; excludes chapter-locked listings). The "new tower" badge is driven
+ *  by comparing this set to `meta.seenTowers`. */
+export function visibleTowerKinds(data: SaveDataLatest): TowerKind[] {
+  return getTowerStoreEntries(data)
+    .filter((e) => e.state !== 'chapter-locked')
+    .map((e) => e.kind);
+}
+
+/** True when at least one currently-visible tower has not been acknowledged
+ *  on the Towers screen yet. Drives the bottom-tab badge dot. */
+export function hasUnseenTowers(data: SaveDataLatest): boolean {
+  const seen = new Set(data.meta.seenTowers);
+  for (const k of visibleTowerKinds(data)) {
+    if (!seen.has(k)) return true;
+  }
+  return false;
+}
+
+/** Mark a single tower as acknowledged. Called when the player opens the
+ *  detail dialog for that tower — the per-tile dot and tab badge clear once
+ *  every newly-unlocked tower has been individually opened. */
+export function markTowerSeen(kind: TowerKind, draft: SaveDataLatest): void {
+  if (draft.meta.seenTowers.includes(kind)) return;
+  draft.meta.seenTowers = [...draft.meta.seenTowers, kind];
+}
+
+/** True when this tower is currently visible to the player but its detail
+ *  dialog has never been opened. Drives the per-tile dot. */
+export function isTowerUnseen(kind: TowerKind, data: SaveDataLatest): boolean {
+  if (data.meta.seenTowers.includes(kind)) return false;
+  return visibleTowerKinds(data).includes(kind);
 }

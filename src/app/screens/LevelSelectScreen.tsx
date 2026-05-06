@@ -67,7 +67,7 @@ export function LevelSelectScreen({ navigation, route }: Props) {
         <View style={[styles.chapterAccentBar, { backgroundColor: accent }]} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[styles.chapterIndex, { color: accent }]}>
-            CH. {chapter.toString().padStart(2, '0')}
+            CHAPTER {chapter.toString().padStart(2, '0')}
           </Text>
           <Text style={styles.chapterName}>
             {(def?.name ?? `Chapter ${chapter}`).toUpperCase()}

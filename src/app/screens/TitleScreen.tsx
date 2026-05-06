@@ -139,7 +139,7 @@ export function TitleScreen({ navigation }: Props) {
                   { color: heroAccent, fontSize: BASE.heroChapter * scale },
                 ]}
               >
-                CH. {heroChapter.toString().padStart(2, '0')}
+                CHAPTER {heroChapter.toString().padStart(2, '0')}
               </Text>
               <Text style={[styles.heroName, { fontSize: BASE.heroName * scale }]}>
                 {heroChapterDef.name.toUpperCase()}

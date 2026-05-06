@@ -11,7 +11,7 @@ describe('canUnlockTower chapter gate', () => {
     save.meta.shards = 9999;                    // shards plentiful
     const result = canUnlockTower('sniper', save);   // sniper is unlockedByChapter: 2
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe('LOCKED · CH 02');
+    if (!result.ok) expect(result.reason).toBe('LOCKED · CHAPTER 02');
   });
 
   it('returns ok when chapter cleared and shards sufficient', () => {

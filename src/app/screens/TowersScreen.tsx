@@ -316,7 +316,7 @@ function AvailableTile({
         <View style={styles.unlockOverlay} pointerEvents="none">
           <Text style={[styles.unlockOverlayText, { color: lockedAccent }]}>LOCKED</Text>
           <Text style={[styles.unlockOverlayCost, { color: lockedAccent }]}>
-            CH {entry.chapterHint!.idx.toString().padStart(2, '0')}
+            CHAPTER {entry.chapterHint!.idx.toString().padStart(2, '0')}
           </Text>
         </View>
       </Pressable>
