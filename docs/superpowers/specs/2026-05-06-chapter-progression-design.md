@@ -23,7 +23,7 @@ This spec adds a chapter-progression spine before launch so players are pulled f
 - No mastery tiers (Hard/Brutal mastery, all-3-star achievements). Star system already exists; layering tiered mastery rewards is out of scope.
 - No per-chapter quests or sub-objectives.
 - No new currencies. Shards remain the only earnable economy resource.
-- No retroactive cost rebate for towers purchased above their gating chapter under the v3 schema. Existing owners keep their towers; the migration only adjusts visibility for unbought towers.
+- No retroactive cost rebate for towers purchased above their gating chapter under prior schema versions. Existing owners keep their towers; the migration only adjusts visibility for unbought towers.
 - No bespoke chapter-clear audio cue in v1 — reuse the existing victory sting.
 
 ## Design choices (resolved during brainstorming)
@@ -41,7 +41,7 @@ The progression layer lives entirely in the **meta** tier. Three concerns split 
 ```
 content/chapterRewards.ts     // authored: chapter idx → { towerKinds, paletteId, medalId }
 meta/chapterProgress.ts       // derivation + reward award (pure)
-meta/migrations/v3-to-v4.ts   // schema bump, no auto-grant of towers
+meta/migrations/index.ts (extend)  // append v4→v5 migration, no auto-grant of towers
 ui/screens/ChapterClearedScreen.tsx  // celebratory reward modal
 ```
 
@@ -191,7 +191,7 @@ export type ChapterUnlockState = {
   rewardClaimedAt?: number;
 };
 
-export type SaveDataV4 = {
+export type SaveDataV5 = {
   profile: { createdAt: number; lastPlayedAt: number };
   campaign: Record<string, LevelProgress>;
   meta: {
@@ -208,36 +208,44 @@ export type SaveDataV4 = {
   settings: SaveSettings;
 };
 
-export const CURRENT_VERSION = 4 as const;
-export type SaveDataLatest = SaveDataV4;
+export const CURRENT_VERSION = 5 as const;
+export type SaveDataLatest = SaveDataV5;
 ```
 
-`blankSaveDataV4` initializes `chapterUnlocks: {}` and omits `activePaletteId`.
+`blankSaveDataV5` initializes `chapterUnlocks: {}` and omits `activePaletteId`.
 
-### New: `src/meta/migrations/v3-to-v4.ts`
+### Extend: `src/meta/migrations/index.ts` — append v4→v5
+
+The migration registry already chains v1→v2→v3→v4. Append a `from: 4, to: 5` entry:
 
 ```ts
-export function migrateV3ToV4(v3: SaveDataV3): SaveDataV4 {
-  const chapterUnlocks: Record<number, ChapterUnlockState> = {};
-  for (let ch = 0; ch < CHAPTERS.length; ch++) {
-    let allCleared = true;
-    for (let m = 0; m < 10; m++) {
-      if (!v3.campaign[`lvl-c${ch}-m${m}`]?.cleared) { allCleared = false; break; }
+{
+  from: 4,
+  to: 5,
+  migrate: (d) => {
+    const v4 = d as SaveDataV4;
+    const chapterUnlocks: Record<number, ChapterUnlockState> = {};
+    for (let ch = 0; ch < CHAPTERS.length; ch++) {
+      let allCleared = true;
+      for (let m = 0; m < 10; m++) {
+        if (!v4.campaign[`lvl-c${ch}-m${m}`]?.cleared) { allCleared = false; break; }
+      }
+      if (allCleared) {
+        // Backdate to lastPlayedAt so chaptersClearedNewly() returns nothing on the first
+        // post-update match end — returning players don't get celebration spam.
+        chapterUnlocks[ch] = { rewardClaimedAt: v4.profile.lastPlayedAt };
+      }
     }
-    if (allCleared) {
-      // Backdate to lastPlayedAt so chaptersClearedNewly() returns nothing on the first
-      // post-update match end — returning players don't get a celebration spam.
-      chapterUnlocks[ch] = { rewardClaimedAt: v3.profile.lastPlayedAt };
-    }
-  }
-  return {
-    ...v3,
-    meta: { ...v3.meta, chapterUnlocks },  // activePaletteId omitted; falls back to chapter-of-current-mission
-  };
-}
+    const v5: SaveDataV5 = {
+      ...v4,
+      meta: { ...v4.meta, chapterUnlocks },  // activePaletteId omitted (optional with exactOptionalPropertyTypes)
+    };
+    return v5;
+  },
+},
 ```
 
-The migration deliberately does **not** auto-grant towers from `CHAPTER_REWARDS[ch].towerKinds` to `unlockedTowers`. The contract is "chapter clear unlocks the listing"; v3 players still need to spend shards on towers they don't already own. v3 players who already bought towers above their chapter keep them — the migration is loss-less.
+The migration deliberately does **not** auto-grant towers from `CHAPTER_REWARDS[ch].towerKinds` to `unlockedTowers`. The contract is "chapter clear unlocks the listing"; pre-v5 players still need to spend shards on towers they don't already own. Pre-v5 players who already bought towers above their chapter keep them — the migration is loss-less.
 
 ### Edit: `src/meta/loadout.ts`
 
@@ -345,8 +353,8 @@ Match win (final mission of the 10th in chapter 3, say):
 ```
 
 ```
-Returning v3 player launches v4 build:
-  1. SaveStore loads v3 blob, runs migrateV3ToV4
+Returning pre-v5 player launches v5 build:
+  1. SaveStore loads pre-v5 blob, runs the chained migrations up through v4→v5
   2. Migration backfills chapterUnlocks for chapters already cleared
   3. rewardClaimedAt = lastPlayedAt (backdated)
   4. Player enters TowersScreen — sees previously-locked listings unlocked
@@ -384,10 +392,10 @@ Returning v3 player launches v4 build:
 
 `src/meta/__tests__/migrations.spec.ts` (or new):
 
-- v3 with no clears → empty `chapterUnlocks`.
-- v3 with one chapter fully cleared → `chapterUnlocks[ch].rewardClaimedAt` set.
-- v3 with partial chapter (9/10 cleared) → that chapter not flagged.
-- v3 with already-bought tower above its mapped chapter → `unlockedTowers` preserved.
+- v4 with no clears → empty `chapterUnlocks`.
+- v4 with one chapter fully cleared → `chapterUnlocks[ch].rewardClaimedAt` set.
+- v4 with partial chapter (9/10 cleared) → that chapter not flagged.
+- v4 with already-bought tower above its mapped chapter → `unlockedTowers` preserved.
 
 `src/content/__tests__/chapterRewards.spec.ts`:
 
