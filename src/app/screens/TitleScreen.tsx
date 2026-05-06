@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   actions: {},
   allMissionsFab: {
     position: 'absolute',
-    right: SPACING.sm,
+    right: -SPACING.sm,
     width: 40,
     height: 40,
     borderRadius: 20,
