@@ -11,6 +11,7 @@ import { ALL_LEVELS, LEVEL_BY_ID } from '@/content/levels';
 import { CHAPTER_BY_INDEX } from '@/content/chapters';
 import type { LevelProgress } from '@/meta/schema';
 import { COLORS, TEXT, SPACING } from '@/render/theme';
+import { resolveChromePalette } from '@/meta/palette';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Title'>;
 
@@ -60,8 +61,7 @@ export function TitleScreen({ navigation }: Props) {
     [lastLevel, data.campaign],
   );
   const heroChapterDef = CHAPTER_BY_INDEX[heroChapter];
-  const heroAccent = heroChapterDef?.paletteAccent ?? COLORS.secondary;
-  const heroSecondary = heroChapterDef?.paletteSecondary;
+  const { accent: heroAccent, secondary: heroSecondary } = resolveChromePalette(data, heroChapter);
 
   // Measured size of the body region drives the global scale.
   const [bodySize, setBodySize] = useState({ w: 0, h: 0 });
