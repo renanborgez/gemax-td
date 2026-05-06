@@ -7,6 +7,8 @@ import { COLORS } from '@/render/theme';
 import { LOGIC_BOMB_RADIUS_TILES } from '@/entities/projectiles/AoEPulseProjectile';
 import { CHAIN_ARC_TTL } from '@/entities/projectiles/ChainArcProjectile';
 import { EMP_BURST_TTL } from '@/entities/projectiles/EMPBurstProjectile';
+import { BEAM_ARC_TTL } from '@/entities/projectiles/BeamArcProjectile';
+import { FLAME_CONE_TTL } from '@/entities/projectiles/FlameConeProjectile';
 
 // Each slot fans out to ~24 useDerivedValue worklets (covering circle / bomb /
 // hitscan / tracer / chain modes). 24 slots is plenty: hitscan/tracer beams
@@ -115,6 +117,58 @@ function ProjectileSlot({
     return p && p.kind === 'projectile:hitscan-bolt' ? 0.95 : 0;
   });
 
+  // Beam-arc endpoints (beam-cannon). Stroke thickness scales with rampFactor
+  // so a fully-ramped sustained beam reads visually heavier than the first tick.
+  const beamArcP1 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:beam-arc') return { x: -1000, y: -1000 };
+    return { x: p.fromX * tileSize, y: p.fromY * tileSize };
+  });
+  const beamArcP2 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:beam-arc') return { x: -1000, y: -1000 };
+    return { x: p.x * tileSize, y: p.y * tileSize };
+  });
+  const beamArcOpacity = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:beam-arc') return 0;
+    return Math.max(0, Math.min(1, p.ttl / BEAM_ARC_TTL));
+  });
+  const beamArcWidth = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:beam-arc') return 0;
+    return 2 + Math.max(0, p.rampFactor - 1) * 3;
+  });
+
+  // Flame-cone splash (flamer). Approximate the cone as a thick fading line
+  // from origin to target — a triangle path would be more faithful but costs
+  // an extra Skia path per slot for marginal visual gain at this scale.
+  const flameP1 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:flame-cone') return { x: -1000, y: -1000 };
+    return { x: p.fromX * tileSize, y: p.fromY * tileSize };
+  });
+  const flameP2 = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:flame-cone') return { x: -1000, y: -1000 };
+    return { x: p.x * tileSize, y: p.y * tileSize };
+  });
+  const flameOpacity = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:flame-cone') return 0;
+    return Math.max(0, Math.min(0.85, p.ttl / FLAME_CONE_TTL));
+  });
+  // Cone half-angle drives the rendered stroke width. At distance d, the cone
+  // half-width is d*tan(half) — approximate with d*half for small angles.
+  const flameWidth = useDerivedValue(() => {
+    const p = snapshot.value.projectiles[index];
+    if (!p || p.kind !== 'projectile:flame-cone') return 0;
+    const dx = (p.x - p.fromX) * tileSize;
+    const dy = (p.y - p.fromY) * tileSize;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return Math.max(6, dist * p.coneHalfAngle);
+  });
+
   // Tracer beam endpoints (sniper) — thicker, orange, with a brighter core.
   const tracerP1 = useDerivedValue(() => {
     const p = snapshot.value.projectiles[index];
@@ -138,6 +192,13 @@ function ProjectileSlot({
       <Circle cx={cx} cy={cy} r={r} color={circleColor} opacity={circleOpacity} />
       <Circle cx={bombCx} cy={bombCy} r={bombR} color={COLORS.danger} opacity={bombOpacity} />
       <Line p1={p1} p2={p2} color={COLORS.primary} style="stroke" strokeWidth={2} opacity={beamOpacity} />
+      {/* Beam-cannon: cyan continuous beam with a brighter inner core; both
+          scale with rampFactor so the visual weight tracks DPS ramp-up. */}
+      <Line p1={beamArcP1} p2={beamArcP2} color={COLORS.cyan} style="stroke" strokeWidth={beamArcWidth} opacity={beamArcOpacity} strokeCap="round" />
+      <Line p1={beamArcP1} p2={beamArcP2} color={COLORS.textPrimary} style="stroke" strokeWidth={1.5} opacity={beamArcOpacity} strokeCap="round" />
+      {/* Flamer cone: wide soft splash that fades over its TTL. */}
+      <Line p1={flameP1} p2={flameP2} color={COLORS.danger} style="stroke" strokeWidth={flameWidth} opacity={flameOpacity} strokeCap="round" />
+      <Line p1={flameP1} p2={flameP2} color={COLORS.tertiary} style="stroke" strokeWidth={3} opacity={flameOpacity} strokeCap="round" />
       {/* Sniper tracer: bright orange core, slightly transparent halo. */}
       <Line p1={tracerP1} p2={tracerP2} color={COLORS.tertiary} style="stroke" strokeWidth={4} opacity={tracerOpacity} />
       <Line p1={tracerP1} p2={tracerP2} color={COLORS.textPrimary} style="stroke" strokeWidth={1.5} opacity={tracerOpacity} />
