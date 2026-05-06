@@ -42,14 +42,14 @@ export function PauseModal({
                 onPress={onAskAbort}
                 style={styles.btnDanger}
                 accessibilityRole="button"
-                accessibilityLabel="Abort mission"
+                accessibilityLabel="Exit mission"
               >
-                <Text style={styles.btnDangerText}>ABORT</Text>
+                <Text style={styles.btnDangerText}>EXIT</Text>
               </Pressable>
             </>
           ) : (
             <>
-              <Text style={styles.titleDanger} accessibilityRole="header">ABORT MISSION?</Text>
+              <Text style={styles.titleDanger} accessibilityRole="header">EXIT MISSION?</Text>
               <Text style={styles.body}>
                 Leaving now will forfeit this run. No shards will be awarded.
               </Text>
@@ -65,9 +65,9 @@ export function PauseModal({
                 onPress={onConfirmAbort}
                 style={styles.btnDanger}
                 accessibilityRole="button"
-                accessibilityLabel="Confirm abort"
+                accessibilityLabel="Confirm exit"
               >
-                <Text style={styles.btnDangerText}>CONFIRM ABORT</Text>
+                <Text style={styles.btnDangerText}>CONFIRM EXIT</Text>
               </Pressable>
             </>
           )}
