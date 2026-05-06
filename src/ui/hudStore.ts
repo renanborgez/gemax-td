@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import type { Difficulty } from '@/content/types';
+import type { ChapterRewards } from '@/content/chapterRewards';
 
 export type WaveStatus = 'idle' | 'in-progress' | 'cleared';
+
+export type ChapterClearPayload = { chapterIdx: number; rewards: ChapterRewards };
 
 export type HudState = {
   lives: number;
@@ -16,6 +19,7 @@ export type HudState = {
   /** Used by HUD overlays to flash on changes. */
   flashLives: number;
   flashCredits: number;
+  pendingChapterClear: ChapterClearPayload[];
 };
 
 export type HudActions = {
@@ -27,12 +31,15 @@ export type HudActions = {
   setDifficulty(d: Difficulty): void;
   setSelectedTowerId(id: string | null): void;
   reset(initial?: Partial<HudState>): void;
+  enqueueChapterClear(p: ChapterClearPayload): void;
+  dequeueChapterClear(): void;
 };
 
 const INITIAL: HudState = {
   lives: 0, credits: 0, waveIndex: -1, totalWaves: 0, waveStatus: 'idle',
   speed: 1, paused: false, difficulty: 'normal',
   selectedTowerId: null, flashLives: 0, flashCredits: 0,
+  pendingChapterClear: [],
 };
 
 export const useHudStore = create<HudState & HudActions>((set) => ({
@@ -45,4 +52,6 @@ export const useHudStore = create<HudState & HudActions>((set) => ({
   setDifficulty: (d) => set({ difficulty: d }),
   setSelectedTowerId: (id) => set({ selectedTowerId: id }),
   reset: (initial) => set({ ...INITIAL, ...initial }),
+  enqueueChapterClear: (p) => set((s) => ({ pendingChapterClear: [...s.pendingChapterClear, p] })),
+  dequeueChapterClear: () => set((s) => ({ pendingChapterClear: s.pendingChapterClear.slice(1) })),
 }));

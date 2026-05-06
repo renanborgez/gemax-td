@@ -18,6 +18,9 @@ export function attachEventBridge(bus: EventBus<SimEventMap>): () => void {
     const s = useHudStore.getState();
     s.setWave(waveIndex, s.totalWaves, 'cleared');
   }));
+  offs.push(bus.on('chapter-cleared', (payload) => {
+    useHudStore.getState().enqueueChapterClear(payload);
+  }));
 
   return () => { for (const off of offs) off(); };
 }
