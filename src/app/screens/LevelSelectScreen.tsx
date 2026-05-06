@@ -82,8 +82,8 @@ export function LevelSelectScreen({ navigation, route }: Props) {
         const isCleared = stars > 0;
         const isNext = !chapterLocked && idx === nextLevelIdx;
         const isFutureLocked = !(__DEV__ && godMode) && !chapterLocked && !isCleared && !isNext;
-        const disabled = !(__DEV__ && godMode) && (chapterLocked || !isNext);
-        const dimmed = !(__DEV__ && godMode) && (chapterLocked || !isNext);
+        const disabled = !(__DEV__ && godMode) && (chapterLocked || isFutureLocked);
+        const dimmed = disabled;
         const subtitleText = chapterLocked
           ? `LOCKED — CLEAR CHAPTER ${chapter - 1} FIRST`
           : isCleared
