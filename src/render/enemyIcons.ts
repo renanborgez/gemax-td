@@ -9,7 +9,7 @@ export const ENEMY_ICON_VIEWBOX = 24;
 export const ENEMY_ICON_SVG: Record<EnemyKind, string> = {
   // Mote: tiny dot inside dotted ring — minimal swarm filler.
   mote:
-    'M 12 12 A 1.5 1.5 0 1 0 12 12.01 ' +
+    'M 10.5 12 A 1.5 1.5 0 1 0 13.5 12 A 1.5 1.5 0 1 0 10.5 12 ' +
     'M 12 6 L 12 6.01 M 16 8 L 16 8.01 M 18 12 L 18 12.01 M 16 16 L 16 16.01 ' +
     'M 12 18 L 12 18.01 M 8 16 L 8 16.01 M 6 12 L 6 12.01 M 8 8 L 8 8.01',
   // Sprite: small four-point star with halo lines — flying runner.
