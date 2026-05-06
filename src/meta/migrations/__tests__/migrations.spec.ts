@@ -141,3 +141,24 @@ describe('v4 → v5 migration', () => {
     expect(out.meta.unlockedTowers).toEqual(['bullet-turret', 'logic-bomb', 'sniper']);
   });
 });
+
+describe('runMigrations defensive backfill', () => {
+  it('backfills missing chapterUnlocks on v5 blobs (e.g., saves written between schema bump and migration deploy)', () => {
+    const v5MissingField = {
+      profile: { createdAt: 1, lastPlayedAt: 2 },
+      campaign: {},
+      meta: {
+        shards: 0,
+        techTree: {},
+        unlockedTowers: ['bullet-turret', 'logic-bomb'],
+        activeLoadout: ['bullet-turret', 'logic-bomb', null],
+      },
+      settings: {
+        audioMaster: 1, sfx: 0.8, music: 0.8,
+        difficultyDefault: 'normal', tutorialSeen: false,
+      },
+    };
+    const out = runMigrations({ version: 5, data: v5MissingField });
+    expect(out.meta.chapterUnlocks).toEqual({});
+  });
+});

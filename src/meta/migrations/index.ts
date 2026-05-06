@@ -108,5 +108,13 @@ export function runMigrations(blob: { version: number; data: unknown }): SaveDat
   if (version !== CURRENT_VERSION) {
     throw new Error(`No migration path from v${version} to v${CURRENT_VERSION}`);
   }
-  return data as SaveDataLatest;
+  // Persisted blobs are an untrusted boundary: a save written between a schema
+  // bump and the corresponding migration deploy may be stamped at the latest
+  // version without the new required fields. Backfill any required-but-missing
+  // meta fields here so consumers can rely on the typed shape.
+  const latest = data as SaveDataLatest;
+  if (!latest.meta.chapterUnlocks) {
+    latest.meta.chapterUnlocks = {};
+  }
+  return latest;
 }
