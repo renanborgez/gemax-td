@@ -29,6 +29,7 @@ import type { FlamerTower } from '@/entities/towers/FlamerTower';
 import { isWraithPhasing } from '@/entities/wraithPhase';
 import { tryGetEnemyDef } from '@/entities/registry';
 import type { Enemy } from '@/entities/Enemy';
+import type { Tower } from '@/entities/Tower';
 
 export type Clock = {
   now(): number;                              // ms
@@ -45,6 +46,10 @@ export class Engine {
   private lastNow: number = 0;
   private cancelTick: (() => void) | null = null;
   private speedMultiplier = 1;
+  // Scratch maps reused across ticks. Allocated once per Engine instance to
+  // avoid per-tick Map() allocation pressure.
+  private readonly enemyById = new Map<string, Enemy>();
+  private readonly towerById = new Map<string, Tower>();
 
   constructor(
     private readonly world: World,
@@ -114,11 +119,13 @@ export class Engine {
 
     // Build id→entity maps once per tick so per-projectile damage / chain
     // logic can resolve attackers and targets in O(1) instead of O(N) finds.
-    // Rebuilt fresh each tick because `compactInPlace` may have moved entries
-    // and bus listeners can't safely mutate these.
-    const enemyById = new Map<string, typeof w.entities.enemies[number]>();
+    // Reuse Engine-scoped Maps across ticks: clear() instead of allocating
+    // new instances each frame.
+    const enemyById = this.enemyById;
+    const towerById = this.towerById;
+    enemyById.clear();
     for (const e of w.entities.enemies) if (e.alive) enemyById.set(e.id, e);
-    const towerById = new Map<string, typeof w.entities.towers[number]>();
+    towerById.clear();
     for (const t of w.entities.towers) if (t.alive) towerById.set(t.id, t);
 
     // 1. Wave director: spawn enemies, emit wave events.
