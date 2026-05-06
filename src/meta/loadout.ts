@@ -9,8 +9,12 @@ export type UnlockResult = { ok: true } | { ok: false; reason: string };
 export function canUnlockTower(kind: TowerKind, data: SaveDataLatest): UnlockResult {
   if (data.meta.unlockedTowers.includes(kind)) return { ok: false, reason: 'OWNED' };
   const def = getTowerDef(kind);
+  const gateCh = def.unlockedByChapter;
+  if (gateCh !== undefined && !data.meta.chapterUnlocks[gateCh]?.rewardClaimedAt) {
+    return { ok: false, reason: `LOCKED · CH ${gateCh + 1}` };
+  }
   const cost = def.unlockCost ?? 0;
-  if (cost === 0) return { ok: true }; // free starter that somehow isn't owned
+  if (cost === 0) return { ok: true };
   if (data.meta.shards < cost) return { ok: false, reason: `${cost - data.meta.shards} ◆ SHORT` };
   return { ok: true };
 }
