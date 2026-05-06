@@ -63,7 +63,7 @@ describe('createWorld', () => {
         globals: {
           startCreditsBonus: 50, startLivesBonus: 0,
           sellRebateRatio: 0.7, lifeRegenPerMinute: 0,
-          bountyMult: 1, stunDurationMult: 1, shardRewardMult: 1, xpRewardMult: 1,
+          bountyMult: 1, stunDurationMult: 1, shardRewardMult: 1,
         },
       },
       redraw: { bump: () => {} },

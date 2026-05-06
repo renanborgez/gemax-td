@@ -9,7 +9,6 @@ export type DifficultyContext = {
   enemySpeedMult: number;
   startCreditsMult: number;
   shardRewardMult: number;
-  xpRewardMult: number;
 };
 
 export function createDifficultyContext(opts: {
@@ -25,6 +24,5 @@ export function createDifficultyContext(opts: {
     enemySpeedMult: sel.enemySpeedMult * ch.speed,
     startCreditsMult: sel.startCreditsMult,
     shardRewardMult: sel.shardRewardMult,
-    xpRewardMult: sel.xpRewardMult,
   };
 }

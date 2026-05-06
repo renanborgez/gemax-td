@@ -102,8 +102,5 @@ function applyNode(ctx: EffectsContext, node: TechNodeDef, rank: number): void {
     case 'shardRewardMultPerRank':
       ctx.globals.shardRewardMult *= 1 + e.perRankMult * effectiveRank;
       break;
-    case 'xpRewardMultPerRank':
-      ctx.globals.xpRewardMult *= 1 + e.perRankMult * effectiveRank;
-      break;
   }
 }

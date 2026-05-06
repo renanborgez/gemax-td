@@ -16,7 +16,7 @@ import type { Difficulty, TowerKind } from '@/content/types';
 import type { GridCoord } from '@/lib/types';
 import type { Viewport } from '@/engine/Viewport';
 import { getTowerDef } from '@/entities/registry';
-import { levelFromXp, xpRewardForMatch, shardRewardForMatch } from '@/meta/playerLevel';
+import { shardRewardForMatch } from '@/meta/playerLevel';
 import { buildEffectsContext } from '@/meta/TechTree';
 
 export type GameSession = {
@@ -124,14 +124,8 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
         const t = world.level.starThresholds;
         const stars: 0 | 1 | 2 | 3 = lives >= t.stars3 ? 3 : lives >= t.stars2 ? 2 : lives > 0 ? 1 : 0;
         if (won) {
-          // Selector × global tech tree mults stack multiplicatively for both
-          // shard and XP rewards.
-          const xpGained = xpRewardForMatch({
-            wavesCleared: world.waveDirector.totalWaves,
-            stars,
-            chapter: world.level.chapter,
-            xpRewardMult: world.difficulty.xpRewardMult * world.effects.globals.xpRewardMult,
-          });
+          // Selector × global tech tree mults stack multiplicatively for the
+          // end-of-match shard reward.
           store.update((d) => {
             const lvl = (d.campaign[world.level.id] ??= {
               bestStarsByDifficulty: {}, bestWaveReached: 0, cleared: false, shardsAwardedFor: [],
@@ -149,8 +143,6 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
               d.meta.shards += award;
               lvl.shardsAwardedFor.push(opts.difficulty);
             }
-            d.meta.playerXp += xpGained;
-            d.meta.playerLevel = levelFromXp(d.meta.playerXp);
           });
           refresh();
           audio.playSfx('win');

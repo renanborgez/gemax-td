@@ -139,17 +139,11 @@ describe('buildEffectsContext', () => {
       expect(ctx.globals.shardRewardMult).toBeCloseTo(1.25);
     });
 
-    it('Global: Telemetry at rank 5 gives +25% XP reward', () => {
-      const ctx = buildEffectsContext({ 'global-xp-rank': 5 });
-      expect(ctx.globals.xpRewardMult).toBeCloseTo(1.25);
-    });
-
     it('rankable globals all default to 1.0 when no node is purchased', () => {
       const ctx = buildEffectsContext({});
       expect(ctx.globals.bountyMult).toBe(1);
       expect(ctx.globals.stunDurationMult).toBe(1);
       expect(ctx.globals.shardRewardMult).toBe(1);
-      expect(ctx.globals.xpRewardMult).toBe(1);
     });
   });
 });

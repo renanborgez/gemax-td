@@ -73,7 +73,8 @@ export type SaveDataV3 = {
     techTree: Record<string, number>;
     unlockedTowers: TowerKind[];
     activeLoadout: (TowerKind | null)[];
-    /** Account XP (cumulative, current level). Drives the long-ladder progression. */
+    /** Legacy account XP fields. V4 strips these; retained on the V3 type so the
+     *  V3→V4 migration is type-checkable. Ignored by all live code paths. */
     playerXp: number;
     playerLevel: number;
     /** Most recently entered level — used by the Title screen's CONTINUE affordance. */
@@ -87,7 +88,26 @@ export type PersistedBlobV3 = {
   data: SaveDataV3;
 };
 
-export const CURRENT_VERSION = 3 as const;
+export type SaveDataV4 = {
+  profile: { createdAt: number; lastPlayedAt: number };
+  campaign: Record<string, LevelProgress>;
+  meta: {
+    shards: number;
+    techTree: Record<string, number>;
+    unlockedTowers: TowerKind[];
+    activeLoadout: (TowerKind | null)[];
+    /** Most recently entered level — used by the Title screen's CONTINUE affordance. */
+    lastPlayedLevelId?: string;
+  };
+  settings: SaveSettings;
+};
+
+export type PersistedBlobV4 = {
+  version: 4;
+  data: SaveDataV4;
+};
+
+export const CURRENT_VERSION = 4 as const;
 
 export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
   return {
@@ -146,6 +166,26 @@ export function blankSaveDataV3(now: number = Date.now()): SaveDataV3 {
   };
 }
 
-export type SaveDataLatest = SaveDataV3;
-export type PersistedBlobLatest = PersistedBlobV3;
-export const blankSaveDataLatest = blankSaveDataV3;
+export function blankSaveDataV4(now: number = Date.now()): SaveDataV4 {
+  return {
+    profile: { createdAt: now, lastPlayedAt: now },
+    campaign: {},
+    meta: {
+      shards: 0,
+      techTree: {},
+      unlockedTowers: [...DEFAULT_UNLOCKED_TOWERS],
+      activeLoadout: [...DEFAULT_LOADOUT],
+    },
+    settings: {
+      audioMaster: 1.0,
+      sfx: 0.8,
+      music: 0.8,
+      difficultyDefault: 'normal',
+      tutorialSeen: false,
+    },
+  };
+}
+
+export type SaveDataLatest = SaveDataV4;
+export type PersistedBlobLatest = PersistedBlobV4;
+export const blankSaveDataLatest = blankSaveDataV4;

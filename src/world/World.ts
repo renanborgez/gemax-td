@@ -52,8 +52,6 @@ export type EffectsContext = {
     stunDurationMult: number;
     /** Multiplier on end-of-match shard reward. Stacks with selector mult. */
     shardRewardMult: number;
-    /** Multiplier on end-of-match XP reward. Stacks with selector mult. */
-    xpRewardMult: number;
   };
 };
 
@@ -68,7 +66,6 @@ export const NULL_EFFECTS: EffectsContext = {
     bountyMult: 1,
     stunDurationMult: 1,
     shardRewardMult: 1,
-    xpRewardMult: 1,
   },
 };
 

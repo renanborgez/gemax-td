@@ -34,9 +34,7 @@ export type TechEffect =
   /** Rank-scaled multiplier on EMP stun duration (and future stun towers). */
   | { type: 'stunDurationMultPerRank'; perRankMult: number }
   /** Rank-scaled multiplier on end-of-match shard reward. */
-  | { type: 'shardRewardMultPerRank'; perRankMult: number }
-  /** Rank-scaled multiplier on end-of-match XP reward. */
-  | { type: 'xpRewardMultPerRank'; perRankMult: number };
+  | { type: 'shardRewardMultPerRank'; perRankMult: number };
 
 export type TechNodeDef = DeepReadonly<{
   id: string;
@@ -268,16 +266,6 @@ const BASE_TECH_NODES: TechNodeDef[] = [
     shardCost: 40,
     maxRank: 5,
     effect: { type: 'shardRewardMultPerRank', perRankMult: 0.05 },
-  },
-  {
-    id: 'global-xp-rank',
-    category: 'global',
-    tier: 3,
-    displayName: 'Global: Telemetry',
-    description: '+5% XP reward per rank.',
-    shardCost: 40,
-    maxRank: 5,
-    effect: { type: 'xpRewardMultPerRank', perRankMult: 0.05 },
   },
 ];
 

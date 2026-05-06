@@ -6,6 +6,7 @@ import {
   type SaveDataV1,
   type SaveDataV2,
   type SaveDataV3,
+  type SaveDataV4,
 } from '@/meta/schema';
 
 export type Migration = {
@@ -38,8 +39,10 @@ export const MIGRATIONS: Migration[] = [
     from: 2,
     to: 3,
     migrate: (d) => {
-      // Account XP starts at zero for existing players (decision: V3 with
-      // zeroed XP — see /Users/renan/.claude/plans/i-want-to-find-optimized-chipmunk.md §7.3).
+      // V3 originally introduced account XP fields. V4 strips them again, but
+      // the V2→V3 step still has to produce a valid V3 shape so chained
+      // migrations from very old saves type-check. The fields are zeroed and
+      // immediately removed by the V3→V4 step below.
       const v2 = d as SaveDataV2;
       const v3: SaveDataV3 = {
         ...v2,
@@ -50,6 +53,19 @@ export const MIGRATIONS: Migration[] = [
         },
       };
       return v3;
+    },
+  },
+  {
+    from: 3,
+    to: 4,
+    migrate: (d) => {
+      // Drop the unused account-XP fields. They were computed on match end but
+      // never read by the UI or any gating, so they were removed. Existing
+      // saves keep their shards/techTree/loadout intact.
+      const v3 = d as SaveDataV3;
+      const { playerXp: _xp, playerLevel: _lvl, ...rest } = v3.meta;
+      const v4: SaveDataV4 = { ...v3, meta: rest };
+      return v4;
     },
   },
 ];
