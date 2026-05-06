@@ -97,8 +97,12 @@ function Stat({ label, value, icon, iconColor }: { label: string; value: string;
 }
 
 const ENEMY_NAMES: Record<EnemyKind, string> = {
-  worm: 'Worm', trojan: 'Trojan', daemon: 'Daemon', rootkit: 'Rootkit',
-  wraith: 'Wraith', hypervisor: 'Hyper', kernelghost: 'Kernel',
+  mote: 'Mote', sprite: 'Sprite', worm: 'Worm', packet: 'Packet',
+  drone: 'Drone', crawler: 'Crawler', stalker: 'Stalker', phantom: 'Phantom',
+  trojan: 'Trojan', bastion: 'Bastion', forkbomb: 'Fork', cache: 'Cache',
+  reaper: 'Reaper', knight: 'Knight', sentinel: 'Sentinel',
+  construct: 'Construct', bulwark: 'Bulwark', daemon: 'Daemon',
+  rootkit: 'Rootkit', wraith: 'Wraith', hypervisor: 'Hyper', kernelghost: 'Kernel',
   'firmware-leech': 'Leech', 'darknet-titan': 'Titan', 'quantum-shade': 'Shade',
   'logic-gate': 'Gate', voidwalker: 'Void', apex: 'Apex',
 };

@@ -24,6 +24,7 @@ function isChapterUnlocked(
   chapter: number,
   campaign: Record<string, LevelProgress>,
 ): boolean {
+  if (__DEV__) return true;
   if (chapter === 0) return true;
   const prev = chapter - 1;
   const prevLevels = ALL_LEVELS.filter((l) => l.chapter === prev);
@@ -78,9 +79,9 @@ export function LevelSelectScreen({ navigation, route }: Props) {
         const isFinale = def?.finaleLevelId === lvl.id;
         const isCleared = stars > 0;
         const isNext = !chapterLocked && idx === nextLevelIdx;
-        const isFutureLocked = !chapterLocked && !isCleared && !isNext;
-        const disabled = chapterLocked || !isNext;
-        const dimmed = chapterLocked || !isNext;
+        const isFutureLocked = !__DEV__ && !chapterLocked && !isCleared && !isNext;
+        const disabled = !__DEV__ && (chapterLocked || !isNext);
+        const dimmed = !__DEV__ && (chapterLocked || !isNext);
         const subtitleText = chapterLocked
           ? `LOCKED — CLEAR CHAPTER ${chapter - 1} FIRST`
           : isCleared

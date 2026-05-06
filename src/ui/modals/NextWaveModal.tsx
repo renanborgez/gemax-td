@@ -9,8 +9,23 @@ import type { EnemyKind, WaveDef } from '@/content/types';
 const ICON_SIZE = 28;
 
 const ENEMY_BLURB: Record<EnemyKind, string> = {
+  mote: 'Pure swarm filler. Single-HP padding — eats a shot but tilts wave count.',
+  sprite: 'Tiny flying runner. Highest base speed in the bestiary — tag early.',
   worm: 'Fast, fragile crawler. Arrives in swarms — splash damage shines here.',
+  packet: 'Tiny ground runner. Half the worm’s HP, ~50% faster — tag before the bend.',
+  drone: 'Mid-tier flyer. Light armor; eligible only for towers that hit air.',
+  crawler: 'Armored mid creep. Slower than trojan, harder shell — pierce favored.',
+  stalker: 'Fast mid creep. Closes the path quickly — splash + slow are useful.',
+  phantom: 'Mid-tier ghost. Light armor; phase mechanics planned for late polish.',
   trojan: 'Mid-tier carrier with light armor. Trades speed for durability.',
+  bastion: 'Light shell, heavy armor. Bullets glance off — pierce or AoE.',
+  forkbomb: 'Splits into two worms on death. Sustain DPS or eat a leak chain.',
+  cache: 'Heal-aura support. Slowly heals nearby creeps — kill the cache first.',
+  reaper: 'Fast heavy. Lower armor than daemon but reaches the base sooner.',
+  knight: 'Armored heavy. Heavy plate; sniper / plasma / mortar pierce required.',
+  sentinel: 'Heavy flyer. Highest-HP airborne unit — needs flak coverage.',
+  construct: 'Heavy splitter. Death-spawns two trojans — finish cleanly or compound.',
+  bulwark: 'Slow tank with heavy armor. High bounty — mortar / sniper friendly.',
   daemon: 'Heavy ground unit. High HP and armor — pierce or focus fire.',
   rootkit: 'Boss-class threat. Massive HP pool; expect to commit your full grid.',
   wraith: 'Phasing boss-class intruder. Faster than a rootkit — sustained DPS only.',

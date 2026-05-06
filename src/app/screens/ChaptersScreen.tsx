@@ -21,6 +21,7 @@ function levelHasAnyStar(progress: LevelProgress | undefined): boolean {
 
 function computeUnlockedChapters(campaign: Record<string, LevelProgress>): Set<number> {
   const chapters = Array.from(new Set(ALL_LEVELS.map((l) => l.chapter))).sort((a, b) => a - b);
+  if (__DEV__) return new Set(chapters);
   const unlocked = new Set<number>();
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i]!;

@@ -191,8 +191,23 @@ function buildGrid(cols: number, rows: number, pathCells: ReadonlyArray<GridCoor
 
 /** Stable HP/threat scoring used to pick enemy mixes by wave intensity. */
 const ENEMY_THREAT: Record<EnemyKind, number> = {
+  mote: 0.3,
+  sprite: 0.5,
   worm: 1,
+  packet: 1,
+  drone: 2.5,
+  crawler: 3,
+  stalker: 3.5,
+  phantom: 3,
   trojan: 3,
+  bastion: 2,
+  forkbomb: 4,
+  cache: 5,
+  reaper: 6,
+  knight: 6.5,
+  sentinel: 6.8,
+  construct: 7,
+  bulwark: 7,
   daemon: 8,
   rootkit: 50,
   wraith: 80,
@@ -206,20 +221,99 @@ const ENEMY_THREAT: Record<EnemyKind, number> = {
   apex: 820,
 };
 
-/** Per-mission kind tier — picks conservative base + heavy kinds so the
- *  Goal-Defense inequality `(8+N)·L ≥ h·N` holds with margin on every
+/** Per-(chapter, mission) kind tier — picks conservative base + heavy kinds
+ *  so the Goal-Defense inequality `(8+N)·L ≥ h·N` holds with margin on every
  *  non-boss wave regardless of path length. Heavy kind appears only in the
- *  back half of a mission and is hard-capped in count. */
-function kindTierForMission(missionIdx: number): {
+ *  back half of a mission and is hard-capped in count.
+ *
+ *  Within each band, the heavyKind rotates by chapter so chapters feel
+ *  distinct (packet → speed lesson, bastion → armor lesson, forkbomb →
+ *  splitter lesson, cache → focus-the-healer lesson, bulwark → tank lesson).
+ *  Every non-boss HP is ≤ daemon's so daemon stays toughest in waves that
+ *  include it — preserving the constant `h = daemon.hp / firewall.dmg` the
+ *  survivability test relies on. */
+function kindTierForMission(chapterIdx: number, missionIdx: number): {
   baseKind: EnemyKind;
   heavyKind: EnemyKind | null;
   /** Per-wave heavy count cap; chosen so even short paths stay survivable. */
   heavyCap: number;
 } {
-  if (missionIdx <= 2) return { baseKind: 'worm',   heavyKind: 'trojan', heavyCap: 4 };
-  if (missionIdx <= 5) return { baseKind: 'worm',   heavyKind: 'trojan', heavyCap: 6 };
-  if (missionIdx <= 7) return { baseKind: 'trojan', heavyKind: 'daemon', heavyCap: 4 };
-  return                       { baseKind: 'trojan', heavyKind: 'daemon', heavyCap: 5 };
+  if (missionIdx <= 2) return { baseKind: 'worm', heavyKind: 'trojan', heavyCap: 4 };
+
+  if (missionIdx <= 5) {
+    // Light-specialist heavyKind per chapter — each entry has HP ≤ ~60 so
+    // the (8+N)·L ≥ h·N math holds on the shortest templates the early
+    // chapters can pick. Chapter 0 keeps trojan to preserve onboarding cadence.
+    const lightHeavy: ReadonlyArray<EnemyKind> = [
+      'trojan',   // ch0 — onboarding
+      'packet',   // ch1 — runners
+      'bastion',  // ch2 — armor
+      'drone',    // ch3 — flying intro
+      'crawler',  // ch4 — armored mid
+      'stalker',  // ch5 — fast mid
+      'sprite',   // ch6 — flying runner
+      'forkbomb', // ch7 — splitter
+      'phantom',  // ch8 — phaser
+      'crawler',  // ch9
+    ];
+    // baseKind also rotates: chapters 4+ swap worm for mote so swarms feel
+    // distinct from early-game cadence. Mote HP (4) keeps survivability easier.
+    const lightBase: ReadonlyArray<EnemyKind> = [
+      'worm', 'worm', 'worm', 'worm',
+      'mote', 'worm', 'mote', 'worm', 'mote', 'worm',
+    ];
+    return {
+      baseKind: lightBase[chapterIdx] ?? 'worm',
+      heavyKind: lightHeavy[chapterIdx] ?? 'trojan',
+      heavyCap: 6,
+    };
+  }
+
+  if (missionIdx <= 7) {
+    // m6–7 mid band. heavyKind rotation introduces distinct heavies per
+    // chapter; every option has HP ≤ daemon so daemon stays toughest in
+    // mixed waves and survivability margin actually grows when a sub-daemon
+    // heavy is selected.
+    const midHeavy: ReadonlyArray<EnemyKind> = [
+      'daemon',  // ch0
+      'daemon',  // ch1
+      'daemon',  // ch2
+      'reaper',  // ch3 — fast heavy
+      'cache',   // ch4 — heal-aura
+      'knight',  // ch5 — armored heavy
+      'sentinel',// ch6 — flying heavy
+      'cache',   // ch7
+      'reaper',  // ch8
+      'daemon',  // ch9
+    ];
+    // baseKind for m6–7: ch3+ rotate trojan/crawler/stalker for variety.
+    const midBase: ReadonlyArray<EnemyKind> = [
+      'trojan', 'trojan', 'trojan',
+      'crawler', 'stalker', 'crawler', 'stalker', 'phantom', 'crawler', 'trojan',
+    ];
+    return {
+      baseKind: midBase[chapterIdx] ?? 'trojan',
+      heavyKind: midHeavy[chapterIdx] ?? 'daemon',
+      heavyCap: 4,
+    };
+  }
+
+  // m8 — pre-finale crescendo. ch5+ swap in heavier specialists (construct
+  // splitter, bulwark tank, knight armor) — every entry HP ≤ daemon so the
+  // toughest-creep `h` term doesn't grow vs an all-daemon wave.
+  const lateHeavy: ReadonlyArray<EnemyKind> = [
+    'daemon',    // ch0
+    'daemon',    // ch1
+    'daemon',    // ch2
+    'daemon',    // ch3
+    'knight',    // ch4 — armor crescendo
+    'bulwark',   // ch5 — tank crescendo
+    'construct', // ch6 — splitter crescendo
+    'bulwark',   // ch7
+    'construct', // ch8
+    'bulwark',   // ch9
+  ];
+  return { baseKind: 'trojan', heavyKind: lateHeavy[chapterIdx] ?? 'daemon', heavyCap: 5 };
 }
 
 function generateWaves(
@@ -233,7 +327,7 @@ function generateWaves(
   // 13 waves including the boss wave at the end.
   const waveCount = 4 + missionIdx;
   const waves: WaveDef[] = [];
-  const tier = kindTierForMission(missionIdx);
+  const tier = kindTierForMission(chapterIdx, missionIdx);
 
   for (let wIdx = 0; wIdx < waveCount; wIdx++) {
     const intensity = wIdx / Math.max(1, waveCount - 1); // 0..1
