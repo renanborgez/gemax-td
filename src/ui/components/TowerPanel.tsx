@@ -39,7 +39,8 @@ function TowerPanelImpl({
   // second tap commits. Auto-disarms when the selection changes so a stale
   // armed state doesn't carry over to a different tower.
   const [sellArmed, setSellArmed] = React.useState(false);
-  React.useEffect(() => { setSellArmed(false); }, [selectedId]);
+  const [expanded, setExpanded] = React.useState(false);
+  React.useEffect(() => { setSellArmed(false); setExpanded(false); }, [selectedId]);
   const w = session.worldRef.current;
   const t = selectedId ? w.selection.tower : undefined;
   const def = t ? getTowerDef(t.defKind as TowerKind) : null;
@@ -137,10 +138,20 @@ function TowerPanelImpl({
   return (
     <Animated.View
       onLayout={onLayout}
-      style={[styles.root, animStyle, !visible && styles.hidden]}
+      style={[expanded ? styles.root : styles.collapsedRoot, animStyle, !visible && styles.hidden]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      {t && def && (
+      {t && def && !expanded && (
+        <Pressable
+          onPress={() => setExpanded(true)}
+          style={styles.collapsedBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${def.displayName} controls`}
+        >
+          <Ionicons name="construct" size={16} color={COLORS.textPrimary} />
+        </Pressable>
+      )}
+      {t && def && expanded && (
         <>
           <Text style={styles.title}>
             {def.displayName} <Text style={styles.level}>L{t.level}</Text>
@@ -244,6 +255,22 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     minWidth: 180,
     alignSelf: 'flex-start',
+  },
+  collapsedRoot: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    alignSelf: 'flex-start',
+  },
+  collapsedBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hidden: { opacity: 0 },
   title: { ...TEXT.label, fontSize: 13 },
