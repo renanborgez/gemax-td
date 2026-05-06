@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { ScreenShell } from '@/ui/components/ScreenShell';
@@ -9,7 +10,7 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { ALL_LEVELS, LEVEL_BY_ID } from '@/content/levels';
 import { CHAPTER_BY_INDEX } from '@/content/chapters';
 import type { LevelProgress } from '@/meta/schema';
-import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
+import { COLORS, TEXT, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Title'>;
 
@@ -24,18 +25,11 @@ const BASE = {
   titleFont: 56,
   titleLine: 64,
   dot: 8,
-  statLabel: 10,
-  statValue: 24,
-  statValueLine: 28,
-  statIcon: 18,
   heroSize: 220,
   heroChapter: 10,
   heroName: 14,
   gapMd: SPACING.md,
-  gapSm: SPACING.sm,
   gapXs: SPACING.xs,
-  cardPadV: SPACING.sm,
-  cardPadH: SPACING.md,
 } as const;
 
 function pickHeroChapter(
@@ -59,7 +53,7 @@ export function TitleScreen({ navigation }: Props) {
   const lastLevelId = data.meta.lastPlayedLevelId;
   const lastLevel = lastLevelId ? LEVEL_BY_ID[lastLevelId] : undefined;
   const canContinue = !!lastLevel;
-  const continueLabel = lastLevel ? `CONTINUE — ${lastLevel.name.toUpperCase()}` : 'CONTINUE';
+  const continueLabel = 'NEXT MISSION';
 
   const heroChapter = useMemo(
     () => pickHeroChapter(lastLevel?.chapter, data.campaign),
@@ -68,17 +62,20 @@ export function TitleScreen({ navigation }: Props) {
   const heroChapterDef = CHAPTER_BY_INDEX[heroChapter];
   const heroAccent = heroChapterDef?.paletteAccent ?? COLORS.secondary;
 
-  // Measured size of the body region. Height drives the global scale; width
-  // drives the hero size so the 3D scene fills available width.
+  // Measured size of the body region drives the global scale.
   const [bodySize, setBodySize] = useState({ w: 0, h: 0 });
   const scale =
     bodySize.h === 0
       ? MAX_SCALE
       : Math.max(MIN_SCALE, Math.min(MAX_SCALE, bodySize.h / REF_HEIGHT));
-  const heroSize =
-    bodySize.w > 0
-      ? Math.min(bodySize.w, bodySize.h * 0.55)
-      : BASE.heroSize * scale;
+  // Hero canvas spans full device width (bleeds past ScreenShell horizontal
+  // padding); its height is capped by available body height so it never pushes
+  // the actions off-screen. Width and height are decoupled so a wide-but-short
+  // body still fills the full screen width without clipping.
+  const screenW = useWindowDimensions().width;
+  const heroW = screenW;
+  const heroH =
+    bodySize.h > 0 ? Math.min(screenW, bodySize.h * 0.72) : screenW;
 
   const onBodyLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -125,77 +122,12 @@ export function TitleScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <View style={[styles.summaryRow, { gap: BASE.gapMd * scale }]}>
-          <View
-            style={[
-              styles.statCard,
-              styles.levelCard,
-              {
-                paddingVertical: BASE.cardPadV * scale,
-                paddingHorizontal: BASE.cardPadH * scale,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.statLabel,
-                { color: COLORS.secondary, fontSize: BASE.statLabel * scale },
-              ]}
-            >
-              LEVEL
-            </Text>
-            <Text
-              style={[
-                styles.statValue,
-                {
-                  color: COLORS.secondary,
-                  fontSize: BASE.statValue * scale,
-                  lineHeight: BASE.statValueLine * scale,
-                },
-              ]}
-            >
-              {data.meta.playerLevel}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statCard,
-              styles.shardCard,
-              {
-                paddingVertical: BASE.cardPadV * scale,
-                paddingHorizontal: BASE.cardPadH * scale,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.statLabel,
-                { color: COLORS.tertiary, fontSize: BASE.statLabel * scale },
-              ]}
-            >
-              SHARDS
-            </Text>
-            <Text
-              style={[
-                styles.statValue,
-                {
-                  color: COLORS.tertiary,
-                  fontSize: BASE.statValue * scale,
-                  lineHeight: BASE.statValueLine * scale,
-                },
-              ]}
-            >
-              {data.meta.shards}{' '}
-              <Text style={[styles.statIcon, { fontSize: BASE.statIcon * scale }]}>◆</Text>
-            </Text>
-          </View>
-        </View>
-
         <View style={[styles.heroWrap, { gap: BASE.gapXs * scale }]}>
           <ChapterHero3D
             chapterIndex={heroChapter}
             accent={heroAccent}
-            size={heroSize}
+            width={heroW}
+            height={heroH}
           />
           {heroChapterDef && (
             <View style={[styles.heroLabel, { gap: 2 * scale }]}>
@@ -215,14 +147,32 @@ export function TitleScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <View style={[styles.actions, { gap: BASE.gapMd * scale }]}>
-        {canContinue && (
-          <AngularButton label={continueLabel} color={COLORS.secondary} onPress={onContinue} />
+      <View style={[styles.actions, { gap: SPACING.xl * scale }]}>
+        {canContinue ? (
+          <>
+            <AngularButton
+              label={continueLabel}
+              color={COLORS.secondary}
+              onPress={onContinue}
+              icon={<Ionicons name="play" size={22} color={COLORS.secondary} />}
+            />
+            <View style={styles.secondaryWrap}>
+              <AngularButton
+                label="ALL MISSIONS"
+                size="sm"
+                color={COLORS.textMuted}
+                onPress={() => navigation.navigate('Chapters')}
+                icon={<Ionicons name="list" size={16} color={COLORS.textMuted} />}
+              />
+            </View>
+          </>
+        ) : (
+          <AngularButton
+            label="PLAY"
+            onPress={() => navigation.navigate('Chapters')}
+            icon={<Ionicons name="play" size={22} color={COLORS.primary} />}
+          />
         )}
-        <AngularButton
-          label={canContinue ? 'NEW MISSION' : 'PLAY'}
-          onPress={() => navigation.navigate('Chapters')}
-        />
       </View>
     </ScreenShell>
   );
@@ -231,6 +181,7 @@ export function TitleScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   body: { flex: 1 },
   actions: {},
+  secondaryWrap: { alignSelf: 'center', width: '60%' },
   titleBlock: { gap: 0 },
   titleLine: {
     ...TEXT.display,
@@ -245,30 +196,11 @@ const styles = StyleSheet.create({
   },
   dot: { backgroundColor: COLORS.primary },
   dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  summaryRow: {
-    flexDirection: 'row',
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    gap: 4,
-  },
-  levelCard: {
-    backgroundColor: COLORS.secondarySoft,
-    borderColor: `${COLORS.secondary}55`,
-  },
-  shardCard: {
-    backgroundColor: COLORS.tertiarySoft,
-    borderColor: `${COLORS.tertiary}55`,
-  },
-  statLabel: { ...TEXT.labelSmall, letterSpacing: 1.2, opacity: 0.85 },
-  statValue: { ...TEXT.display },
-  statIcon: {},
   heroWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: -SPACING.lg,
   },
   heroLabel: { alignItems: 'center' },
   heroChapter: { ...TEXT.labelSmall, letterSpacing: 1.5 },

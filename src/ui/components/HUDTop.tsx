@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useHudStore } from '@/ui/hudStore';
 import type { World } from '@/world/World';
 import type { EnemyKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 export function HUDTop({
-  onPause, onSpeed, onExit, accent,
+  onPause, onSpeed, accent,
 }: {
   onPause: () => void;
   onSpeed: (s: 1 | 2 | 3) => void;
-  onExit: () => void;
   /** Chapter accent — when set, tints the speed-active button. */
   accent?: string;
 }) {
@@ -20,16 +20,25 @@ export function HUDTop({
   const waveIndex = useHudStore((s) => s.waveIndex);
   const totalWaves = useHudStore((s) => s.totalWaves);
   const speed = useHudStore((s) => s.speed);
-  const status = useHudStore((s) => s.waveStatus);
+  const waveStatus = useHudStore((s) => s.waveStatus);
 
   const speedActive = speed === 2;
   const toggleSpeed = () => onSpeed(speedActive ? 1 : 2);
+  const waveActive = waveStatus === 'in-progress';
 
   return (
     <View style={styles.root}>
       <View style={styles.row}>
-        <Stat label="LIVES" value={String(lives)} icon="♥" iconColor={COLORS.danger} />
-        <Stat label="CREDITS" value={String(credits)} icon="◉" iconColor={COLORS.tertiary} />
+        <Stat
+          label="LIVES"
+          value={String(lives)}
+          iconNode={<Ionicons name="heart" size={16} color={COLORS.danger} />}
+        />
+        <Stat
+          label="CREDITS"
+          value={String(credits)}
+          iconNode={<Ionicons name="disc" size={16} color={COLORS.tertiary} />}
+        />
         <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
         <View style={styles.actions}>
           <Pressable
@@ -38,13 +47,16 @@ export function HUDTop({
           >
             <Text style={[styles.btnText, speedActive && styles.btnTextActive]}>{speed}×</Text>
           </Pressable>
-          {status === 'in-progress' && (
-            <Pressable onPress={onPause} style={styles.btn}>
-              <Text style={styles.btnText}>‖</Text>
-            </Pressable>
-          )}
-          <Pressable onPress={onExit} style={[styles.btn, styles.btnExit]} accessibilityLabel="Abort mission">
-            <Text style={[styles.btnText, styles.btnExitText]}>Abort</Text>
+          <Pressable
+            onPress={onPause}
+            style={styles.btn}
+            accessibilityLabel={waveActive ? 'Pause mission' : 'Exit mission'}
+          >
+            <Ionicons
+              name={waveActive ? 'pause' : 'exit-outline'}
+              size={18}
+              color={COLORS.textPrimary}
+            />
           </Pressable>
         </View>
       </View>
@@ -84,12 +96,14 @@ export function NextWaveBanner({
   );
 }
 
-function Stat({ label, value, icon, iconColor }: { label: string; value: string; icon?: string; iconColor?: string }) {
+function Stat({
+  label, value, iconNode,
+}: { label: string; value: string; iconNode?: React.ReactNode }) {
   return (
     <View style={styles.col}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.valueRow}>
-        {icon && <Text style={[styles.icon, iconColor ? { color: iconColor } : null]}>{icon}</Text>}
+        {iconNode}
         <Text style={styles.value}>{value}</Text>
       </View>
     </View>
@@ -116,20 +130,19 @@ function aggregate(wave: World['level']['waves'][number]): Record<string, number
 
 const styles = StyleSheet.create({
   root: {
-    paddingVertical: 4,
+    paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.bgCard,
   },
   row: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    gap: SPACING.lg,
     alignItems: 'center',
   },
-  col: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  col: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
   label: { ...TEXT.labelSmall, fontSize: 10 },
-  value: { ...TEXT.hudValue, fontSize: 14 },
-  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  icon: { ...TEXT.hudValue, fontSize: 13 },
+  value: { ...TEXT.hudValue, fontSize: 18 },
+  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   nextRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -146,16 +159,16 @@ const styles = StyleSheet.create({
   nextHint: { ...TEXT.labelSmall, color: COLORS.tertiary, opacity: 0.8 },
   actions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
   btn: {
-    paddingVertical: 3,
+    paddingVertical: 6,
     paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.bgElevated,
-    minWidth: 32,
+    minWidth: 40,
+    minHeight: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   btnActive: { backgroundColor: COLORS.primary },
-  btnText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
+  btnText: { ...TEXT.buttonSmall, fontSize: 14, color: COLORS.textPrimary },
   btnTextActive: { color: COLORS.textOnAccent },
-  btnExit: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.danger },
-  btnExitText: { color: COLORS.danger },
 });

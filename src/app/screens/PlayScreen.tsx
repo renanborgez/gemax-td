@@ -15,9 +15,8 @@ import { LEVEL_BY_ID } from '@/content/levels';
 import { HUDTop, NextWaveBanner } from '@/ui/components/HUDTop';
 import { TowerPanel } from '@/ui/components/TowerPanel';
 import { TowerPicker } from '@/ui/components/TowerPicker';
-import { PauseModal } from '@/ui/modals/PauseModal';
+import { PauseModal, type PauseModalMode } from '@/ui/modals/PauseModal';
 import { NextWaveModal } from '@/ui/modals/NextWaveModal';
-import { AbortMissionModal } from '@/ui/modals/AbortMissionModal';
 import { TutorialOverlay } from '@/ui/components/TutorialOverlay';
 import { FinalWaveOverlay } from '@/ui/components/FinalWaveOverlay';
 import { useHudStore } from '@/ui/hudStore';
@@ -62,7 +61,7 @@ export function PlayScreen({ route, navigation }: Props) {
     return lvl ? CHAPTER_BY_INDEX[lvl.chapter]?.paletteAccent : undefined;
   })();
   const [pauseVisible, setPauseVisible] = useState(false);
-  const [abortVisible, setAbortVisible] = useState(false);
+  const [pauseMode, setPauseMode] = useState<PauseModalMode>('paused');
   const [nextWaveVisible, setNextWaveVisible] = useState(false);
   const [finalWaveVisible, setFinalWaveVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -143,7 +142,7 @@ export function PlayScreen({ route, navigation }: Props) {
 
   // Intercept back-navigation (iOS swipe, hardware back, tab bar) and ask
   // to confirm. allowExit lets us bypass the prompt for programmatic exits
-  // we trigger ourselves (pause modal "Exit", win/lose, abort confirm).
+  // we trigger ourselves (pause modal flow, win/lose).
   useEffect(() => {
     return navigation.addListener('beforeRemove', (e) => {
       if (allowExit.current) return;
@@ -155,7 +154,8 @@ export function PlayScreen({ route, navigation }: Props) {
         session.pause();
         pausedByAbort.current = true;
       }
-      setAbortVisible(true);
+      setPauseMode('abort-confirm');
+      setPauseVisible(true);
     });
   }, [navigation, session]);
 
@@ -207,14 +207,14 @@ export function PlayScreen({ route, navigation }: Props) {
   }, [session, audio]);
 
   const confirmAbort = () => {
-    setAbortVisible(false);
+    setPauseVisible(false);
     pausedByAbort.current = false;
     allowExit.current = true;
     const action = pendingNavAction.current;
     pendingNavAction.current = null;
-    // Defer navigation by a frame so the AbortMissionModal's native dismiss
-    // can finish before PlayScreen unmounts — otherwise the native Modal can
-    // leave a transparent overlay on the next screen that swallows touches.
+    // Defer navigation by a frame so the modal's native dismiss can finish
+    // before PlayScreen unmounts — otherwise the native Modal can leave a
+    // transparent overlay on the next screen that swallows touches.
     requestAnimationFrame(() => {
       if (action) navigation.dispatch(action);
       else navigation.navigate('Chapters');
@@ -222,28 +222,28 @@ export function PlayScreen({ route, navigation }: Props) {
   };
 
   const cancelAbort = () => {
-    setAbortVisible(false);
+    // If the abort prompt came from a back-gesture, dismiss the modal entirely
+    // and resume. If it came from inside the pause flow (user tapped ABORT in
+    // the paused screen), flip back to the paused view and keep the modal open.
     pendingNavAction.current = null;
     if (pausedByAbort.current) {
+      setPauseVisible(false);
       session.resume();
       pausedByAbort.current = false;
+    } else {
+      setPauseMode('paused');
     }
-  };
-
-  const requestAbort = () => {
-    if (!session.isPaused()) {
-      session.pause();
-      pausedByAbort.current = true;
-    }
-    setAbortVisible(true);
   };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <HUDTop
-        onPause={() => { session.pause(); setPauseVisible(true); }}
+        onPause={() => {
+          session.pause();
+          setPauseMode('paused');
+          setPauseVisible(true);
+        }}
         onSpeed={(s) => session.setSpeed(s)}
-        onExit={requestAbort}
         {...(chapterAccent !== undefined ? { accent: chapterAccent } : {})}
       />
       <View style={styles.canvasWrap} onLayout={onCanvasLayout}>
@@ -284,23 +284,16 @@ export function PlayScreen({ route, navigation }: Props) {
 
       <PauseModal
         visible={pauseVisible}
+        mode={pauseMode}
         onResume={() => { setPauseVisible(false); session.resume(); }}
         onRestart={() => {
           setPauseVisible(false);
           allowExit.current = true;
           navigation.replace('Play', route.params);
         }}
-        onExit={() => {
-          setPauseVisible(false);
-          allowExit.current = true;
-          requestAnimationFrame(() => navigation.navigate('Chapters'));
-        }}
-      />
-
-      <AbortMissionModal
-        visible={abortVisible}
-        onCancel={cancelAbort}
-        onConfirm={confirmAbort}
+        onAskAbort={() => setPauseMode('abort-confirm')}
+        onCancelAbort={cancelAbort}
+        onConfirmAbort={confirmAbort}
       />
 
       <NextWavePreviewBridge

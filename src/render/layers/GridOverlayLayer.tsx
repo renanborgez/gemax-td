@@ -40,7 +40,7 @@ export function GridOverlayLayer({
         style="stroke"
         strokeWidth={Math.max(1, tileSize * 0.04)}
         color={COLORS.primaryDim}
-        opacity={0.9}
+        opacity={0.4}
       />
       <Rect
         x={hintX} y={hintY}

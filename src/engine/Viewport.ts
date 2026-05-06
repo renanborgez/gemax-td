@@ -3,7 +3,7 @@ import { type GridCoord } from '@/lib/types';
 import { clamp } from '@/lib/lerp';
 
 /** Empty rows of breathing room rendered above grid row 0 (spawn area). */
-export const TOP_PADDING_ROWS = 2;
+export const TOP_PADDING_ROWS = 1.2;
 /** Empty rows of breathing room rendered below the last grid row (base area). */
 export const BOTTOM_PADDING_ROWS = 2;
 /** Horizontal canvas margin so spawn/base bubbles at col 0 / last col aren't clipped by canvas edge. */

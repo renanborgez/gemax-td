@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { Canvas, Path } from '@shopify/react-native-skia';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { useSave } from '@/app/providers/SaveProvider';
@@ -250,7 +251,7 @@ function DialogContent({
         </View>
 
         <View style={styles.statRow}>
-          <Stat label="COST" value={`${def.cost} ¢`} />
+          <Stat label="COST" value={String(def.cost)} iconName="disc" iconColor={COLORS.tertiary} />
           <Stat label="RANGE" value={def.baseStats.range.toFixed(1)} />
           <Stat label="DMG" value={String(def.baseStats.damage)} />
           <Stat label="RATE" value={`${def.baseStats.fireRate.toFixed(1)}/s`} />
@@ -296,11 +297,21 @@ function DialogContent({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label, value, iconName, iconColor,
+}: {
+  label: string;
+  value: string;
+  iconName?: React.ComponentProps<typeof Ionicons>['name'];
+  iconColor?: string;
+}) {
   return (
     <View style={styles.stat}>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+      <View style={styles.statValueRow}>
+        {iconName && <Ionicons name={iconName} size={13} color={iconColor ?? COLORS.textPrimary} />}
+        <Text style={styles.statValue}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -430,6 +441,7 @@ const styles = StyleSheet.create({
   },
   stat: { flex: 1, alignItems: 'center', gap: 2 },
   statLabel: { ...TEXT.labelSmall, color: COLORS.textMuted, fontSize: 9 },
+  statValueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statValue: { ...TEXT.hudValue, fontSize: 13 },
   dialogDesc: { ...TEXT.body, fontSize: 13 },
 

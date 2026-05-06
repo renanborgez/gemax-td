@@ -2,38 +2,75 @@ import React from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
+export type PauseModalMode = 'paused' | 'abort-confirm';
+
 export function PauseModal({
-  visible, onResume, onRestart, onExit,
-}: { visible: boolean; onResume: () => void; onRestart: () => void; onExit: () => void }) {
+  visible, mode, onResume, onRestart, onAskAbort, onCancelAbort, onConfirmAbort,
+}: {
+  visible: boolean;
+  mode: PauseModalMode;
+  onResume: () => void;
+  onRestart: () => void;
+  onAskAbort: () => void;
+  onCancelAbort: () => void;
+  onConfirmAbort: () => void;
+}) {
   return (
-    <Modal transparent visible={visible} animationType="fade">
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancelAbort}>
       <View style={styles.bg}>
         <View style={styles.card}>
-          <Text style={styles.title} accessibilityRole="header">PAUSED</Text>
-          <Pressable
-            onPress={onResume}
-            style={styles.btnPrimary}
-            accessibilityRole="button"
-            accessibilityLabel="Resume mission"
-          >
-            <Text style={styles.btnPrimaryText}>RESUME</Text>
-          </Pressable>
-          <Pressable
-            onPress={onRestart}
-            style={styles.btnSecondary}
-            accessibilityRole="button"
-            accessibilityLabel="Restart mission"
-          >
-            <Text style={styles.btnSecondaryText}>RESTART</Text>
-          </Pressable>
-          <Pressable
-            onPress={onExit}
-            style={styles.btnDanger}
-            accessibilityRole="button"
-            accessibilityLabel="Exit mission to map"
-          >
-            <Text style={styles.btnDangerText}>EXIT</Text>
-          </Pressable>
+          {mode === 'paused' ? (
+            <>
+              <Text style={styles.title} accessibilityRole="header">PAUSED</Text>
+              <Pressable
+                onPress={onResume}
+                style={styles.btnPrimary}
+                accessibilityRole="button"
+                accessibilityLabel="Resume mission"
+              >
+                <Text style={styles.btnPrimaryText}>RESUME</Text>
+              </Pressable>
+              <Pressable
+                onPress={onRestart}
+                style={styles.btnSecondary}
+                accessibilityRole="button"
+                accessibilityLabel="Restart mission"
+              >
+                <Text style={styles.btnSecondaryText}>RESTART</Text>
+              </Pressable>
+              <Pressable
+                onPress={onAskAbort}
+                style={styles.btnDanger}
+                accessibilityRole="button"
+                accessibilityLabel="Abort mission"
+              >
+                <Text style={styles.btnDangerText}>ABORT</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.titleDanger} accessibilityRole="header">ABORT MISSION?</Text>
+              <Text style={styles.body}>
+                Leaving now will forfeit this run. No shards will be awarded.
+              </Text>
+              <Pressable
+                onPress={onCancelAbort}
+                style={styles.btnPrimary}
+                accessibilityRole="button"
+                accessibilityLabel="Stay in mission"
+              >
+                <Text style={styles.btnPrimaryText}>STAY</Text>
+              </Pressable>
+              <Pressable
+                onPress={onConfirmAbort}
+                style={styles.btnDanger}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm abort"
+              >
+                <Text style={styles.btnDangerText}>CONFIRM ABORT</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     </Modal>
@@ -46,10 +83,13 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     borderRadius: RADIUS.xl,
     gap: SPACING.md,
-    minWidth: 260,
+    minWidth: 280,
+    maxWidth: 360,
     backgroundColor: COLORS.bgCard,
   },
   title: { ...TEXT.title, color: COLORS.primary, textAlign: 'center', marginBottom: SPACING.sm },
+  titleDanger: { ...TEXT.title, color: COLORS.danger, textAlign: 'center', marginBottom: SPACING.sm },
+  body: { ...TEXT.body, color: COLORS.textMuted, textAlign: 'center', marginBottom: SPACING.sm },
   btnPrimary: {
     paddingVertical: SPACING.md,
     alignItems: 'center',

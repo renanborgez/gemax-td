@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { Canvas, Path } from '@shopify/react-native-skia';
+import { Ionicons } from '@expo/vector-icons';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
 import { useHudStore } from '@/ui/hudStore';
 import { useSave } from '@/app/providers/SaveProvider';
@@ -95,7 +96,14 @@ export function TowerPicker({
             >
               <TowerIcon kind={def.kind} />
               <Text style={styles.name}>{def.displayName}</Text>
-              <Text style={[styles.cost, !affordable && styles.costShort]}>{def.cost} ¢</Text>
+              <View style={styles.costRow}>
+                <Ionicons
+                  name="disc"
+                  size={12}
+                  color={affordable ? COLORS.tertiary : COLORS.danger}
+                />
+                <Text style={[styles.cost, !affordable && styles.costShort]}>{def.cost}</Text>
+              </View>
             </Pressable>
           );
         })}
@@ -174,6 +182,7 @@ const styles = StyleSheet.create({
   hidden: { opacity: 0 },
   icon: { width: ICON_SIZE, height: ICON_SIZE },
   name: { ...TEXT.labelSmall, color: COLORS.textPrimary, fontSize: 11, textAlign: 'center' },
+  costRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cost: { ...TEXT.buttonSmall, color: COLORS.tertiary },
   costShort: { color: COLORS.danger },
 });

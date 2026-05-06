@@ -51,10 +51,10 @@ describe('Viewport', () => {
     expect(tall.tileSize).toBe(80);                  // (824 - 24) / 10
     expect(tall.mapWidthPx).toBe(800);
     expect(tall.mapHeightPx).toBe(1600);
-    expect(tall.topPaddingPx).toBe(160);             // 2 rows × 80
+    expect(tall.topPaddingPx).toBe(96);              // 1.2 rows × 80
     expect(tall.bottomPaddingPx).toBe(160);          // 2 rows × 80
     expect(tall.defaultPanX).toBe(12);               // (824 - 800) / 2
-    expect(tall.defaultPanY).toBe(160);              // top-anchored with 2-row padding
+    expect(tall.defaultPanY).toBe(96);               // top-anchored with 1.2-row padding
   });
 
   it('fit-to-width: short map also top-anchors with row padding', () => {
@@ -67,9 +67,9 @@ describe('Viewport', () => {
     expect(wide.tileSize).toBe(25);                  // (424 - 24) / 16
     expect(wide.mapWidthPx).toBe(400);
     expect(wide.mapHeightPx).toBe(250);
-    expect(wide.topPaddingPx).toBe(50);              // 2 rows × 25
+    expect(wide.topPaddingPx).toBe(30);              // 1.2 rows × 25
     expect(wide.bottomPaddingPx).toBe(50);           // 2 rows × 25
     expect(wide.defaultPanX).toBe(12);               // (424 - 400) / 2
-    expect(wide.defaultPanY).toBe(50);               // top-anchored with 2-row padding
+    expect(wide.defaultPanY).toBe(30);               // top-anchored with 1.2-row padding
   });
 });

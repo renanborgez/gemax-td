@@ -6,7 +6,6 @@ import {
   useDerivedValue,
   useFrameCallback,
 } from 'react-native-reanimated';
-import { COLORS } from '@/render/theme';
 
 /**
  * Per-chapter 3D hero scene — Skia wireframe diorama with a hand-rolled
@@ -474,14 +473,22 @@ export function ChapterHero3D({
   chapterIndex,
   accent,
   size = 220,
+  width,
+  height,
 }: {
   chapterIndex: number;
   /** Hex color used for stroke + glow tint. */
   accent: string;
-  /** Square render size in pixels. */
+  /** Square render size (used when width/height not provided). */
   size?: number;
+  /** Optional explicit canvas width (overrides size). */
+  width?: number;
+  /** Optional explicit canvas height (overrides size). */
+  height?: number;
 }) {
   const scene = SCENES[chapterIndex] ?? SCENE_INTRANET;
+  const w = width ?? size;
+  const h = height ?? size;
 
   // Flatten the scene into worklet-friendly typed buffers. Reanimated worklets
   // can read from captured plain arrays without serialization cost.
@@ -496,7 +503,7 @@ export function ChapterHero3D({
   const groundPath = useDerivedValue<SkPath>(() => {
     'worklet';
     const t = time.value;
-    const cam = cameraParams(t, flat.orbitSpeed, flat.pitch, flat.cameraDistance, size);
+    const cam = cameraParams(t, flat.orbitSpeed, flat.pitch, flat.cameraDistance, w, h);
     const skp = Skia.Path.Make();
 
     // Ground grid: lines parallel to X (varying Z) and lines parallel to Z (varying X).
@@ -524,7 +531,7 @@ export function ChapterHero3D({
   const accentPath = useDerivedValue<SkPath>(() => {
     'worklet';
     const t = time.value;
-    const cam = cameraParams(t, flat.orbitSpeed, flat.pitch, flat.cameraDistance, size);
+    const cam = cameraParams(t, flat.orbitSpeed, flat.pitch, flat.cameraDistance, w, h);
     const skp = Skia.Path.Make();
     drawObjects(skp, flat.hero, t, cam);
     return skp;
@@ -534,7 +541,7 @@ export function ChapterHero3D({
   const accentDim = `${accent}55`;
 
   return (
-    <View style={[styles.root, { width: size, height: size }]} pointerEvents="none">
+    <View style={[styles.root, { width: w, height: h }]} pointerEvents="none">
       <Canvas style={StyleSheet.absoluteFillObject}>
         {/* Ground + dim props drawn at low alpha. */}
         <Path path={groundPath} style="stroke" strokeWidth={1} color={accentDim}
@@ -618,20 +625,25 @@ type Cam = {
 };
 
 function cameraParams(
-  t: number, orbitSpeed: number, pitch: number, dist: number, size: number,
+  t: number, orbitSpeed: number, pitch: number, dist: number, w: number, h: number,
 ): Cam {
   'worklet';
   const yaw = t * orbitSpeed;
-  const focal = size * 0.42;
+  // Focal scales with the smaller axis so the scene never clips on either side.
+  const focal = Math.min(w, h) * 0.78;
+  // Negate pitch so positive `pitch` tilts the camera DOWN onto the scene
+  // (horizon recedes upward) under the flipped screen-Y projection.
   return {
     cosY: Math.cos(yaw),
     sinY: Math.sin(yaw),
-    cosP: Math.cos(pitch),
-    sinP: Math.sin(pitch),
+    cosP: Math.cos(-pitch),
+    sinP: Math.sin(-pitch),
     dist,
     focal,
-    cx: size / 2,
-    cy: size / 2,
+    cx: w / 2,
+    // Origin sits slightly above vertical center so the foreground (which
+    // stretches downward under camera tilt) doesn't clip at the canvas bottom.
+    cy: h * 0.4,
   };
 }
 
@@ -648,7 +660,8 @@ function projectWorld(wx: number, wy: number, wz: number, cam: Cam): { x: number
   const safeZ = camZ > 0.05 ? camZ : 0.05;
   return {
     x: (rx * cam.focal) / safeZ + cam.cx,
-    y: (ry2 * cam.focal) / safeZ + cam.cy,
+    // Screen Y goes down, world Y goes up — flip so +Y in world appears higher on screen.
+    y: -(ry2 * cam.focal) / safeZ + cam.cy,
   };
 }
 
@@ -718,8 +731,6 @@ function drawObjects(skp: SkPath, objs: FlatObjects, t: number, cam: Cam): void 
 const styles = StyleSheet.create({
   root: {
     alignSelf: 'center',
-    backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
     overflow: 'hidden',
   },
 });

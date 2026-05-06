@@ -4,9 +4,13 @@ import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue } from 'react-native-reanimated';
 import { COLORS, TEXT, SPACING } from '@/render/theme';
 
-const CHAMFER = 18;
 const STROKE = 2;
-const HEIGHT = 78;
+const SIZES = {
+  md: { height: 78, chamfer: 18, fontSize: 22, letterSpacing: 4 },
+  sm: { height: 48, chamfer: 12, fontSize: 14, letterSpacing: 2.5 },
+} as const;
+
+type Size = keyof typeof SIZES;
 
 /**
  * Sci-fi PLAY button: chamfered rectangle (top-left + bottom-right corners
@@ -18,20 +22,24 @@ export function AngularButton({
   onPress,
   color = COLORS.primary,
   icon,
+  size = 'md',
 }: {
   label: string;
   onPress: () => void;
   color?: string;
   /** Optional element rendered to the left of the label. */
   icon?: React.ReactNode;
+  size?: Size;
 }) {
-  const width = useSharedValue(0);
-  const height = useSharedValue(HEIGHT);
+  const dims = SIZES[size];
+  const width = useSharedValue<number>(0);
+  const height = useSharedValue<number>(dims.height);
 
+  const chamfer = dims.chamfer;
   const path = useDerivedValue(() => {
     const w = width.value;
     const h = height.value;
-    const c = CHAMFER;
+    const c = chamfer;
     const inset = STROKE / 2;
     const p = Skia.Path.Make();
     if (w <= 0) return p;
@@ -55,26 +63,37 @@ export function AngularButton({
   };
 
   return (
-    <Pressable onPress={onPress} style={styles.root} onLayout={onLayout}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.root, { height: dims.height }]}
+      onLayout={onLayout}
+    >
       <Canvas style={StyleSheet.absoluteFill}>
         <Path path={path} color={`${color}1F`} style="fill" />
         <Path path={path} color={color} style="stroke" strokeWidth={STROKE} />
       </Canvas>
       <View style={styles.labelWrap}>
         {icon}
-        <Text style={[styles.label, { color }]}>{label}</Text>
+        <Text
+          style={[
+            styles.label,
+            { color, fontSize: dims.fontSize, letterSpacing: dims.letterSpacing },
+          ]}
+        >
+          {label}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { width: '100%', height: HEIGHT, justifyContent: 'center' },
+  root: { width: '100%', justifyContent: 'center' },
   labelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.sm,
   },
-  label: { ...TEXT.headline, fontSize: 22, letterSpacing: 4, paddingHorizontal: SPACING.md },
+  label: { ...TEXT.headline, paddingHorizontal: SPACING.md },
 });

@@ -4,6 +4,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { useHudStore } from '@/ui/hudStore';
 import type { GameSession } from '@/render/useGameSession';
 import { getTowerDef } from '@/entities/registry';
@@ -148,7 +149,9 @@ function TowerPanelImpl({
                 accessibilityRole="button"
                 accessibilityLabel={`Upgrade ${def.displayName} for ${nextUpgradePrice} credits`}
               >
-                <Text style={styles.upgradeText}>UPGRADE {nextUpgradePrice} ¢</Text>
+                <Text style={styles.upgradeText}>UPGRADE </Text>
+                <Ionicons name="disc" size={13} color={COLORS.textOnAccent} />
+                <Text style={styles.upgradeText}> {nextUpgradePrice}</Text>
               </Pressable>
             )}
             <Pressable
@@ -215,8 +218,10 @@ const styles = StyleSheet.create({
   statNextDown: { color: COLORS.danger },
   actions: { gap: SPACING.xs },
   upgrade: {
+    flexDirection: 'row',
     paddingVertical: SPACING.sm,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.secondary,
   },
