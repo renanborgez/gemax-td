@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, PanResponder, Linking, type LayoutChangeEvent } from 'react-native';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
+import { DEFAULT_LOADOUT, DEFAULT_UNLOCKED_TOWERS } from '@/meta/schema';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 const APP_VERSION = '1.0.0';
@@ -33,6 +34,15 @@ export function SettingsScreen() {
         d.meta.shards = Math.max(d.meta.shards, 999_999);
       } else {
         delete d.settings.devGodMode;
+        // Drop back to a fresh-player slate so the regular progression flow
+        // is testable: no stars, all chapters re-locked, only starter towers,
+        // zero shards. Settings (audio, etc.) and tutorialSeen are preserved.
+        d.campaign = {};
+        d.meta.shards = 0;
+        d.meta.chapterUnlocks = {};
+        d.meta.unlockedTowers = [...DEFAULT_UNLOCKED_TOWERS];
+        d.meta.activeLoadout = [...DEFAULT_LOADOUT];
+        delete d.meta.lastPlayedLevelId;
       }
     });
     refresh();
@@ -92,7 +102,9 @@ export function SettingsScreen() {
                 GOD MODE {godMode ? 'ON' : 'OFF'}
               </Text>
               <Text style={styles.devToggleHint}>
-                {godMode ? '999K shards · 200K starting credits' : 'Regular economy'}
+                {godMode
+                  ? '999K shards · 200K starting credits'
+                  : 'Toggling off resets to fresh-player state'}
               </Text>
             </View>
             <View style={[styles.devSwitch, godMode && styles.devSwitchOn]}>
