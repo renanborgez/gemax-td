@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
@@ -151,23 +151,12 @@ export function TitleScreen({ navigation }: Props) {
 
       <View style={[styles.actions, { gap: SPACING.xl * scale }]}>
         {canContinue ? (
-          <>
-            <AngularButton
-              label={continueLabel}
-              color={COLORS.secondary}
-              onPress={onContinue}
-              icon={<Ionicons name="play" size={22} color={COLORS.secondary} />}
-            />
-            <View style={styles.secondaryWrap}>
-              <AngularButton
-                label="ALL MISSIONS"
-                size="sm"
-                color={COLORS.textMuted}
-                onPress={() => navigation.navigate('Chapters')}
-                icon={<Ionicons name="list" size={16} color={COLORS.textMuted} />}
-              />
-            </View>
-          </>
+          <AngularButton
+            label={continueLabel}
+            color={COLORS.secondary}
+            onPress={onContinue}
+            icon={<Ionicons name="play" size={22} color={COLORS.secondary} />}
+          />
         ) : (
           <AngularButton
             label="PLAY"
@@ -176,6 +165,19 @@ export function TitleScreen({ navigation }: Props) {
           />
         )}
       </View>
+
+      <Pressable
+        onPress={() => navigation.navigate('Chapters')}
+        style={[
+          styles.allMissionsFab,
+          { top: BASE.titleLine * scale + SPACING.sm },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="All missions"
+        hitSlop={8}
+      >
+        <Ionicons name="list" size={20} color={COLORS.textPrimary} />
+      </Pressable>
     </ScreenShell>
   );
 }
@@ -183,7 +185,18 @@ export function TitleScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   body: { flex: 1 },
   actions: {},
-  secondaryWrap: { alignSelf: 'center', width: '60%' },
+  allMissionsFab: {
+    position: 'absolute',
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   titleBlock: { gap: 0 },
   titleLine: {
     ...TEXT.display,
