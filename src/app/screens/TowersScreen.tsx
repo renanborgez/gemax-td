@@ -109,11 +109,11 @@ export function TowersScreen({ navigation }: Props) {
     return normalizedLoadout.map((k) => (k === null ? null : byKind.get(k) ?? null));
   }, [normalizedLoadout]);
 
-  // Available = every tower (equipped tiles flagged inline with an EQUIPPED badge).
-  // Sort priority: unlocked first, then by gating chapter (earlier chapters
-  // bubble up so the "next thing to grind" reads top-left), then by the
-  // user-selected sort mode (rarity / cost / name) as a stable tie-break.
-  const availableEntries: { def: TowerDef; entry: TowerStoreEntry }[] = useMemo(() => {
+  // Available = owned + buyable (purchasable now). Locked = chapter-locked
+  // (waiting on a chapter clear). Splitting into two sections keeps the
+  // "what can I deploy/buy right now" surface separate from the long-tail
+  // roadmap.
+  const { availableEntries, lockedEntries } = useMemo(() => {
     const entries = getTowerStoreEntries(data);
     const byKind = new Map(entries.map((e) => [e.kind, e] as const));
     const stateRank = (s: TowerStoreEntry['state']): number => {
@@ -121,17 +121,23 @@ export function TowersScreen({ navigation }: Props) {
       if (s === 'buyable') return 1;
       return 2;
     };
-    return ALL_TOWER_DEFS.slice()
-      .sort((a, b) => {
-        const sa = stateRank(byKind.get(a.kind)!.state);
-        const sb = stateRank(byKind.get(b.kind)!.state);
-        if (sa !== sb) return sa - sb;
-        const ca = a.unlockedByChapter ?? -1;
-        const cb = b.unlockedByChapter ?? -1;
-        if (ca !== cb) return ca - cb;
-        return compareDefs(a, b, sortMode);
-      })
-      .map((def) => ({ def, entry: byKind.get(def.kind)! }));
+    const sorted = ALL_TOWER_DEFS.slice().sort((a, b) => {
+      const sa = stateRank(byKind.get(a.kind)!.state);
+      const sb = stateRank(byKind.get(b.kind)!.state);
+      if (sa !== sb) return sa - sb;
+      const ca = a.unlockedByChapter ?? -1;
+      const cb = b.unlockedByChapter ?? -1;
+      if (ca !== cb) return ca - cb;
+      return compareDefs(a, b, sortMode);
+    });
+    const available: { def: TowerDef; entry: TowerStoreEntry }[] = [];
+    const locked: { def: TowerDef; entry: TowerStoreEntry }[] = [];
+    for (const def of sorted) {
+      const entry = byKind.get(def.kind)!;
+      if (entry.state === 'chapter-locked') locked.push({ def, entry });
+      else available.push({ def, entry });
+    }
+    return { availableEntries: available, lockedEntries: locked };
   }, [data, sortMode]);
 
   return (
@@ -171,12 +177,7 @@ export function TowersScreen({ navigation }: Props) {
       <View style={styles.availableGrid}>
         {availableEntries.map(({ def, entry }) => {
           const equipped = normalizedLoadout.includes(def.kind);
-          const onPress = entry.state === 'chapter-locked'
-            ? () => navigation.navigate('Chapters')
-            : () => openDialog(def.kind);
-          // Chapter-locked tiles can't be opened, so they never carry a dot;
-          // the dot only marks visible-but-unopened towers.
-          const unseen = entry.state !== 'chapter-locked' && !seenSet.has(def.kind);
+          const unseen = !seenSet.has(def.kind);
           return (
             <AvailableTile
               key={def.kind}
@@ -184,17 +185,39 @@ export function TowersScreen({ navigation }: Props) {
               entry={entry}
               equipped={equipped}
               unseen={unseen}
-              onPress={onPress}
+              onPress={() => openDialog(def.kind)}
             />
           );
         })}
-        {/* Pad the trailing row with empty tiles so every line is 3 cells wide. */}
         {Array.from({ length: trailingPlaceholders(availableEntries.length) }, (_, i) => (
           <View key={`pad-${i}`} style={[styles.tile, styles.tileEmpty]}>
             <Text style={styles.tileEmptyText}>—</Text>
           </View>
         ))}
       </View>
+
+      {lockedEntries.length > 0 && (
+        <>
+          <Text style={styles.sectionLabel}>LOCKED</Text>
+          <View style={styles.availableGrid}>
+            {lockedEntries.map(({ def, entry }) => (
+              <AvailableTile
+                key={def.kind}
+                def={def}
+                entry={entry}
+                equipped={false}
+                unseen={false}
+                onPress={() => navigation.navigate('Chapters')}
+              />
+            ))}
+            {Array.from({ length: trailingPlaceholders(lockedEntries.length) }, (_, i) => (
+              <View key={`pad-locked-${i}`} style={[styles.tile, styles.tileEmpty]}>
+                <Text style={styles.tileEmptyText}>—</Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
 
       <TowerDialog
         kind={dialogKind}
