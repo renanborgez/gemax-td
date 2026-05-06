@@ -35,6 +35,11 @@ function TowerPanelImpl({
   const selectedId = useHudStore((s) => s.selectedTowerId);
   // Force re-render after upgrade/sell so derived values (level, cost) refresh.
   const [, bump] = React.useReducer((n: number) => n + 1, 0);
+  // Two-tap sell confirm: first tap arms the button (shows the refund amount),
+  // second tap commits. Auto-disarms when the selection changes so a stale
+  // armed state doesn't carry over to a different tower.
+  const [sellArmed, setSellArmed] = React.useState(false);
+  React.useEffect(() => { setSellArmed(false); }, [selectedId]);
   const w = session.worldRef.current;
   const t = selectedId ? w.selection.tower : undefined;
   const def = t ? getTowerDef(t.defKind as TowerKind) : null;
@@ -79,17 +84,29 @@ function TowerPanelImpl({
     return { transform: [{ translateX: left }, { translateY: top }] };
   });
 
+  // Refund preview drives both the armed-button label and the final commit
+  // amount. Computed inline (not memoized) since it's cheap and t/level can
+  // change between renders without triggering the closure-capture pattern.
+  const sellRefund = t && def
+    ? (() => {
+      let totalSpent = def.cost;
+      for (let tier = 1; tier < t.level; tier++) {
+        totalSpent += upgradeCost(def.cost, tier);
+      }
+      return Math.round(totalSpent * w.effects.globals.sellRebateRatio);
+    })()
+    : 0;
+
   const onSell = () => {
     if (!t || !def) return;
-    let totalSpent = def.cost;
-    for (let tier = 1; tier < t.level; tier++) {
-      totalSpent += upgradeCost(def.cost, tier);
+    if (!sellArmed) {
+      setSellArmed(true);
+      return;
     }
-    const refund = Math.round(totalSpent * w.effects.globals.sellRebateRatio);
     t.alive = false;
     w.grid.vacate(t.tileCoord);
-    w.credits += refund;
-    w.bus.emit('tower-sold', { towerId: t.id, refund });
+    w.credits += sellRefund;
+    w.bus.emit('tower-sold', { towerId: t.id, refund: sellRefund });
     w.bus.emit('credits-changed', { credits: w.credits });
     session.selectTower(null);
   };
@@ -166,11 +183,23 @@ function TowerPanelImpl({
             )}
             <Pressable
               onPress={onSell}
-              style={styles.sell}
+              style={[styles.sell, sellArmed && styles.sellArmed]}
               accessibilityRole="button"
-              accessibilityLabel={`Sell ${def.displayName}`}
+              accessibilityLabel={
+                sellArmed
+                  ? `Confirm sell ${def.displayName} for ${sellRefund} credits`
+                  : `Sell ${def.displayName}`
+              }
             >
-              <Text style={styles.sellText}>SELL</Text>
+              {sellArmed ? (
+                <View style={styles.sellArmedRow}>
+                  <Text style={styles.sellArmedText}>CONFIRM · +</Text>
+                  <Ionicons name="disc" size={13} color={COLORS.textOnAccent} />
+                  <Text style={styles.sellArmedText}> {sellRefund}</Text>
+                </View>
+              ) : (
+                <Text style={styles.sellText}>SELL · +{sellRefund}</Text>
+              )}
             </Pressable>
           </View>
         </>
@@ -250,5 +279,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.danger,
     borderWidth: 1,
   },
+  sellArmed: {
+    backgroundColor: COLORS.danger,
+    borderColor: COLORS.danger,
+  },
   sellText: { ...TEXT.buttonSmall, color: COLORS.danger },
+  sellArmedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellArmedText: { ...TEXT.buttonSmall, color: COLORS.textOnAccent },
 });
