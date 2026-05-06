@@ -145,6 +145,11 @@ export class Engine {
     // Cryo Field passive aura — refreshes a brief slow status on every enemy
     // in range each tick. No fire intent; runs before targeting so the slow
     // is already on enemies when other towers pick them.
+    //
+    // Refresh-in-place: if a slow from this tower already exists on the enemy,
+    // bump its `remaining` back to full instead of pushing a new entry. The
+    // status list otherwise grows ~duration*60 entries per cryo/enemy pair,
+    // which makes movementSystem's per-enemy slowMultiplier scan O(huge).
     for (const t of w.entities.towers) {
       if (!t.alive || t.defKind !== 'cryo-field') continue;
       const cryo = t as CryoFieldTower;
@@ -154,13 +159,25 @@ export class Engine {
         const dx = e.x - t.x;
         const dy = e.y - t.y;
         if (dx * dx + dy * dy > r2) continue;
-        e.statuses.push({
-          kind: 'slow',
-          magnitude: cryo.auraSlowStrength,
-          duration: cryo.auraSlowDuration,
-          remaining: cryo.auraSlowDuration,
-          appliedByTowerId: t.id,
-        });
+        let refreshed = false;
+        for (const s of e.statuses) {
+          if (s.kind === 'slow' && s.appliedByTowerId === t.id) {
+            s.magnitude = cryo.auraSlowStrength;
+            s.duration = cryo.auraSlowDuration;
+            s.remaining = cryo.auraSlowDuration;
+            refreshed = true;
+            break;
+          }
+        }
+        if (!refreshed) {
+          e.statuses.push({
+            kind: 'slow',
+            magnitude: cryo.auraSlowStrength,
+            duration: cryo.auraSlowDuration,
+            remaining: cryo.auraSlowDuration,
+            appliedByTowerId: t.id,
+          });
+        }
       }
     }
 

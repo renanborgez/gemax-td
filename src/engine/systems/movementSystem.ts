@@ -27,8 +27,13 @@ export function movementSystem(
     // Status decay + DoT staging.
     const dotDps = totalDotDps(e.statuses);
     if (dotDps > 0) {
-      // Attribute to the strongest dot's source (simplest: latest dot).
-      const lastDot = [...e.statuses].reverse().find((s) => s.kind === 'dot');
+      // Attribute to the most recently applied dot (last `dot` entry in the list).
+      // Walk backwards in place — avoid allocating a reversed copy every tick.
+      let lastDot: typeof e.statuses[number] | undefined;
+      for (let i = e.statuses.length - 1; i >= 0; i--) {
+        const s = e.statuses[i]!;
+        if (s.kind === 'dot') { lastDot = s; break; }
+      }
       if (lastDot) {
         outDotTicks.push({
           targetEnemyId: e.id,
