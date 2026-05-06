@@ -8,7 +8,8 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
 import { RARITY_ORDER, rarityRank, type Rarity, type TowerDef, type TowerKind } from '@/content/types';
 import { TOWER_ICON_COLORS, makeTowerIconPath } from '@/render/towerIcons';
-import { canUnlockTower, isInLoadout, loadoutFull, normalizeLoadout, toggleLoadout, unlockTower } from '@/meta/loadout';
+import { canUnlockTower, isInLoadout, loadoutFull, normalizeLoadout, toggleLoadout, unlockTower, getTowerStoreEntries, type TowerStoreEntry } from '@/meta/loadout';
+import { CHAPTER_BY_INDEX } from '@/content/chapters';
 import { LOADOUT_SLOTS } from '@/meta/schema';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, RARITY_COLORS, RARITY_LABELS, TEXT, RADIUS, SPACING } from '@/render/theme';
@@ -96,9 +97,13 @@ export function TowersScreen({ navigation: _navigation }: Props) {
   }, [normalizedLoadout]);
 
   // Available = every tower (equipped tiles flagged inline with an EQUIPPED badge).
-  const availableDefs: TowerDef[] = useMemo(() => {
-    return ALL_TOWER_DEFS.slice().sort((a, b) => compareDefs(a, b, sortMode));
-  }, [sortMode]);
+  const availableEntries: { def: TowerDef; entry: TowerStoreEntry }[] = useMemo(() => {
+    const entries = getTowerStoreEntries(data);
+    const byKind = new Map(entries.map((e) => [e.kind, e] as const));
+    return ALL_TOWER_DEFS.slice()
+      .sort((a, b) => compareDefs(a, b, sortMode))
+      .map((def) => ({ def, entry: byKind.get(def.kind)! }));
+  }, [data, sortMode]);
 
   return (
     <ScreenShell sectionTitle="Towers">
@@ -134,21 +139,20 @@ export function TowersScreen({ navigation: _navigation }: Props) {
         </Pressable>
       </View>
       <View style={styles.availableGrid}>
-        {availableDefs.map((def) => {
-          const owned = data.meta.unlockedTowers.includes(def.kind);
+        {availableEntries.map(({ def, entry }) => {
           const equipped = normalizedLoadout.includes(def.kind);
           return (
             <AvailableTile
               key={def.kind}
               def={def}
-              owned={owned}
+              entry={entry}
               equipped={equipped}
               onPress={() => setDialogKind(def.kind)}
             />
           );
         })}
         {/* Pad the trailing row with empty tiles so every line is 3 cells wide. */}
-        {Array.from({ length: trailingPlaceholders(availableDefs.length) }, (_, i) => (
+        {Array.from({ length: trailingPlaceholders(availableEntries.length) }, (_, i) => (
           <View key={`pad-${i}`} style={[styles.tile, styles.tileEmpty]}>
             <Text style={styles.tileEmptyText}>—</Text>
           </View>
@@ -228,9 +232,36 @@ function EquippedTile({
 }
 
 function AvailableTile({
-  def, owned, equipped, onPress,
-}: { def: TowerDef; owned: boolean; equipped: boolean; onPress: () => void }) {
-  if (!owned) {
+  def, entry, equipped, onPress,
+}: {
+  def: TowerDef;
+  entry: TowerStoreEntry;
+  equipped: boolean;
+  onPress: () => void;
+}) {
+  if (entry.state === 'chapter-locked') {
+    const ch = CHAPTER_BY_INDEX[entry.chapterHint!.idx];
+    const lockedAccent = ch?.paletteAccent ?? COLORS.textMuted;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={[styles.tile, styles.tileLocked, { backgroundColor: rarityTileTint(def.rarity, true) }]}
+      >
+        <View style={styles.tileLockedDimmed} pointerEvents="none">
+          <TowerIcon kind={def.kind} size={TILE_ICON_SIZE} />
+          <Text style={styles.tileName} numberOfLines={1}>{def.displayName}</Text>
+        </View>
+        <View style={styles.unlockOverlay} pointerEvents="none">
+          <Text style={[styles.unlockOverlayText, { color: lockedAccent }]}>LOCKED</Text>
+          <Text style={[styles.unlockOverlayCost, { color: lockedAccent }]}>
+            CH {entry.chapterHint!.idx.toString().padStart(2, '0')}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
+
+  if (entry.state === 'buyable') {
     return (
       <Pressable
         onPress={onPress}
@@ -247,6 +278,8 @@ function AvailableTile({
       </Pressable>
     );
   }
+
+  // entry.state === 'owned'
   return (
     <Pressable
       onPress={onPress}
