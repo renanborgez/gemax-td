@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { AppState } from 'react-native';
 import { Engine, type Clock } from '@/engine/Engine';
@@ -86,17 +86,28 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     if (__DEV__) {
       worldRef.current.credits = 200000;
     }
+  }
+
+  // Reset hudStore in a layout effect so the setState fires AFTER render
+  // commit — calling reset directly in the render body trips React 19's
+  // "setState during render" warning when subscribed components (HUDTop,
+  // NextWaveBanner) are part of the same render pass.
+  const didResetHudRef = useRef(false);
+  useLayoutEffect(() => {
+    if (didResetHudRef.current) return;
+    didResetHudRef.current = true;
+    const w = worldRef.current!;
     useHudStore.getState().reset({
-      lives: worldRef.current.lives,
-      credits: worldRef.current.credits,
-      totalWaves: level.waves.length,
+      lives: w.lives,
+      credits: w.credits,
+      totalWaves: w.level.waves.length,
       waveIndex: -1,
       waveStatus: 'idle',
       difficulty: opts.difficulty,
       speed: 1,
       paused: false,
     });
-  }
+  }, [opts.difficulty]);
 
   const session = useMemo<GameSession>(() => {
     const w = worldRef.current!;
@@ -169,15 +180,10 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
       setTimeout(() => audio.playSfx('tower-placed'), 0);
     });
 
-    // Per-tower fire SFX. Coalesce rapid same-kind shots so a wave of fire
-    // intents in a single tick doesn't fan out into N synchronous audio calls.
-    const lastFireAt = new Map<string, number>();
+    // Per-tower fire SFX. AudioManager round-robins a per-key pool, so
+    // concurrent same-kind shots reuse pool slots instead of stomping one player.
     w.bus.on('tower-fired', ({ kind }) => {
       const sfxKey = `tower-fire-${kind}` as const;
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const prev = lastFireAt.get(kind) ?? 0;
-      if (now - prev < 30) return;
-      lastFireAt.set(kind, now);
       audio.playSfx(sfxKey as Parameters<typeof audio.playSfx>[0]);
     });
 

@@ -8,11 +8,13 @@ import type { BuildGrid } from '@/world/Grid';
 import { COLORS } from '@/render/theme';
 
 export function GridOverlayLayer({
-  viewport, grid, buildHint,
+  viewport, grid, buildHint, accent,
 }: {
   viewport: Viewport;
   grid: BuildGrid;
   buildHint: SharedValue<BuildHintSnap>;
+  /** Chapter accent — tints the buildable cell outline. Falls back to primaryDim. */
+  accent?: string;
 }) {
   const tileSize = viewport.tileSize;
   // Static path of every buildable cell. Built once per viewport/grid pair so
@@ -39,8 +41,8 @@ export function GridOverlayLayer({
         path={outlinePath}
         style="stroke"
         strokeWidth={Math.max(1, tileSize * 0.04)}
-        color={COLORS.primaryDim}
-        opacity={0.4}
+        color={accent ?? COLORS.primaryDim}
+        opacity={accent ? 0.28 : 0.4}
       />
       <Rect
         x={hintX} y={hintY}

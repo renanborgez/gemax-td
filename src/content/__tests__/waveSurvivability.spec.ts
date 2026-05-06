@@ -16,7 +16,7 @@ describe('pathLength', () => {
 
   it('returns 0 for a degenerate single-point path', () => {
     const sample = ALL_LEVELS[0]!;
-    const fake = { ...sample, path: [{ col: 1, row: 1 }] };
+    const fake = { ...sample, paths: [[{ col: 1, row: 1 }]] };
     expect(pathLength(fake)).toBe(0);
   });
 });
@@ -90,9 +90,11 @@ describe('levelSurvivability — full pass on the generated campaign', () => {
 
   it('no level has a zero-bend path (spawn → base must turn at least once)', () => {
     for (const level of ALL_LEVELS) {
-      // Path with N waypoints has N-1 segments; we want at least 2 segments
-      // (i.e. at least one bend), so >= 3 waypoints.
-      expect(level.path.length, `${level.id} waypoints`).toBeGreaterThanOrEqual(3);
+      // Each lane with N waypoints has N-1 segments; we want at least 2 segments
+      // (i.e. at least one bend), so >= 3 waypoints per lane.
+      for (const [i, lane] of level.paths.entries()) {
+        expect(lane.length, `${level.id} lane ${i} waypoints`).toBeGreaterThanOrEqual(3);
+      }
     }
   });
 });

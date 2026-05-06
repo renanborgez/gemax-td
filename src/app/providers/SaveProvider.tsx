@@ -4,6 +4,10 @@ import { SaveStore } from '@/meta/SaveStore';
 import { asyncStorageKv } from '@/meta/asyncStorageKv';
 import type { SaveDataLatest } from '@/meta/schema';
 import { COLORS } from '@/render/theme';
+import { ALL_LEVELS } from '@/content/levels';
+import type { Difficulty } from '@/content/types';
+
+const ALL_DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard', 'insane'];
 
 type Ctx = {
   store: SaveStore;
@@ -22,11 +26,37 @@ export function SaveProvider({ children }: { children: React.ReactNode }) {
     void store.load().then((loaded) => {
       // Dev-only: keep at least 1000 shards on every launch so we can exercise
       // the tech tree without grinding. Higher balances (after earning shards
-      // in dev) are preserved.
-      if (__DEV__ && loaded.meta.shards < 1000) {
-        store.update((d) => { d.meta.shards = 1000; });
-        setData({ ...store.current() });
-        return;
+      // in dev) are preserved. Also pre-clear every mission with 3 stars on
+      // every difficulty so navigation/unlocks are exercised immediately.
+      if (__DEV__) {
+        const needsShards = loaded.meta.shards < 1000;
+        const needsClear = ALL_LEVELS.some((lvl) => {
+          const p = loaded.campaign[lvl.id];
+          if (!p || !p.cleared) return true;
+          return ALL_DIFFICULTIES.some((d) => (p.bestStarsByDifficulty[d] ?? 0) < 3);
+        });
+        if (needsShards || needsClear) {
+          store.update((d) => {
+            if (needsShards) d.meta.shards = 1000;
+            for (const lvl of ALL_LEVELS) {
+              const p = (d.campaign[lvl.id] ??= {
+                bestStarsByDifficulty: {},
+                bestWaveReached: 0,
+                cleared: false,
+                shardsAwardedFor: [],
+              });
+              p.cleared = true;
+              p.bestWaveReached = Math.max(p.bestWaveReached, lvl.waves.length);
+              for (const diff of ALL_DIFFICULTIES) {
+                if ((p.bestStarsByDifficulty[diff] ?? 0) < 3) {
+                  p.bestStarsByDifficulty[diff] = 3;
+                }
+              }
+            }
+          });
+          setData({ ...store.current() });
+          return;
+        }
       }
       setData(loaded);
     });

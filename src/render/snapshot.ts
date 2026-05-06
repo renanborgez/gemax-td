@@ -11,6 +11,8 @@ export type EnemySnap = {
   x: number; y: number; defKind: string; hp: number; maxHp: number;
   /** Wraith phase + future "ghost" specials. Renderer dims opacity when true. */
   untargetable: boolean;
+  /** Radians; renderer rotates sprite to face the path tangent. */
+  heading: number;
 };
 export type TowerSnap = { id: string; x: number; y: number; defKind: string; level: number };
 export type ProjectileSnap = {
@@ -58,7 +60,7 @@ export function buildSnapshot(world: World): WorldSnapshot {
   const enemies: EnemySnap[] = [];
   for (const e of world.entities.enemies) {
     if (!e.alive) continue;
-    enemies.push({ x: e.x, y: e.y, defKind: e.defKind, hp: e.hp, maxHp: e.maxHp, untargetable: e.untargetable });
+    enemies.push({ x: e.x, y: e.y, defKind: e.defKind, hp: e.hp, maxHp: e.maxHp, untargetable: e.untargetable, heading: e.heading });
   }
   const projectiles: ProjectileSnap[] = [];
   for (const p of world.entities.projectiles) {

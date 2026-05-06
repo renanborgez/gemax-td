@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useHudStore } from '@/ui/hudStore';
+import { useHudStore, type WaveStatus } from '@/ui/hudStore';
 import type { World } from '@/world/World';
 import type { EnemyKind } from '@/content/types';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
@@ -39,7 +39,10 @@ export function HUDTop({
           value={String(credits)}
           iconNode={<Ionicons name="disc" size={16} color={COLORS.tertiary} />}
         />
-        <Stat label="WAVE" value={`${Math.max(0, waveIndex + 1)}/${totalWaves}`} />
+        <Stat
+          label="WAVE"
+          value={`${displayWave(waveIndex, totalWaves, waveStatus)}/${totalWaves}`}
+        />
         <View style={styles.actions}>
           <Pressable
             onPress={toggleSpeed}
@@ -121,6 +124,13 @@ const ENEMY_NAMES: Record<EnemyKind, string> = {
   'logic-gate': 'Gate', voidwalker: 'Void', apex: 'Apex',
 };
 function shortName(k: EnemyKind): string { return ENEMY_NAMES[k]; }
+
+function displayWave(waveIndex: number, totalWaves: number, status: WaveStatus): number {
+  if (status === 'idle') return Math.min(Math.max(1, waveIndex + 1), Math.max(1, totalWaves));
+  const base = Math.max(0, waveIndex + 1);
+  if (status === 'cleared') return Math.min(base + 1, totalWaves);
+  return base;
+}
 
 function aggregate(wave: World['level']['waves'][number]): Record<string, number> {
   const out: Record<string, number> = {};

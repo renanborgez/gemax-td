@@ -16,13 +16,26 @@ import { COLORS } from '@/render/theme';
  * defending. Mint diamond inside concentric rings; sits under the towers /
  * enemies layers so leaking enemies render on top of it.
  */
-export function BaseLayer({ world, viewport }: { world: World; viewport: Viewport }) {
-  const pts = world.level.path;
-  const last = pts[pts.length - 1];
+export function BaseLayer({
+  world,
+  viewport,
+  accent,
+  secondary,
+}: {
+  world: World;
+  viewport: Viewport;
+  /** Chapter accent — drives halo + ring tint. Falls back to mint. */
+  accent?: string;
+  /** Chapter secondary — drives the inner-core fill tint. Falls back to soft mint. */
+  secondary?: string;
+}) {
+  const lanes = world.level.paths;
   const tile = viewport.tileSize;
   const r = tile * 0.5;
   const stroke = Math.max(1.2, tile * 0.05);
   const diamondSide = r * 0.95;
+  const ringTint = accent ?? COLORS.secondary;
+  const innerTint = secondary ?? accent ?? COLORS.secondarySoft;
 
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -39,35 +52,51 @@ export function BaseLayer({ world, viewport }: { world: World; viewport: Viewpor
   const ringOpacity = useDerivedValue(() => 0.4 + pulse.value * 0.4);
   const coreOpacity = useDerivedValue(() => 0.6 + pulse.value * 0.4);
 
-  if (!last) return null;
-  const { x, y } = viewport.gridToWorld(last);
+  // Dedupe endpoints: lanes that converge at a single base render one Core.
+  const seen = new Set<string>();
+  const cores: { x: number; y: number; key: string }[] = [];
+  for (const pts of lanes) {
+    const last = pts[pts.length - 1];
+    if (!last) continue;
+    const k = `${last.col}:${last.row}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const xy = viewport.gridToWorld(last);
+    cores.push({ x: xy.x, y: xy.y, key: k });
+  }
+
+  if (cores.length === 0) return null;
 
   return (
     <Group>
-      <Circle cx={x} cy={y} r={haloR} color={COLORS.secondary} opacity={haloOpacity} />
-      <Circle cx={x} cy={y} r={r * 1.1} color={COLORS.secondary} opacity={0.18} />
-      <Circle
-        cx={x}
-        cy={y}
-        r={ringR}
-        color={COLORS.secondary}
-        opacity={ringOpacity}
-        style="stroke"
-        strokeWidth={stroke}
-      />
-      <Circle cx={x} cy={y} r={r * 0.78} color={COLORS.secondarySoft} />
-      <Group origin={{ x, y }} transform={[{ rotate: Math.PI / 4 }]}>
-        <RoundedRect
-          x={x - diamondSide / 2}
-          y={y - diamondSide / 2}
-          width={diamondSide}
-          height={diamondSide}
-          r={diamondSide * 0.18}
-          color={COLORS.secondary}
-          opacity={0.85}
-        />
-      </Group>
-      <Circle cx={x} cy={y} r={r * 0.18} color="#FFFFFF" opacity={coreOpacity} />
+      {cores.map(({ x, y, key }) => (
+        <Group key={key}>
+          <Circle cx={x} cy={y} r={haloR} color={ringTint} opacity={haloOpacity} />
+          <Circle cx={x} cy={y} r={r * 1.1} color={ringTint} opacity={0.18} />
+          <Circle
+            cx={x}
+            cy={y}
+            r={ringR}
+            color={ringTint}
+            opacity={ringOpacity}
+            style="stroke"
+            strokeWidth={stroke}
+          />
+          <Circle cx={x} cy={y} r={r * 0.78} color={innerTint} opacity={0.55} />
+          <Group origin={{ x, y }} transform={[{ rotate: Math.PI / 4 }]}>
+            <RoundedRect
+              x={x - diamondSide / 2}
+              y={y - diamondSide / 2}
+              width={diamondSide}
+              height={diamondSide}
+              r={diamondSide * 0.18}
+              color={ringTint}
+              opacity={0.85}
+            />
+          </Group>
+          <Circle cx={x} cy={y} r={r * 0.18} color="#FFFFFF" opacity={coreOpacity} />
+        </Group>
+      ))}
     </Group>
   );
 }

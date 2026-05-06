@@ -12,6 +12,7 @@ const sampleTower = {
   defaultTargetPriority: 'first' as const,
   targets: 'both' as const,
   classRef: FirewallTower,
+  rarity: 'common' as const,
 };
 
 describe('registry', () => {

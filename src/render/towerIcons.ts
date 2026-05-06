@@ -18,16 +18,19 @@ export const TOWER_ICON_SVG: Record<TowerKind, string> = {
     'M 7.5 8 L 10.5 8 ' +
     'M 9 7 L 9 5 ' +
     'M 9 5 L 7.5 6 M 9 5 L 10.5 6',
-  // Machine Gun: stout twin-barrels + ammo belt curving in.
+  // Machine Gun: tripod base + receiver body + finned water-jacket barrel
+  // (Maxim/Browning silhouette) with side ammo box and muzzle.
   'machine-gun':
-    'M 4 22 L 14 22 L 14 18 L 4 18 Z ' +
-    'M 6 18 L 6 14 M 12 18 L 12 14 ' +
-    'M 5 14 L 13 14 ' +
-    'M 7 14 L 7 6 ' +
-    'M 11 14 L 11 6 ' +
-    'M 6 6 L 12 6 ' +
-    'M 14 18 C 18 18 20 16 20 14 ' +
-    'M 16 18 L 17 17 M 18 17 L 19 16',
+    'M 4 22 L 9 17 ' +
+    'M 20 22 L 15 17 ' +
+    'M 12 22 L 12 17 ' +
+    'M 7 17 L 17 17 L 17 13 L 7 13 Z ' +
+    'M 4 16 L 7 16 M 4 14 L 7 14 M 4 16 L 4 14 ' +
+    'M 9 13 L 15 13 L 15 6 L 9 6 Z ' +
+    'M 9 10 L 15 10 ' +
+    'M 9 8 L 15 8 ' +
+    'M 12 6 L 12 3 ' +
+    'M 11 4 L 13 4',
   // Laser tower: trapezoid base, mid-strut, top emitter box, vertical beam,
   // and a tip-flare bar to read as "laser firing upward."
   firewall:

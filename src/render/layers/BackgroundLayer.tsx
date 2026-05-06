@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Circle, Group, Paint, Points, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
+import { Circle, Group, LinearGradient, Paint, Points, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
 import type { Viewport } from '@/engine/Viewport';
 import { SeededRng } from '@/engine/rng';
 import { COLORS } from '@/render/theme';
@@ -32,10 +32,13 @@ function buildStars(w: number, h: number, seed: number): StarSet {
 export function BackgroundLayer({
   viewport,
   accent,
+  secondary,
 }: {
   viewport: Viewport;
   /** Hex color from `ChapterDef.paletteAccent`. Drives nebula tint and the flat overlay. */
   accent?: string;
+  /** Optional secondary hue from `ChapterDef.paletteSecondary`. Tints the second nebula blob for a two-color sky. */
+  secondary?: string;
 }) {
   const w = viewport.canvasWidthPx;
   const h = viewport.canvasHeightPx;
@@ -67,27 +70,46 @@ export function BackgroundLayer({
     ];
   }, [w, h, seed]);
 
-  const nebulaCenter = accent ? `${accent}33` : `${COLORS.primary}22`; // 20% / 13%
-  const nebulaEdge = accent ? `${accent}00` : `${COLORS.primary}00`;
+  const tintFor = (hex: string | undefined): { center: string; edge: string } => {
+    if (!hex) return { center: `${COLORS.primary}22`, edge: `${COLORS.primary}00` };
+    return { center: `${hex}33`, edge: `${hex}00` };
+  };
+  const tintA = tintFor(accent);
+  // Secondary nebula uses the secondary hue when supplied; otherwise it falls
+  // back to the primary so single-hue chapters still render the same way.
+  const tintB = tintFor(secondary ?? accent);
 
   return (
     <Group>
       <Rect x={0} y={0} width={w} height={h} color={COLORS.bg} />
 
       {/* Nebula gradients — two soft radial blobs themed per chapter. */}
-      {nebulae.map((n, i) => (
-        <Circle key={i} cx={n.cx} cy={n.cy} r={n.r}>
-          <RadialGradient
-            c={vec(n.cx, n.cy)}
-            r={n.r}
-            colors={[nebulaCenter, nebulaEdge]}
-          />
-        </Circle>
-      ))}
+      {nebulae.map((n, i) => {
+        const t = i === 0 ? tintA : tintB;
+        return (
+          <Circle key={i} cx={n.cx} cy={n.cy} r={n.r}>
+            <RadialGradient
+              c={vec(n.cx, n.cy)}
+              r={n.r}
+              colors={[t.center, t.edge]}
+            />
+          </Circle>
+        );
+      })}
 
-      {/* Flat accent wash on top — keeps grid readable. */}
+      {/* Vertical accent wash on top — primary at top, secondary at bottom.
+          Keeps the grid readable while signalling a two-color identity. */}
       {accent && (
-        <Rect x={0} y={0} width={w} height={h} color={`${accent}${ACCENT_OPACITY_HEX}`} />
+        <Rect x={0} y={0} width={w} height={h}>
+          <LinearGradient
+            start={vec(0, 0)}
+            end={vec(0, h)}
+            colors={[
+              `${accent}${ACCENT_OPACITY_HEX}`,
+              `${(secondary ?? accent)}${ACCENT_OPACITY_HEX}`,
+            ]}
+          />
+        </Rect>
       )}
 
       {/* Stars — three Points draws, point size = strokeWidth. */}

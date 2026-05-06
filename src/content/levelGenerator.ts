@@ -18,7 +18,7 @@
  *      `createDifficultyContext`.
  */
 
-import type { LevelDef, EnemyKind, WaveDef, SpawnGroup } from '@/content/types';
+import type { LevelDef, EnemyKind, WaveDef, SpawnGroup, Obstacle, ObstacleKind } from '@/content/types';
 import type { GridCoord, DeepReadonly } from '@/lib/types';
 import type { TileType } from '@/world/Grid';
 import { SeededRng } from '@/engine/rng';
@@ -37,110 +37,238 @@ export const TOTAL_MISSIONS = MISSIONS_PER_CHAPTER * CHAPTERS.length;
 type Template = {
   cols: number;
   rows: number;
-  /** Waypoint sequence; consecutive points must be axis-aligned. Length ≥ 3
-   *  so the path always has at least one bend. */
-  waypoints: GridCoord[];
+  /** One or more lanes. Each lane is a waypoint sequence; consecutive points
+   *  must be axis-aligned. A single-lane template has lanes.length === 1; a
+   *  multi-lane template lets enemies enter from multiple spawners and walk
+   *  parallel polylines. Self-intersecting waypoints (figure-8, loop) are OK —
+   *  enemies walk distance-along-polyline regardless of crossings. */
+  lanes: GridCoord[][];
+  /** Spawner origins (one per lane). Same length as lanes. */
+  spawnerTiles: GridCoord[];
 };
 
-/** Hook: tight S-curve for the very first missions. Three bends keep enemies
- *  in tower range longer and give the player time to learn the loop. */
-function tplHook(rng: () => number): Template {
-  const cols = 5 + Math.floor(rng() * 2);    // 5–6
-  const rows = 10 + Math.floor(rng() * 2);   // 10–11
-  const midRow = Math.floor(rows * 0.45);
-  return {
-    cols, rows,
-    waypoints: [
-      { col: 0, row: 0 },
-      { col: cols - 2, row: 0 },
-      { col: cols - 2, row: midRow },
-      { col: 1, row: midRow },
-      { col: 1, row: rows - 1 },
-    ],
-  };
+/** Per-chapter row stretch: maps grow taller as the campaign progresses so
+ *  later chapters feel more sprawling and give towers more coverage real
+ *  estate. Capped at +6 rows so the wave-survivability test still leaks at
+ *  finale boss waves (`(8+N)·L < h·N`). */
+function verticalBoost(chapterIdx: number): number {
+  return Math.min(6, Math.floor(chapterIdx * 0.7));
 }
 
-/** L-shape: two bends — drop part-way, then sweep across before final drop. */
-function tplL(rng: () => number): Template {
-  const cols = 6 + Math.floor(rng() * 2);    // 6–7
-  const rows = 10 + Math.floor(rng() * 2);   // 10–11
-  const midRow = 2 + Math.floor(rng() * 2);
-  return {
-    cols, rows,
-    waypoints: [
-      { col: 0, row: 0 },
-      { col: 0, row: midRow },
-      { col: cols - 2, row: midRow },
-      { col: cols - 2, row: rows - 1 },
-    ],
-  };
+/** Bend count range. Driven by the absolute campaign position
+ *  (`overall = chapter * 10 + mission`) so each mission is at least as rich
+ *  as the previous one, both within a chapter and across chapter rollovers.
+ *  min=3 at the very start, climbing to 6 by the campaign finale; max=4
+ *  → 10. Actual bend count sampled uniformly inside the range. */
+function bendRangeFor(chapterIdx: number, missionIdx: number): [min: number, max: number] {
+  const overall = chapterIdx * MISSIONS_PER_CHAPTER + missionIdx; // 0..99
+  const min = Math.max(3, 3 + Math.floor(overall / 25));
+  const max = Math.min(10, 4 + Math.floor(overall / 8));
+  return [min, Math.max(min + 1, max)];
 }
 
-/** U-shape: two bends. */
-function tplU(rng: () => number): Template {
-  const cols = 6 + Math.floor(rng() * 2);
-  const rows = 11 + Math.floor(rng() * 2);
-  return {
-    cols, rows,
-    waypoints: [
-      { col: 0, row: 0 },
-      { col: 0, row: Math.floor(rows / 2) },
-      { col: cols - 2, row: Math.floor(rows / 2) },
-      { col: cols - 2, row: rows - 1 },
-    ],
-  };
-}
-
-/** Z-shape: three sweeps. */
-function tplZ(rng: () => number): Template {
-  const cols = 7 + Math.floor(rng() * 2);
-  const rows = 12 + Math.floor(rng() * 2);
-  const midA = Math.floor(rows / 3);
-  const midB = midA * 2;
-  return {
-    cols, rows,
-    waypoints: [
-      { col: 0, row: 0 },
-      { col: cols - 2, row: 0 },
-      { col: cols - 2, row: midA },
-      { col: 1, row: midA },
-      { col: 1, row: midB },
-      { col: cols - 2, row: midB },
-      { col: cols - 2, row: rows - 1 },
-    ],
-  };
-}
-
-/** Serpentine: 4–5 sweeps. */
-function tplSerpentine(rng: () => number): Template {
-  const cols = 7 + Math.floor(rng() * 3);
-  const rows = 14 + Math.floor(rng() * 3);
-  const sweeps = 4 + Math.floor(rng() * 2);
-  const stride = Math.max(2, Math.floor((rows - 1) / sweeps));
-  const waypoints: GridCoord[] = [{ col: 0, row: 0 }];
-  let col = 0;
-  for (let i = 0; i < sweeps; i++) {
-    const targetRow = Math.min(rows - 1, (i + 1) * stride);
-    const farCol = col === 0 ? cols - 2 : 1;
-    waypoints.push({ col, row: targetRow });
-    waypoints.push({ col: farCol, row: targetRow });
-    col = farCol;
+/** Map dimensions are also driven by absolute campaign position, so columns
+ *  and rows are non-decreasing across the entire 100-mission run. Each
+ *  template has a fixed base size (snake1 < snake2 < snake3) so switching
+ *  template within a chapter never shrinks the map. */
+function dimsFor(
+  template: 'snake1' | 'snake2' | 'snake3',
+  chapterIdx: number,
+  missionIdx: number,
+): { cols: number; rows: number } {
+  const overall = chapterIdx * MISSIONS_PER_CHAPTER + missionIdx; // 0..99
+  switch (template) {
+    case 'snake1':
+      return { cols: 7 + Math.floor(overall / 25), rows: 11 + Math.floor(overall / 12) };
+    case 'snake2':
+      return { cols: 10 + Math.floor(overall / 25), rows: 13 + Math.floor(overall / 14) };
+    case 'snake3':
+      return { cols: 12 + Math.floor(overall / 30), rows: 14 + Math.floor(overall / 16) };
   }
-  // Drop to base on the last column.
-  waypoints.push({ col, row: rows - 1 });
-  return { cols, rows, waypoints };
 }
 
-const TEMPLATES = [tplHook, tplL, tplU, tplZ, tplSerpentine];
+/** Build a single snake-style lane: alternating horizontal/vertical segments
+ *  driven by `targetBends ∈ [minBends, maxBends]`. Always starts at
+ *  (startCol, 0) and terminates at (endCol, rows-1) with axis-aligned
+ *  waypoints. Inner-loop alternation guarantees no two consecutive segments
+ *  share an axis. */
+function buildSnake(
+  rng: () => number,
+  cols: number, rows: number,
+  startCol: number, endCol: number,
+  minBends: number, maxBends: number,
+): GridCoord[] {
+  const targetBends = minBends + Math.floor(rng() * (maxBends - minBends + 1));
+  const wp: GridCoord[] = [{ col: startCol, row: 0 }];
+  let col = startCol;
+  let row = 0;
+  // Start horizontal so the first corner forms near the spawn — visually
+  // signals "the path is a maze" right at the entry.
+  let isHoriz = true;
+  const minC = 1, maxC = Math.max(2, cols - 2);
 
-/** Pick a template by mission complexity (0–9). Early missions favor short
- *  paths; later missions favor longer ones. Deterministic per (chapter, mission). */
+  for (let b = 0; b < targetBends; b++) {
+    const remainingBends = targetBends - b - 1;
+    if (isHoriz) {
+      // Pick a different col within playable strip, biased away from current
+      // col so the segment has appreciable length.
+      let newCol = col;
+      for (let attempt = 0; attempt < 6 && newCol === col; attempt++) {
+        newCol = minC + Math.floor(rng() * (maxC - minC + 1));
+      }
+      if (newCol === col) newCol = col === maxC ? maxC - 1 : col + 1;
+      wp.push({ col: newCol, row });
+      col = newCol;
+    } else {
+      // Reserve enough rows for any remaining bends + the final base drop.
+      // remainingVertSegments = how many further vertical segments will fire.
+      const remainingVertSegments = Math.ceil((remainingBends + 1) / 2);
+      const reserved = remainingVertSegments;        // each needs ≥1 row
+      const rowsAvail = (rows - 1) - row - reserved;
+      if (rowsAvail < 1) break;                      // ran out of room
+      const stepCap = Math.max(1, Math.floor(rowsAvail / Math.max(1, remainingVertSegments)));
+      const step = 1 + Math.floor(rng() * stepCap);
+      const newRow = Math.min(rows - 2, row + step);
+      if (newRow === row) break;
+      wp.push({ col, row: newRow });
+      row = newRow;
+    }
+    isHoriz = !isHoriz;
+  }
+
+  // Termination: route to (endCol, rows-1) without two same-axis segments
+  // ending up adjacent. After the loop, `isHoriz` reflects what the NEXT
+  // segment would have been; flip it to learn what the LAST one was.
+  let lastWasHoriz = !isHoriz;
+  if (col !== endCol) {
+    // Need a closing horizontal sweep. If the previous segment was already
+    // horizontal, inject a small vertical jog first to keep alternation.
+    if (lastWasHoriz && row < rows - 2) {
+      const jogStep = 1 + Math.floor(rng() * Math.max(1, rows - 2 - row));
+      wp.push({ col, row: row + jogStep });
+      row += jogStep;
+      lastWasHoriz = false;
+    }
+    wp.push({ col: endCol, row });
+    col = endCol;
+    lastWasHoriz = true;
+  }
+  if (row !== rows - 1) {
+    if (lastWasHoriz) {
+      wp.push({ col: endCol, row: rows - 1 });
+    } else {
+      // Last move was vertical and we're at endCol; just extend the drop.
+      wp.push({ col: endCol, row: rows - 1 });
+    }
+  }
+  return wp;
+}
+
+/** Single-lane snake — one rich path. Map dimensions and bend richness both
+ *  grow with absolute campaign position so progression never reverses. */
+function tplSnake1(rng: () => number, chapterIdx: number, missionIdx: number): Template {
+  const [minBends, maxBends] = bendRangeFor(chapterIdx, missionIdx);
+  const { cols, rows: baseRows } = dimsFor('snake1', chapterIdx, missionIdx);
+  const rows = baseRows + verticalBoost(chapterIdx);
+  const startCol = Math.floor(rng() * Math.min(2, cols - 1));
+  const endCol = Math.max(0, Math.min(cols - 2, Math.floor(rng() * (cols - 1))));
+  const lane = buildSnake(rng, cols, rows, startCol, endCol, minBends, maxBends);
+  return { cols, rows, lanes: [lane], spawnerTiles: [lane[0]!] };
+}
+
+/** Twin-lane snake — two snakes from opposite top corners converge on a
+ *  single base. */
+function tplSnake2(rng: () => number, chapterIdx: number, missionIdx: number): Template {
+  const [minBends, maxBends] = bendRangeFor(chapterIdx, missionIdx);
+  const { cols, rows: baseRows } = dimsFor('snake2', chapterIdx, missionIdx);
+  const rows = baseRows + verticalBoost(chapterIdx);
+  const baseCol = Math.max(2, Math.min(cols - 3, Math.floor(cols / 2) + Math.floor(rng() * 3) - 1));
+  const leftStart = Math.floor(rng() * Math.min(2, cols - 1));
+  const rightStart = cols - 2 - Math.floor(rng() * Math.min(2, cols - 1));
+  const left = buildSnake(rng, cols, rows, leftStart, baseCol, minBends, maxBends);
+  const right = buildSnake(rng, cols, rows, rightStart, baseCol, minBends, maxBends);
+  return {
+    cols, rows,
+    lanes: [left, right],
+    spawnerTiles: [left[0]!, right[0]!],
+  };
+}
+
+/** Tri-lane snake — three snakes converge on a shared base column. */
+function tplSnake3(rng: () => number, chapterIdx: number, missionIdx: number): Template {
+  const [minBends, maxBends] = bendRangeFor(chapterIdx, missionIdx);
+  const { cols, rows: baseRows } = dimsFor('snake3', chapterIdx, missionIdx);
+  const rows = baseRows + verticalBoost(chapterIdx);
+  const baseCol = Math.floor(cols / 2);
+  const leftStart = Math.floor(rng() * Math.min(2, cols - 1));
+  const rightStart = cols - 2 - Math.floor(rng() * Math.min(2, cols - 1));
+  const midStart = baseCol;
+  const left = buildSnake(rng, cols, rows, leftStart, baseCol, minBends, maxBends);
+  const right = buildSnake(rng, cols, rows, rightStart, baseCol, minBends, maxBends);
+  // Mid lane: dial bends down a touch — three lanes with full bend counts is
+  // visually too noisy at small tile sizes.
+  const mid = buildSnake(
+    rng, cols, rows, midStart, baseCol,
+    Math.max(3, minBends - 1),
+    Math.max(4, maxBends - 1),
+  );
+  return {
+    cols, rows,
+    lanes: [left, mid, right],
+    spawnerTiles: [left[0]!, mid[0]!, right[0]!],
+  };
+}
+
+/**
+ * Pick a template per (chapter, mission). Lane count is a deterministic
+ * function of (chapter, mission) so progression is monotonic non-decreasing
+ * across the entire campaign — within a chapter, every later mission is at
+ * least as wide as the previous one, and chapter rollovers never demote.
+ *
+ *  Lane-count table (m=missionIdx 0..9):
+ *
+ *    ch | 0 1 2 3 4 5 6 7 8 9
+ *    ---+--------------------
+ *     0 | 1 1 1 1 1 1 1 1 1 1
+ *     1 | 1 1 1 1 1 2 2 2 2 2
+ *     2 | 2 2 2 2 2 2 2 2 2 2
+ *     3 | 2 2 2 2 2 2 2 2 2 2
+ *     4 | 2 2 2 2 2 2 2 2 2 2
+ *     5 | 2 2 2 2 2 2 2 2 2 2
+ *     6 | 2 2 2 2 2 2 2 2 2 2
+ *     7 | 2 2 2 2 2 3 3 3 3 3
+ *     8 | 3 3 3 3 3 3 3 3 3 3
+ *     9 | 3 3 3 3 3 3 3 3 3 3
+ *
+ *  Bend count per lane is `bendRangeFor(chapter, mission)` — 3 minimum at
+ *  campaign start, climbing to 6 minimum / 10 maximum by ch9 m9.
+ */
 function pickTemplate(chapterIdx: number, missionIdx: number, rng: () => number): Template {
-  // Bucket missions into difficulty bands; bias template selection upward
-  // through the chapter and slightly more aggressively in later chapters.
-  const complexity = missionIdx + Math.floor(chapterIdx / 3);
-  const idx = Math.min(TEMPLATES.length - 1, Math.floor(complexity / 2));
-  return TEMPLATES[idx]!(rng);
+  const lanes = laneCountFor(chapterIdx, missionIdx);
+  if (lanes === 1) return tplSnake1(rng, chapterIdx, missionIdx);
+  if (lanes === 2) return tplSnake2(rng, chapterIdx, missionIdx);
+  return tplSnake3(rng, chapterIdx, missionIdx);
+}
+
+function laneCountFor(chapterIdx: number, missionIdx: number): 1 | 2 | 3 {
+  // Finale lane count is the chapter's high-water mark: chapters 7+ finale
+  // with three lanes, chapters 1+ finale with at least two, ch0 stays single.
+  if (missionIdx === MISSIONS_PER_CHAPTER - 1) {
+    if (chapterIdx >= 7) return 3;
+    if (chapterIdx >= 1) return 2;
+    return 1;
+  }
+  if (chapterIdx === 0) return 1;
+  // First mission index that promotes the chapter to 2-lane / 3-lane.
+  // Chosen so each chapter's first mission is ≥ the previous chapter's
+  // finale lane count (no cross-chapter regression).
+  const tier2: ReadonlyArray<number> = [99, 5, 0, 0, 0, 0, 0, 0, 0, 0];
+  const tier3: ReadonlyArray<number> = [99, 99, 99, 99, 99, 99, 99, 5, 0, 0];
+  const t2 = tier2[chapterIdx] ?? 99;
+  const t3 = tier3[chapterIdx] ?? 99;
+  if (missionIdx >= t3) return 3;
+  if (missionIdx >= t2) return 2;
+  return 1;
 }
 
 // ─── Grid construction ──────────────────────────────────────────────────────
@@ -238,6 +366,8 @@ function kindTierForMission(chapterIdx: number, missionIdx: number): {
   /** Per-wave heavy count cap; chosen so even short paths stay survivable. */
   heavyCap: number;
 } {
+  // Heavy cap is monotonic non-decreasing across missions so later missions
+  // never spawn fewer heavies than earlier ones in the same chapter.
   if (missionIdx <= 2) return { baseKind: 'worm', heavyKind: 'trojan', heavyCap: 4 };
 
   if (missionIdx <= 5) {
@@ -265,7 +395,7 @@ function kindTierForMission(chapterIdx: number, missionIdx: number): {
     return {
       baseKind: lightBase[chapterIdx] ?? 'worm',
       heavyKind: lightHeavy[chapterIdx] ?? 'trojan',
-      heavyCap: 6,
+      heavyCap: 5,
     };
   }
 
@@ -294,7 +424,7 @@ function kindTierForMission(chapterIdx: number, missionIdx: number): {
     return {
       baseKind: midBase[chapterIdx] ?? 'trojan',
       heavyKind: midHeavy[chapterIdx] ?? 'daemon',
-      heavyCap: 4,
+      heavyCap: 6,
     };
   }
 
@@ -313,13 +443,45 @@ function kindTierForMission(chapterIdx: number, missionIdx: number): {
     'construct', // ch8
     'bulwark',   // ch9
   ];
-  return { baseKind: 'trojan', heavyKind: lateHeavy[chapterIdx] ?? 'daemon', heavyCap: 5 };
+  return { baseKind: 'trojan', heavyKind: lateHeavy[chapterIdx] ?? 'daemon', heavyCap: 7 };
+}
+
+/** Spread a single-lane group set across N spawners by splitting counts and
+ *  rewriting ids/spawnerId per lane. Boss / chained-after groups inherit the
+ *  same per-lane id rewrite so the afterGroupId chain stays valid. */
+function spreadAcrossLanes(
+  groups: SpawnGroup[],
+  spawnerIds: ReadonlyArray<string>,
+): SpawnGroup[] {
+  if (spawnerIds.length <= 1) return groups;
+  const out: SpawnGroup[] = [];
+  for (const g of groups) {
+    const perLane = Math.max(1, Math.floor(g.count / spawnerIds.length));
+    let remaining = g.count;
+    for (let i = 0; i < spawnerIds.length; i++) {
+      const isLast = i === spawnerIds.length - 1;
+      const cnt = isLast ? remaining : perLane;
+      remaining -= cnt;
+      const sid = spawnerIds[i]!;
+      out.push({
+        id: `${g.id}-${sid}`,
+        spawnerId: sid,
+        enemyKind: g.enemyKind,
+        count: cnt,
+        spacing: g.spacing,
+        delay: g.delay,
+        ...(g.afterGroupId !== undefined ? { afterGroupId: `${g.afterGroupId}-${sid}` } : {}),
+      });
+    }
+  }
+  return out;
 }
 
 function generateWaves(
   chapterIdx: number,
   missionIdx: number,
   bossKind: EnemyKind | undefined,
+  spawnerIds: ReadonlyArray<string>,
   rng: () => number,
 ): WaveDef[] {
   const isFinale = missionIdx === MISSIONS_PER_CHAPTER - 1;
@@ -335,12 +497,13 @@ function generateWaves(
     const groups: SpawnGroup[] = [];
 
     if (isBossWave) {
-      // Adds in front, boss in middle, trojan trail behind. Trojan adds keep
-      // h moderate so the Goal-Defense math leaks on the boss alone, not on
-      // the swarm.
+      // Boss wave keeps all groups on the lead spawner — the boss enters
+      // from a single front so it reads as the climax. Multi-lane finales
+      // still funnel into the same Core, so this stays visually coherent.
+      const lead = spawnerIds[0]!;
       groups.push({
         id: 'adds',
-        spawnerId: 'main',
+        spawnerId: lead,
         enemyKind: 'trojan',
         count: 6 + Math.floor(rng() * 3),
         spacing: 0.6,
@@ -348,7 +511,7 @@ function generateWaves(
       });
       groups.push({
         id: 'boss',
-        spawnerId: 'main',
+        spawnerId: lead,
         enemyKind: bossKind!,
         count: 1,
         spacing: 1.0,
@@ -356,7 +519,7 @@ function generateWaves(
       });
       groups.push({
         id: 'after-boss',
-        spawnerId: 'main',
+        spawnerId: lead,
         enemyKind: 'trojan',
         count: 6 + Math.floor(rng() * 4),
         spacing: 0.5,
@@ -398,9 +561,12 @@ function generateWaves(
       }
     }
 
+    // Boss waves stay on the lead spawner; non-boss waves split across all
+    // spawners so multi-lane levels show enemies entering from each front.
+    const finalGroups = isBossWave ? groups : spreadAcrossLanes(groups, spawnerIds);
     waves.push({
       delayBeforeStart: Math.round(6 + wIdx * 0.6 + (isBossWave ? 6 : 0)),
-      groups,
+      groups: finalGroups,
     });
   }
   return waves;
@@ -410,7 +576,7 @@ function generateWaves(
 
 export type GenerationKey = { chapterIdx: number; missionIdx: number };
 
-export function generateLevel(key: GenerationKey): LevelDef {
+export function generateLevel(key: GenerationKey, seedOverride?: number): LevelDef {
   const { chapterIdx, missionIdx } = key;
   if (chapterIdx < 0 || chapterIdx >= CHAPTERS.length) {
     throw new Error(`generateLevel: chapterIdx ${chapterIdx} out of range`);
@@ -421,17 +587,29 @@ export function generateLevel(key: GenerationKey): LevelDef {
 
   const chapter = CHAPTERS[chapterIdx]!;
   // Mix chapter and mission into a stable seed; multiplying by 73 prevents
-  // adjacent missions from producing near-identical RNG streams.
-  const seed = chapterIdx * 73 + missionIdx + 1;
+  // adjacent missions from producing near-identical RNG streams. The retry
+  // loop in `generateAllLevels` may pass a bumped `seedOverride` when a path
+  // collides with an earlier mission's fingerprint.
+  const seed = seedOverride ?? (chapterIdx * 73 + missionIdx + 1);
   const seeded = new SeededRng(seed);
   const rng = (): number => seeded.next();
 
   const tpl = pickTemplate(chapterIdx, missionIdx, rng);
-  const pathCells = expandPathCells(tpl.waypoints);
-  const grid = buildGrid(tpl.cols, tpl.rows, pathCells);
+  // Union of every lane's expanded path cells → grid paint.
+  const allPathCells: GridCoord[] = [];
+  for (const lane of tpl.lanes) {
+    for (const c of expandPathCells(lane)) allPathCells.push(c);
+  }
+  const grid = buildGrid(tpl.cols, tpl.rows, allPathCells);
 
-  // Spawner sits at first waypoint (path entry).
-  const spawnerTile: GridCoord = { col: tpl.waypoints[0]!.col, row: tpl.waypoints[0]!.row };
+  // One spawner per lane. Lane 0 keeps the canonical 'main' id for back-compat
+  // with single-lane wave authoring; subsequent lanes get 'lane-N'.
+  const spawners = tpl.lanes.map((_lane, i) => ({
+    id: i === 0 ? 'main' : `lane-${i + 1}`,
+    tile: { col: tpl.spawnerTiles[i]!.col, row: tpl.spawnerTiles[i]!.row },
+    pathIndex: i,
+  }));
+  const spawnerIds = spawners.map((s) => s.id);
 
   // Economy + lives scale slightly with chapter; a 4-life buffer keeps a
   // 3-star clear plausible all the way to chapter 9. First mission of
@@ -442,7 +620,23 @@ export function generateLevel(key: GenerationKey): LevelDef {
   const startLives = 10 + Math.floor(chapterIdx / 3);
 
   const isFinale = missionIdx === MISSIONS_PER_CHAPTER - 1;
-  const waves = generateWaves(chapterIdx, missionIdx, isFinale ? chapter.bossEnemyKind : undefined, rng);
+  const waves = generateWaves(
+    chapterIdx, missionIdx, isFinale ? chapter.bossEnemyKind : undefined,
+    spawnerIds, rng,
+  );
+
+  // Non-placable obstacles enter the campaign at chapter 3. Each obstacle
+  // mutates `grid` to 'blocked' and is also recorded in the returned array
+  // so the renderer can draw a per-kind sprite. Endpoint rows are excluded
+  // because World.ts later forces them all-blocked anyway.
+  const endpointRows = new Set<number>();
+  for (const lane of tpl.lanes) {
+    const last = lane[lane.length - 1];
+    if (last) endpointRows.add(last.row);
+  }
+  const obstacles = chapterIdx >= 3
+    ? scatterObstacles(rng, tpl.cols, tpl.rows, grid, chapterIdx, missionIdx, endpointRows)
+    : [];
 
   // Star thresholds: scale with `startLives` so the curve stays the same
   // shape across chapters. 90% / 60% / 1 life remaining.
@@ -452,10 +646,12 @@ export function generateLevel(key: GenerationKey): LevelDef {
     stars1: 1,
   };
 
-  // Mission name: short label keyed by (chapter, mission). Pulled from a
-  // fixed pool keyed by the mission index so chapter intros / mids / finales
-  // read consistently — name pool indexed by missionIdx.
-  const name = MISSION_NAMES[missionIdx] ?? `Mission ${missionIdx + 1}`;
+  // Mission name: unique label per (chapter, mission). Each chapter has a
+  // themed pool of 10 names so finales read climactic and the campaign
+  // never repeats a mission title.
+  const name =
+    MISSION_NAMES_BY_CHAPTER[chapterIdx]?.[missionIdx]
+    ?? `Mission ${chapterIdx + 1}-${missionIdx + 1}`;
 
   // Unlock chain: first mission of chapter 0 has no prereq; first mission of
   // every other chapter unlocks from the previous chapter's finale; mid
@@ -475,39 +671,149 @@ export function generateLevel(key: GenerationKey): LevelDef {
     chapter: chapterIdx,
     ...(unlockRequires !== undefined ? { unlockRequires } : {}),
     grid: { cols: tpl.cols, rows: tpl.rows, cells: grid },
-    spawners: [{ id: 'main', tile: spawnerTile }],
-    path: tpl.waypoints,
+    spawners,
+    paths: tpl.lanes,
     startCredits,
     startLives,
     waves,
     starThresholds,
+    ...(obstacles.length > 0 ? { obstacles } : {}),
   } as LevelDef;
   return def;
+}
+
+/** Scatter non-placable obstacles onto buildable tiles. Density rises with
+ *  campaign progress; cap at 12% of total cells so the player always has
+ *  ample tower real estate. Kind palette evolves: crates ch3-4, rockets join
+ *  at ch5, voids join at ch7. */
+function scatterObstacles(
+  rng: () => number,
+  cols: number,
+  rows: number,
+  grid: TileType[][],
+  chapterIdx: number,
+  missionIdx: number,
+  excludeRows: ReadonlySet<number>,
+): Obstacle[] {
+  const overall = chapterIdx * MISSIONS_PER_CHAPTER + missionIdx;
+  // Linear ramp from chapter 3 onward: ch3 m0 ≈ 2 obstacles, ch9 m9 ≈ 25.
+  const ramp = Math.max(2, Math.floor((overall - 28) / 3));
+  const cap = Math.max(2, Math.floor(cols * rows * 0.12));
+  const target = Math.min(ramp, cap);
+  if (target <= 0) return [];
+
+  const candidates: GridCoord[] = [];
+  for (let r = 0; r < rows; r++) {
+    if (excludeRows.has(r)) continue;
+    for (let c = 0; c < cols; c++) {
+      if (grid[r]![c] === 'buildable') candidates.push({ col: c, row: r });
+    }
+  }
+
+  // Partial Fisher–Yates: deterministic, uniform without copying the array.
+  const take = Math.min(target, candidates.length);
+  for (let i = 0; i < take; i++) {
+    const j = i + Math.floor(rng() * (candidates.length - i));
+    const tmp = candidates[i]!;
+    candidates[i] = candidates[j]!;
+    candidates[j] = tmp;
+  }
+
+  const kindPool: ReadonlyArray<ObstacleKind> =
+    chapterIdx >= 7 ? ['void', 'rocket', 'crate']
+    : chapterIdx >= 5 ? ['rocket', 'crate']
+    : ['crate'];
+
+  const out: Obstacle[] = [];
+  for (let i = 0; i < take; i++) {
+    const p = candidates[i]!;
+    grid[p.row]![p.col] = 'blocked';
+    const kind = kindPool[Math.floor(rng() * kindPool.length)] ?? 'crate';
+    out.push({ col: p.col, row: p.row, kind });
+  }
+  return out;
 }
 
 export function levelId(chapterIdx: number, missionIdx: number): string {
   return `lvl-c${chapterIdx}-m${missionIdx}`;
 }
 
-const MISSION_NAMES: ReadonlyArray<string> = [
-  'Probe',
-  'Foothold',
-  'Sweep',
-  'Pivot',
-  'Staging',
-  'Lateral',
-  'Escalate',
-  'Persist',
-  'Exfil',
-  'Finale',
+// Themed mission names per chapter. Order matches CHAPTERS in chapters.ts:
+// 0 Intranet, 1 Uplink, 2 Cloud Layer, 3 Mainframe, 4 Firmware,
+// 5 Darknet, 6 Quantum, 7 Logic, 8 Void, 9 Apex.
+const MISSION_NAMES_BY_CHAPTER: ReadonlyArray<ReadonlyArray<string>> = [
+  // Intranet — corporate LAN intrusion arc.
+  ['Recon Ping', 'Open Port', 'Mailroom Sweep', 'Lateral Hop', 'VPN Tap',
+   'Subnet Crawl', 'Privilege Climb', 'Backdoor Daemon', 'Email Heist', 'Domain Takeover'],
+  // Uplink — satellite/comms.
+  ['Signal Trace', 'Antenna Lock', 'Carrier Wave', 'Beam Splitter', 'Relay Hijack',
+   'Transponder', 'Frequency Hop', 'Ground Station', 'Payload Drop', 'Orbital Override'],
+  // Cloud Layer — cloud infra.
+  ['Edge Probe', 'Region Breach', 'Auto-Scale', 'Container Drift', 'Load Balancer',
+   'Service Mesh', 'Serverless Storm', 'Bucket Crawl', 'DNS Poison', 'Cloud Collapse'],
+  // Mainframe — legacy big iron.
+  ['Tape Sweep', 'Console Login', 'Job Queue', 'Batch Crash', 'Punchcard',
+   'Z/OS Pivot', 'Vault Trace', 'Ledger Pull', 'Tape Archive', 'Mainframe Meltdown'],
+  // Firmware — embedded / low-level.
+  ['Boot Sector', 'Flash Wipe', 'Bootloader', 'Microcode', 'ROM Patch',
+   'Driver Inject', 'Bus Sniff', 'Kernel Hook', 'Bricked', 'Silicon Override'],
+  // Darknet — anonymous networks.
+  ['Onion Peel', 'Tor Relay', 'Drop Site', 'Shadow Market', 'Crypt Drop',
+   'Cipher Lounge', 'Dead Drop', 'Black Mirror', 'Ghost Wire', 'Darknet Purge'],
+  // Quantum — qubits / quantum compute.
+  ['Qubit Tap', 'Decoherence', 'Entangle', 'Wave Collapse', 'Superposition',
+   'Spin Lock', 'Tunneling', 'Bloch Sphere', 'Annealer', 'Quantum Supremacy'],
+  // Logic — formal logic / proofs / AI.
+  ['Truth Table', 'Inference', 'Predicate', 'Tautology', 'Recursion',
+   'Halting Test', 'Proof Step', 'Lambda', 'Paradox', "Gödel's End"],
+  // Void — cosmic / abstract.
+  ['Null Sector', 'Event Horizon', 'Singularity', 'Heat Death', 'Dark Matter',
+   'Vacuum', 'Causal Loop', 'Entropy Rise', 'Big Crunch', 'Void Genesis'],
+  // Apex — climactic.
+  ['Ascension', 'Last Bastion', 'Final Sweep', 'Pinnacle', 'Throne Room',
+   'Sovereign', 'Apex Pulse', 'Crown Break', 'Endgame', 'GeMax'],
 ];
 
-/** Build the entire campaign deterministically. */
+/** Hash a level's lane geometry. Two levels with the same fingerprint have
+ *  visually identical paths even if waves / economy differ — for the
+ *  uniqueness pass we only care about the path silhouette. */
+function pathFingerprint(level: LevelDef): string {
+  return level.paths
+    .map((lane) => lane.map((wp) => `${wp.col},${wp.row}`).join('|'))
+    .join(';');
+}
+
+/** Build the entire campaign deterministically. Each mission's path must be
+ *  unique across the catalog; if the canonical seed produces a path already
+ *  emitted by an earlier mission, bump the seed and try again. Up to
+ *  `MAX_PATH_RETRIES` attempts; if every retry collides, accept the last
+ *  attempt (extremely unlikely with the variety the templates emit). */
+const MAX_PATH_RETRIES = 64;
+const PATH_SEED_STRIDE = 10007; // prime; keeps retry seeds well-separated.
+
 export function generateAllLevels(): ReadonlyArray<DeepReadonly<LevelDef>> {
   const out: LevelDef[] = [];
+  const seenPaths = new Set<string>();
   for (let c = 0; c < CHAPTERS.length; c++) {
     for (let m = 0; m < MISSIONS_PER_CHAPTER; m++) {
-      out.push(generateLevel({ chapterIdx: c, missionIdx: m }));
+      const baseSeed = c * 73 + m + 1;
+      let chosen: LevelDef | null = null;
+      for (let attempt = 0; attempt < MAX_PATH_RETRIES; attempt++) {
+        const seed = baseSeed + attempt * PATH_SEED_STRIDE;
+        const lvl = generateLevel({ chapterIdx: c, missionIdx: m }, seed);
+        const fp = pathFingerprint(lvl);
+        if (!seenPaths.has(fp)) {
+          seenPaths.add(fp);
+          chosen = lvl;
+          break;
+        }
+        if (attempt === MAX_PATH_RETRIES - 1) {
+          // Exhausted retries; accept the last attempt rather than fail
+          // generation. Catalog still loads, just with one duplicate path.
+          chosen = lvl;
+        }
+      }
+      out.push(chosen!);
     }
   }
   return out;

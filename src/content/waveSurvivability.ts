@@ -26,13 +26,17 @@ const ENEMY_HP_BY_KIND: Readonly<Record<EnemyKind, number>> = Object.fromEntries
  *  canonical "first turret" — its base damage is the unit. */
 export const BASELINE_SHOT_DAMAGE = FIREWALL.baseStats.damage;
 
-/** Sum of axis-aligned segment lengths along the level path, in tiles. */
+/** Sum of axis-aligned segment lengths along every level path, in tiles.
+ *  Multi-lane levels report the combined coverage so survivability scales with
+ *  the total tower-coverage real estate the player can defend. */
 export function pathLength(level: LevelDef): number {
   let total = 0;
-  for (let i = 1; i < level.path.length; i++) {
-    const a = level.path[i - 1]!;
-    const b = level.path[i]!;
-    total += Math.abs(b.col - a.col) + Math.abs(b.row - a.row);
+  for (const pts of level.paths) {
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      total += Math.abs(b.col - a.col) + Math.abs(b.row - a.row);
+    }
   }
   return total;
 }

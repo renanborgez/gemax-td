@@ -19,6 +19,9 @@ export abstract class Enemy extends Entity {
   flying: boolean;
   pathIndex: number = 0;
   distAlongPath: number = 0;
+  /** Radians; updated by movementSystem from path tangent. Renderer rotates
+   *  the sprite to this heading so enemies face the direction they travel. */
+  heading: number = 0;
   statuses: StatusEffect[] = [];
   lastDamagedBy: string | null = null;
   spawnerId: string;

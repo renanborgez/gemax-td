@@ -83,7 +83,7 @@ export type World = {
   level: LevelDef;
   difficulty: DifficultyContext;
   effects: EffectsContext;
-  path: Path;
+  paths: Path[];
   grid: BuildGrid;
   rng: SeededRng;
   idGen: IdGen;
@@ -136,11 +136,15 @@ export function createWorld(opts: {
   });
 
   const cells = opts.level.grid.cells.map((row) => row.slice() as TileType[]);
-  // Reserve the path-endpoint row: no tower placement on the same row as the
-  // base. Anything that isn't part of the path on that row becomes blocked.
-  const endpoint = opts.level.path[opts.level.path.length - 1];
-  if (endpoint) {
-    const endRow = cells[endpoint.row];
+  // Reserve the path-endpoint row(s): no tower placement on the same row as
+  // any base. Anything that isn't part of the path on those rows becomes blocked.
+  const endpointRows = new Set<number>();
+  for (const p of opts.level.paths) {
+    const endpoint = p[p.length - 1];
+    if (endpoint) endpointRows.add(endpoint.row);
+  }
+  for (const r of endpointRows) {
+    const endRow = cells[r];
     if (endRow) {
       for (let c = 0; c < endRow.length; c++) {
         if (endRow[c] !== 'path') endRow[c] = 'blocked';
@@ -153,7 +157,7 @@ export function createWorld(opts: {
     cells,
   });
   const tileSize = 1; // engine uses tile units; renderer scales to pixels
-  const path = new Path(opts.level.path, tileSize);
+  const paths = opts.level.paths.map((wp) => new Path(wp, tileSize));
   const idGen = opts.idGen ?? makeIdGen();
   const bus = new EventBus<SimEventMap>();
   const spawner = new Spawner(idGen);
@@ -171,7 +175,7 @@ export function createWorld(opts: {
     level: opts.level,
     difficulty: ctx,
     effects,
-    path,
+    paths,
     grid,
     rng: new SeededRng(opts.seed),
     idGen,

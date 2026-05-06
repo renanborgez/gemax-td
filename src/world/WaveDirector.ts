@@ -84,7 +84,13 @@ export class WaveDirector {
         }
       }
       while (gs.spawnedCount < gs.group.count && elapsed >= gs.nextSpawnAt) {
-        const enemy = this.spawner.spawn({ enemyKind: gs.group.enemyKind, spawnerId: gs.group.spawnerId });
+        const spawnerSpec = this.level.spawners.find((s) => s.id === gs.group.spawnerId);
+        const pathIndex = spawnerSpec?.pathIndex ?? 0;
+        const enemy = this.spawner.spawn({
+          enemyKind: gs.group.enemyKind,
+          spawnerId: gs.group.spawnerId,
+          pathIndex,
+        });
         outSpawned.push(enemy);
         gs.spawnedCount++;
         gs.nextSpawnAt += gs.group.spacing;

@@ -31,6 +31,7 @@ export const BULLET_TURRET: TowerDef = {
   targets: 'both',
   classRef: BulletTurretTower,
   description: 'Cheap kinetic turret. Reliable single-target damage — your starting placement.',
+  rarity: 'common',
 };
 
 export const MACHINE_GUN: TowerDef = {
@@ -48,6 +49,7 @@ export const MACHINE_GUN: TowerDef = {
   classRef: MachineGunTower,
   description: 'High-cadence rapid-fire. Shreds swarms with continuous chip damage.',
   unlockCost: 30,
+  rarity: 'uncommon',
 };
 
 export const FIREWALL: TowerDef = {
@@ -64,6 +66,7 @@ export const FIREWALL: TowerDef = {
   targets: 'both',
   classRef: FirewallTower,
   description: 'Continuous hitscan beam. Reliable single-target chip damage.',
+  rarity: 'common',
 };
 
 export const LOGIC_BOMB: TowerDef = {
@@ -80,6 +83,7 @@ export const LOGIC_BOMB: TowerDef = {
   targets: 'both',
   classRef: LogicBombTower,
   description: 'Lobs an AoE pulse that detonates over a radius. Strong against clusters.',
+  rarity: 'common',
 };
 
 export const ICE_LANCE: TowerDef = {
@@ -97,6 +101,7 @@ export const ICE_LANCE: TowerDef = {
   classRef: ICELanceTower,
   description: 'Heavy ballistic shard that briefly freezes its target on hit.',
   unlockCost: 40,
+  rarity: 'uncommon',
 };
 
 export const SNIPER: TowerDef = {
@@ -114,6 +119,7 @@ export const SNIPER: TowerDef = {
   classRef: SniperTower,
   description: 'Long-range tracer round. Slow fire, devastating single-target damage.',
   unlockCost: 60,
+  rarity: 'rare',
 };
 
 export const TESLA_COIL: TowerDef = {
@@ -131,6 +137,7 @@ export const TESLA_COIL: TowerDef = {
   classRef: TeslaCoilTower,
   description: 'Chains lightning between nearby enemies with damage falloff per jump.',
   unlockCost: 80,
+  rarity: 'epic',
 };
 
 export const VENOM_SPIRE: TowerDef = {
@@ -148,6 +155,7 @@ export const VENOM_SPIRE: TowerDef = {
   classRef: VenomSpireTower,
   description: 'Fires fast poison darts. Low impact damage, heavy DoT that stacks.',
   unlockCost: 50,
+  rarity: 'uncommon',
 };
 
 export const EMP: TowerDef = {
@@ -165,6 +173,7 @@ export const EMP: TowerDef = {
   classRef: EMPTower,
   description: 'Radial pulse stuns every enemy in range. Trades DPS for crowd control.',
   unlockCost: 70,
+  rarity: 'rare',
 };
 
 export const PLASMA_CANNON: TowerDef = {
@@ -182,6 +191,7 @@ export const PLASMA_CANNON: TowerDef = {
   classRef: PlasmaCannonTower,
   description: 'Late-game heavy-hitter. Searing plasma bolts melt armored bosses.',
   unlockCost: 120,
+  rarity: 'legendary',
 };
 
 export const MORTAR: TowerDef = {
@@ -199,6 +209,7 @@ export const MORTAR: TowerDef = {
   classRef: MortarTower,
   description: 'Long-range siege bomb. Bigger blast than the Logic Bomb at the cost of cadence.',
   unlockCost: 100,
+  rarity: 'epic',
 };
 
 // ─── Utility / synergy tier (added with the 13-tower roster) ─────────────────
@@ -222,6 +233,7 @@ export const CRYO_FIELD: TowerDef = {
   classRef: CryoFieldTower,
   description: 'Passive aura. Continuously slows every enemy in range — pairs with DoT towers.',
   unlockCost: 50,
+  rarity: 'uncommon',
 };
 
 export const MARKER: TowerDef = {
@@ -239,6 +251,7 @@ export const MARKER: TowerDef = {
   classRef: MarkerTower,
   description: 'Tags a target. Marked enemies take +25% damage from every tower.',
   unlockCost: 60,
+  rarity: 'rare',
 };
 
 export const BEAM_CANNON: TowerDef = {
@@ -256,6 +269,7 @@ export const BEAM_CANNON: TowerDef = {
   classRef: BeamCannonTower,
   description: 'Sustained beam. Damage ramps up to 2.5× while focused on the same target.',
   unlockCost: 90,
+  rarity: 'epic',
 };
 
 export const FLAMER: TowerDef = {
@@ -273,6 +287,7 @@ export const FLAMER: TowerDef = {
   classRef: FlamerTower,
   description: 'Short-range cone. Hits up to 4 enemies in a forward arc.',
   unlockCost: 55,
+  rarity: 'rare',
 };
 
 export const ALL_TOWER_DEFS: readonly TowerDef[] = [

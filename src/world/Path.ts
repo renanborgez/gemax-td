@@ -43,7 +43,27 @@ export class Path {
   xyAtDistance(d: number): Vec2 {
     if (d <= 0) return this.segments[0]!.start;
     if (d >= this.totalLength) return this.segments[this.segments.length - 1]!.end;
-    // Binary search for the segment containing d.
+    const seg = this.segmentAt(d);
+    const t = (d - seg.cumulativeStart) / seg.length;
+    return {
+      x: seg.start.x + (seg.end.x - seg.start.x) * t,
+      y: seg.start.y + (seg.end.y - seg.start.y) * t,
+    };
+  }
+
+  /** Unit tangent (direction of motion) at distance d. Used by renderer to face
+   *  enemy sprites along travel; clamps to first/last segment at endpoints. */
+  tangentAtDistance(d: number): Vec2 {
+    const seg = d <= 0
+      ? this.segments[0]!
+      : d >= this.totalLength
+        ? this.segments[this.segments.length - 1]!
+        : this.segmentAt(d);
+    const len = seg.length || 1;
+    return { x: (seg.end.x - seg.start.x) / len, y: (seg.end.y - seg.start.y) / len };
+  }
+
+  private segmentAt(d: number): Segment {
     let lo = 0, hi = this.segments.length - 1;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
@@ -52,12 +72,7 @@ export class Path {
       else if (d >= s.cumulativeStart + s.length) lo = mid + 1;
       else { lo = hi = mid; }
     }
-    const seg = this.segments[lo]!;
-    const t = (d - seg.cumulativeStart) / seg.length;
-    return {
-      x: seg.start.x + (seg.end.x - seg.start.x) * t,
-      y: seg.start.y + (seg.end.y - seg.start.y) * t,
-    };
+    return this.segments[lo]!;
   }
 
   reachedEnd(d: number): boolean {

@@ -113,6 +113,24 @@ export const SPACING = {
   xxl: 32,
 } as const;
 
+/** Loot-tier palette (Diablo/WoW/MTG convention).
+ *  common gray, uncommon green, rare blue, epic purple, legendary gold. */
+export const RARITY_COLORS = {
+  common: '#9CA3AF',
+  uncommon: '#5DD68C',
+  rare: '#60A5FA',
+  epic: '#C084FC',
+  legendary: '#FFB14E',
+} as const;
+
+export const RARITY_LABELS = {
+  common: 'COMMON',
+  uncommon: 'UNCOMMON',
+  rare: 'RARE',
+  epic: 'EPIC',
+  legendary: 'LEGENDARY',
+} as const;
+
 export const RENDER = {
   /** Pixel size of one tile on the canvas. Computed by Viewport but defaulted here for HUD math. */
   fallbackTileSizePx: 40,

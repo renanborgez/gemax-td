@@ -128,9 +128,10 @@ export class Engine {
       // Apply difficulty mult on hp at spawn (so maxHp reflects displayable bar).
       e.maxHp = e.base.hp * w.difficulty.enemyHpMult;
       e.hp = e.maxHp;
-      // Place at path start.
+      // Place at path start of the lane assigned by the spawner.
       e.distAlongPath = 0;
-      const xy = w.path.xyAtDistance(0);
+      const lane = w.paths[e.pathIndex] ?? w.paths[0]!;
+      const xy = lane.xyAtDistance(0);
       e.x = xy.x; e.y = xy.y;
       w.entities.enemies.push(e);
     }
@@ -459,7 +460,7 @@ export class Engine {
 
     // 4. Movement (read phase) — also stages DoT damage and leaks.
     const dotEvents: DamageEvent[] = [];
-    movementSystem(w.entities.enemies, w.path, ctx, dt, w.staged.leaks, dotEvents);
+    movementSystem(w.entities.enemies, w.paths, ctx, dt, w.staged.leaks, dotEvents);
 
     // 5. Projectile updates (fold into damage stage).
     for (const p of w.entities.projectiles) {
@@ -659,6 +660,7 @@ export class Engine {
           const child = w.spawner.spawn({
             enemyKind: sp.enemyKind,
             spawnerId: e.spawnerId,
+            pathIndex: e.pathIndex,
           });
           child.maxHp = child.base.hp * w.difficulty.enemyHpMult;
           child.hp = child.maxHp;

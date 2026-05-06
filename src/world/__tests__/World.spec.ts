@@ -22,9 +22,9 @@ beforeEach(() => {
     { kind: 'rootkit', displayName: 'Rootkit', baseStats: { hp: 800, speed: 0.8, armor: 6 }, bounty: 80, flying: false, classRef: RootkitEnemy },
   ]);
   registerTowers([
-    { kind: 'firewall',   displayName: 'Firewall',   baseStats: { range: 3.5, fireRate: 1.2, damage: 8 },  upgrades: [], cost: 50,  projectileKind: 'hitscan-bolt',    defaultTargetPriority: 'first', targets: 'both', classRef: FirewallTower },
-    { kind: 'logic-bomb', displayName: 'Logic Bomb', baseStats: { range: 2.5, fireRate: 0.5, damage: 6 },  upgrades: [], cost: 90,  projectileKind: 'aoe-pulse',       defaultTargetPriority: 'strongest', targets: 'both', classRef: LogicBombTower },
-    { kind: 'ice-lance',  displayName: 'ICE Lance',  baseStats: { range: 4.5, fireRate: 0.7, damage: 22 }, upgrades: [], cost: 140, projectileKind: 'ballistic-pulse', defaultTargetPriority: 'strongest', targets: 'both', classRef: ICELanceTower },
+    { kind: 'firewall',   displayName: 'Firewall',   baseStats: { range: 3.5, fireRate: 1.2, damage: 8 },  upgrades: [], cost: 50,  projectileKind: 'hitscan-bolt',    defaultTargetPriority: 'first', targets: 'both', classRef: FirewallTower, rarity: 'common' },
+    { kind: 'logic-bomb', displayName: 'Logic Bomb', baseStats: { range: 2.5, fireRate: 0.5, damage: 6 },  upgrades: [], cost: 90,  projectileKind: 'aoe-pulse',       defaultTargetPriority: 'strongest', targets: 'both', classRef: LogicBombTower, rarity: 'common' },
+    { kind: 'ice-lance',  displayName: 'ICE Lance',  baseStats: { range: 4.5, fireRate: 0.7, damage: 22 }, upgrades: [], cost: 140, projectileKind: 'ballistic-pulse', defaultTargetPriority: 'strongest', targets: 'both', classRef: ICELanceTower, rarity: 'uncommon' },
   ]);
   registerProjectiles([
     { kind: 'hitscan-bolt',    ttl: 0.05, classRef: HitscanProjectile },
@@ -36,8 +36,8 @@ beforeEach(() => {
 const level: LevelDef = {
   id: 'lvl-test', name: 'Test', chapter: 0,
   grid: { cols: 3, rows: 3, cells: [['path','path','path'],['buildable','buildable','buildable'],['path','path','path']] },
-  spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
-  path: [{ col: 0, row: 0 }, { col: 2, row: 0 }],
+  spawners: [{ id: 'main', tile: { col: 0, row: 0 }, pathIndex: 0 }],
+  paths: [[{ col: 0, row: 0 }, { col: 2, row: 0 }]],
   startCredits: 100, startLives: 10,
   waves: [{ delayBeforeStart: 1, groups: [{ id: 'g1', spawnerId: 'main', enemyKind: 'worm', count: 3, spacing: 0.5, delay: 0 }] }],
   starThresholds: { stars3: 10, stars2: 8, stars1: 1 },

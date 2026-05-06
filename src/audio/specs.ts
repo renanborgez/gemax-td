@@ -354,50 +354,81 @@ export const SOUND_SPECS: Readonly<Record<SfxKey, SoundSpec>> = {
 // pattern layers ensure the last note's envelope completes before the loop
 // boundary so there's no audible click on repeat.
 
-// --- Menu theme ----------------------------------------------------------
-// 60 BPM, 24-beat loop = 24s. Soft, sparse, A minor.
-//   • arpeggio of broken-chord sine notes every 2 beats (12 total)
-//   • 4-note pentatonic melody up top (beats 4 / 10 / 16 / 22)
-//   • 4 quiet sub-bass swells underneath (beats 0 / 6 / 12 / 18)
-// All envelopes close before t = 24s so the loop joins click-free.
-const MENU_LOOP_SEC = 24;
-const MENU_BEAT_SEC = 1; // 60 BPM → 1s per beat
+// --- Menu theme — "haven" -----------------------------------------------
+// Port of the gemax HUB_T1 soundtrack. 64 BPM, four-chord progression
+// C–Am–F–G, sparse offbeat arp (ARP_CALM), retriggered triangle bass,
+// sustained sine pad with a slow swell. 30s loop, click-free.
+const MENU_BPM = 64;
+const MENU_BEAT_SEC = 60 / MENU_BPM;            // 0.9375s
+const MENU_SIXTEENTH = MENU_BEAT_SEC / 4;       // 0.234375s
+const MENU_CHORD_DUR = 32 * MENU_SIXTEENTH;     // 7.5s — 2 bars per chord
+const MENU_LOOP_SEC = 4 * MENU_CHORD_DUR;       // 30s
 
-const menuArpPitches = [
-  220.0, 261.6256, 329.6276, 440.0,
-  329.6276, 261.6256, 220.0, 261.6256,
-  329.6276, 440.0, 329.6276, 261.6256,
-];
-const menuArp: PatternNote[] = menuArpPitches.map((freq, i) => ({
-  time: i * 2 * MENU_BEAT_SEC,
-  freq,
-  duration: 1.5,
-  wave: 'sine',
-  envelope: { attack: 0.04, decay: 0.15, sustain: 0.5, release: 0.4 },
-  gainDb: -14,
-}));
-
-const menuMelody: PatternNote[] = [
-  { time: 4,  freq: 659.2551, duration: 1.2, wave: 'sine',
-    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // E5
-  { time: 10, freq: 880.0,    duration: 1.2, wave: 'sine',
-    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // A5
-  { time: 16, freq: 783.9909, duration: 1.2, wave: 'sine',
-    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // G5
-  { time: 22, freq: 659.2551, duration: 1.2, wave: 'sine',
-    envelope: { attack: 0.04, decay: 0.15, sustain: 0.4, release: 0.3 }, gainDb: -16 }, // E5
+type HavenChord = {
+  bass: number;
+  pad: readonly [number, number, number];
+  arp: readonly [number, number, number, number];
+};
+const HAVEN_PROGRESSION: readonly HavenChord[] = [
+  { bass: 65.41, pad: [261.63, 329.63, 392.00], arp: [196.00, 261.63, 329.63, 392.00] }, // C
+  { bass: 55.00, pad: [220.00, 261.63, 329.63], arp: [220.00, 261.63, 329.63, 440.00] }, // Am
+  { bass: 43.65, pad: [174.61, 220.00, 261.63], arp: [174.61, 220.00, 261.63, 349.23] }, // F
+  { bass: 49.00, pad: [196.00, 246.94, 293.66], arp: [196.00, 246.94, 293.66, 392.00] }, // G
 ];
 
-const menuBass: PatternNote[] = [
-  { time: 0,  freq: 110.0,    duration: 4, wave: 'sine',
-    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
-  { time: 6,  freq: 110.0,    duration: 4, wave: 'sine',
-    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
-  { time: 12, freq: 82.4069,  duration: 4, wave: 'sine',
-    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // E2
-  { time: 18, freq: 110.0,    duration: 4, wave: 'sine',
-    envelope: { attack: 0.15, decay: 0.3, sustain: 0.5, release: 0.5 }, gainDb: -25 }, // A2
+// ARP_CALM expanded: sixteenth step within chord → arp index. Pattern is
+// 16 steps (sparse offbeat) cycled twice per chord.
+const HAVEN_ARP_STEPS: readonly { step: number; arpIdx: number }[] = [
+  { step: 0,  arpIdx: 0 }, { step: 4,  arpIdx: 2 }, { step: 7,  arpIdx: 1 },
+  { step: 10, arpIdx: 0 }, { step: 14, arpIdx: 2 },
+  { step: 16, arpIdx: 0 }, { step: 20, arpIdx: 2 }, { step: 23, arpIdx: 1 },
+  { step: 26, arpIdx: 0 }, { step: 30, arpIdx: 2 },
 ];
+
+// Bass retriggers every half-bar (8 sixteenths).
+const HAVEN_BASS_STEPS: readonly number[] = [0, 8, 16, 24];
+
+const menuPad: PatternNote[] = [];
+const menuBass: PatternNote[] = [];
+const menuArp: PatternNote[] = [];
+
+for (let ci = 0; ci < HAVEN_PROGRESSION.length; ci++) {
+  const chord = HAVEN_PROGRESSION[ci]!;
+  const chordStart = ci * MENU_CHORD_DUR;
+
+  for (const freq of chord.pad) {
+    menuPad.push({
+      time: chordStart,
+      freq,
+      duration: MENU_CHORD_DUR - 0.5,
+      wave: 'sine',
+      envelope: { attack: 0.9, decay: 0.6, sustain: 0.7, release: 0.5 },
+      gainDb: -22,
+    });
+  }
+
+  for (const step of HAVEN_BASS_STEPS) {
+    menuBass.push({
+      time: chordStart + step * MENU_SIXTEENTH,
+      freq: chord.bass,
+      duration: 6 * MENU_SIXTEENTH,
+      wave: 'tri',
+      envelope: { attack: 0.012, decay: 0.18, sustain: 0.4, release: 0.40 },
+      gainDb: -16,
+    });
+  }
+
+  for (const { step, arpIdx } of HAVEN_ARP_STEPS) {
+    menuArp.push({
+      time: chordStart + step * MENU_SIXTEENTH,
+      freq: chord.arp[arpIdx]!,
+      duration: 1.3 * MENU_SIXTEENTH,
+      wave: 'sine',
+      envelope: { attack: 0.005, decay: 0.10, sustain: 0.2, release: 0.05 },
+      gainDb: -18,
+    });
+  }
+}
 
 const GAME_BEATS = 32;
 const GAME_BPM = 100;
@@ -437,9 +468,9 @@ export const MUSIC_SPECS: Readonly<Record<MusicKey, SoundSpec>> = {
   'main-menu': {
     totalSec: MENU_LOOP_SEC,
     layers: [
-      { kind: 'pattern', notes: menuArp },
-      { kind: 'pattern', notes: menuMelody },
+      { kind: 'pattern', notes: menuPad },
       { kind: 'pattern', notes: menuBass },
+      { kind: 'pattern', notes: menuArp },
     ],
   },
   'in-game': {

@@ -34,17 +34,26 @@ export class AudioManager {
   private initialized = false;
   private jitterRng = makeRng(0xa17d10);
   private supportsPlaybackRate = false;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
     if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
+    this.initPromise = this.initInternal();
+    return this.initPromise;
+  }
+
+  private async initInternal(): Promise<void> {
     try {
       await setAudioModeAsync({
         playsInSilentMode: true,
         shouldPlayInBackground: false,
         interruptionMode: 'mixWithOthers',
       });
-    } catch {
-      // Audio mode failure is non-fatal — SFX may still work.
+    } catch (err) {
+      // Audio mode failure is non-fatal — SFX may still work, but on iOS this
+      // means the device's silent switch will mute everything.
+      if (__DEV__) console.warn('[audio] setAudioModeAsync failed:', err);
     }
     const [sfxUris, musicUris] = await Promise.all([bakeSfx(), bakeMusic()]);
     this.musicUris = musicUris;
@@ -55,9 +64,12 @@ export class AudioManager {
       for (let i = 0; i < poolSize; i++) {
         try {
           players.push(createAudioPlayer({ uri: uris[key]! }));
-        } catch {
-          // If a player fails to construct, skip it; round-robin will use what we have.
+        } catch (err) {
+          if (__DEV__) console.warn(`[audio] createAudioPlayer failed for ${key}:`, err);
         }
+      }
+      if (__DEV__ && players.length === 0) {
+        console.warn(`[audio] pool empty for ${key} (uri=${uris[key]})`);
       }
       this.sfxPools.set(key, { players, cursor: 0 });
     }
@@ -76,7 +88,16 @@ export class AudioManager {
 
   playSfx(key: SfxKey): void {
     const pool = this.sfxPools.get(key);
-    if (!pool || pool.players.length === 0) return;
+    if (!pool || pool.players.length === 0) {
+      if (__DEV__) {
+        if (!this.initialized) {
+          console.warn(`[audio] playSfx(${key}) dropped — AudioManager not initialized yet`);
+        } else {
+          console.warn(`[audio] playSfx(${key}) dropped — pool missing or empty`);
+        }
+      }
+      return;
+    }
     const player = pool.players[pool.cursor]!;
     pool.cursor = (pool.cursor + 1) % pool.players.length;
     try {
@@ -87,10 +108,20 @@ export class AudioManager {
       }
       void player.seekTo(0);
       player.play();
-    } catch { /* swallow on RN runtime quirks */ }
+    } catch (err) {
+      if (__DEV__) console.warn(`[audio] play() failed for ${key}:`, err);
+    }
   }
 
   async playMusic(key: MusicKey): Promise<void> {
+    if (!this.initialized) {
+      // Remember intent so the first call (often from RootNav before init
+      // resolves) doesn't silently drop and leave the menu silent.
+      this.currentMusic = key;
+      await this.init();
+      // Bail if a later call superseded this one while we were waiting.
+      if (this.currentMusic !== key) return;
+    }
     if (this.currentMusic === key && this.musicPlayer) return;
     if (this.musicPlayer) {
       try { this.musicPlayer.pause(); } catch {}

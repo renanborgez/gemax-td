@@ -63,6 +63,16 @@ export type ProjectileKind =
   | 'flame-cone';
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'insane';
 
+/** Industry-standard loot tiers (Diablo/WoW/MTG lineage). Sort rank is the
+ *  array order: common < uncommon < rare < epic < legendary. */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export const RARITY_ORDER: readonly Rarity[] = [
+  'common', 'uncommon', 'rare', 'epic', 'legendary',
+] as const;
+export function rarityRank(r: Rarity): number {
+  return RARITY_ORDER.indexOf(r);
+}
+
 export type TowerDef = DeepReadonly<{
   kind: TowerKind;
   displayName: string;
@@ -79,6 +89,7 @@ export type TowerDef = DeepReadonly<{
   description?: string;
   /** Shards required to permanently unlock this tower. Omitted = free starter. */
   unlockCost?: number;
+  rarity: Rarity;
 }>;
 
 export type BossSpecial =
@@ -123,7 +134,13 @@ export type WaveDef = DeepReadonly<{
   groups: ReadonlyArray<SpawnGroup>;
 }>;
 
-export type SpawnerSpec = DeepReadonly<{ id: string; tile: GridCoord }>;
+export type SpawnerSpec = DeepReadonly<{ id: string; tile: GridCoord; pathIndex: number }>;
+
+/** Static, non-placable map decoration. Player cannot build on these cells —
+ *  the corresponding grid tile is marked 'blocked' at generation time. The
+ *  `kind` determines the rendered sprite (crate, rocket, void). */
+export type ObstacleKind = 'crate' | 'rocket' | 'void';
+export type Obstacle = DeepReadonly<{ col: number; row: number; kind: ObstacleKind }>;
 
 export type LevelDef = DeepReadonly<{
   id: string;
@@ -132,11 +149,19 @@ export type LevelDef = DeepReadonly<{
   unlockRequires?: string;
   grid: { cols: number; rows: number; cells: ReadonlyArray<ReadonlyArray<TileType>> };
   spawners: ReadonlyArray<SpawnerSpec>;
-  path: ReadonlyArray<GridCoord>;
+  /** One or more polylines through the grid. Each enemy walks `paths[pathIndex]`,
+   *  determined by its spawner's `pathIndex`. Single-lane levels have a 1-element
+   *  array. Lanes may share waypoints / endpoints — the renderer + grid paint
+   *  unions all of them. Self-intersecting polylines (figure-8, loops) work too:
+   *  enemies walk distance-along-polyline regardless of crossings. */
+  paths: ReadonlyArray<ReadonlyArray<GridCoord>>;
   startCredits: number;
   startLives: number;
   waves: ReadonlyArray<WaveDef>;
   starThresholds: { stars3: number; stars2: number; stars1: number };
+  /** Optional non-placable obstacles. Cells listed here are also 'blocked'
+   *  in `grid.cells`; the renderer reads this array to draw a per-kind sprite. */
+  obstacles?: ReadonlyArray<Obstacle>;
 }>;
 
 export type ChapterDef = DeepReadonly<{
@@ -144,6 +169,8 @@ export type ChapterDef = DeepReadonly<{
   name: string;
   subtitle: string;
   paletteAccent: string;
+  /** Optional gradient endpoint paired with `paletteAccent`. Falls back to accent. */
+  paletteSecondary?: string;
   paletteBackground?: string;
   artKey: string;
   briefing: string;

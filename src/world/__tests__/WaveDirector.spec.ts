@@ -22,8 +22,8 @@ const trojanDef = {
 const level: LevelDef = {
   id: 'lvl-test', name: 'Test', chapter: 0,
   grid: { cols: 3, rows: 3, cells: [['path','path','path'],['path','path','path'],['path','path','path']] },
-  spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
-  path: [{ col: 0, row: 0 }, { col: 2, row: 0 }],
+  spawners: [{ id: 'main', tile: { col: 0, row: 0 }, pathIndex: 0 }],
+  paths: [[{ col: 0, row: 0 }, { col: 2, row: 0 }]],
   startCredits: 100, startLives: 10,
   waves: [
     { delayBeforeStart: 0, groups: [

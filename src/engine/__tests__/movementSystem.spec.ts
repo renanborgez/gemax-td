@@ -20,7 +20,7 @@ describe('movementSystem', () => {
   it('advances enemy along path at speed', () => {
     const e = worm();
     const leaks: LeakEvent[] = [], dots: DotTickEvent[] = [];
-    movementSystem([e], path, ctx, 0.5, leaks, dots);
+    movementSystem([e], [path], ctx, 0.5, leaks, dots);
     // 0.5 s × 2 tiles/s × tileSize=1 = 1 unit moved
     expect(e.distAlongPath).toBeCloseTo(1);
     expect(e.x).toBeCloseTo(1.5);
@@ -30,7 +30,7 @@ describe('movementSystem', () => {
     const e = worm();
     e.distAlongPath = path.totalLength - 0.01;
     const leaks: LeakEvent[] = [], dots: DotTickEvent[] = [];
-    movementSystem([e], path, ctx, 1, leaks, dots);
+    movementSystem([e], [path], ctx, 1, leaks, dots);
     expect(e.alive).toBe(false);
     expect(leaks).toEqual([{ enemyId: 'e:1', enemyKind: 'worm' }]);
   });
@@ -39,7 +39,7 @@ describe('movementSystem', () => {
     const e = worm();
     e.statuses.push(freshStatus({ kind: 'dot', magnitude: 5, duration: 1, appliedByTowerId: 't:1' }));
     const leaks: LeakEvent[] = [], dots: DotTickEvent[] = [];
-    movementSystem([e], path, ctx, 0.5, leaks, dots);
+    movementSystem([e], [path], ctx, 0.5, leaks, dots);
     expect(dots).toHaveLength(1);
     expect(dots[0]!.damage).toBeCloseTo(2.5);
     expect(e.statuses[0]!.remaining).toBeCloseTo(0.5);
@@ -49,7 +49,7 @@ describe('movementSystem', () => {
     const e = worm();
     e.alive = false;
     const start = e.distAlongPath;
-    movementSystem([e], path, ctx, 1, [], []);
+    movementSystem([e], [path], ctx, 1, [], []);
     expect(e.distAlongPath).toBe(start);
   });
 });

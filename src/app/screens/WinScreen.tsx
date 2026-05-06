@@ -1,23 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { ScreenShell } from '@/ui/components/ScreenShell';
-import { AngularButton } from '@/ui/components/AngularButton';
 import { LootBadge } from '@/ui/components/LootBadge';
 import { SectionCard } from '@/ui/components/SectionCard';
-import { COLORS, TEXT, SPACING } from '@/render/theme';
+import { ALL_LEVELS } from '@/content/levels';
+import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Win'>;
 
 export function WinScreen({ navigation, route }: Props) {
-  const { stars, shards, totalWaves } = route.params;
+  const { levelId, difficulty, stars, shards, totalWaves } = route.params;
+
+  const { chapter, nextLevelId } = useMemo(() => {
+    const current = ALL_LEVELS.find((l) => l.id === levelId);
+    if (!current) return { chapter: 0, nextLevelId: undefined };
+    const chapterLevels = ALL_LEVELS.filter((l) => l.chapter === current.chapter);
+    const idx = chapterLevels.findIndex((l) => l.id === levelId);
+    const next = idx >= 0 ? chapterLevels[idx + 1] : undefined;
+    return { chapter: current.chapter, nextLevelId: next?.id };
+  }, [levelId]);
+
+  const goToList = () => navigation.navigate('LevelSelect', { chapter });
 
   return (
-    <ScreenShell
-      sectionTitle="Victory Results"
-      onBack={() => navigation.navigate('Chapters')}
-    >
+    <ScreenShell sectionTitle="Victory Results" onBack={goToList}>
       <View style={styles.hero}>
         <Text style={styles.heroLineMint}>SECTOR SECURED</Text>
         <Text style={styles.heroLineWhite}>MISSION COMPLETE</Text>
@@ -52,8 +60,18 @@ export function WinScreen({ navigation, route }: Props) {
         <Text style={styles.flavor}>NETWORK INTEGRITY HELD — ALL INTRUSIONS NEUTRALIZED</Text>
       </SectionCard>
 
-      <View style={styles.continueWrap}>
-        <AngularButton label="CONTINUE" onPress={() => navigation.navigate('Chapters')} />
+      <View style={styles.actions}>
+        {nextLevelId !== undefined ? (
+          <Pressable
+            onPress={() => navigation.replace('Play', { levelId: nextLevelId, difficulty })}
+            style={styles.btnPrimary}
+          >
+            <Text style={styles.btnPrimaryText}>START NEXT</Text>
+          </Pressable>
+        ) : null}
+        <Pressable onPress={goToList} style={styles.btnSecondary}>
+          <Text style={styles.btnSecondaryText}>BACK TO LIST</Text>
+        </Pressable>
       </View>
     </ScreenShell>
   );
@@ -85,5 +103,20 @@ const styles = StyleSheet.create({
   statLabel: { ...TEXT.label, color: COLORS.textMuted, fontSize: 11 },
   statValue: { ...TEXT.title, fontSize: 16, color: COLORS.primary },
   flavor: { ...TEXT.bodySmall, color: COLORS.textMuted, fontStyle: 'italic' },
-  continueWrap: { marginTop: SPACING.sm },
+  actions: { gap: SPACING.sm, marginTop: SPACING.sm },
+  btnPrimary: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+  },
+  btnPrimaryText: { ...TEXT.button, color: COLORS.textOnAccent },
+  btnSecondary: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: RADIUS.md,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+  },
+  btnSecondaryText: { ...TEXT.button, color: COLORS.primary },
 });

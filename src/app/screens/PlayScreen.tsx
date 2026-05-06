@@ -56,9 +56,13 @@ export function PlayScreen({ route, navigation }: Props) {
     difficulty: route.params.difficulty,
     seed: 1,
   });
-  const chapterAccent = (() => {
+  const { chapterAccent, chapterSecondary } = (() => {
     const lvl = LEVEL_BY_ID[route.params.levelId];
-    return lvl ? CHAPTER_BY_INDEX[lvl.chapter]?.paletteAccent : undefined;
+    const def = lvl ? CHAPTER_BY_INDEX[lvl.chapter] : undefined;
+    return {
+      chapterAccent: def?.paletteAccent,
+      chapterSecondary: def?.paletteSecondary,
+    };
   })();
   const [pauseVisible, setPauseVisible] = useState(false);
   const [pauseMode, setPauseMode] = useState<PauseModalMode>('paused');
@@ -216,8 +220,13 @@ export function PlayScreen({ route, navigation }: Props) {
     // before PlayScreen unmounts — otherwise the native Modal can leave a
     // transparent overlay on the next screen that swallows touches.
     requestAnimationFrame(() => {
-      if (action) navigation.dispatch(action);
-      else navigation.navigate('Chapters');
+      if (action) {
+        navigation.dispatch(action);
+      } else {
+        const lvl = LEVEL_BY_ID[route.params.levelId];
+        if (lvl) navigation.navigate('LevelSelect', { chapter: lvl.chapter });
+        else navigation.navigate('Chapters');
+      }
     });
   };
 
@@ -254,6 +263,7 @@ export function PlayScreen({ route, navigation }: Props) {
               onViewportReady={onViewportReady}
               cameraTransform={camera.transform}
               {...(chapterAccent !== undefined ? { accent: chapterAccent } : {})}
+              {...(chapterSecondary !== undefined ? { secondary: chapterSecondary } : {})}
             />
           </View>
         </GestureDetector>

@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { ALL_LEVELS } from '@/content/levels';
@@ -106,13 +108,14 @@ function ChapterCard({
   onPress: () => void;
 }) {
   const accent = def.paletteAccent;
+  const secondary = def.paletteSecondary ?? accent;
   return (
     <Pressable
       style={[styles.card, locked && styles.cardLocked]}
       disabled={locked}
       onPress={onPress}
     >
-      <View style={[styles.accentBar, { backgroundColor: accent }]} />
+      <AccentGradientBar primary={accent} secondary={secondary} />
       <View style={{ flex: 1, gap: SPACING.xs }}>
         <Text style={[styles.chapterIndex, { color: accent }]}>
           CH. {def.index.toString().padStart(2, '0')}
@@ -127,10 +130,39 @@ function ChapterCard({
       </View>
       {locked && (
         <View pointerEvents="none" style={styles.lockOverlay}>
-          <Text style={styles.lockIcon}>🔒</Text>
+          <Ionicons name="lock-closed" size={28} color={COLORS.textMuted} />
         </View>
       )}
     </Pressable>
+  );
+}
+
+function AccentGradientBar({
+  primary,
+  secondary,
+}: {
+  primary: string;
+  secondary: string;
+}) {
+  const [h, setH] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.height;
+    if (next !== h) setH(next);
+  };
+  return (
+    <View style={styles.accentBar} onLayout={onLayout}>
+      {h > 0 && (
+        <Canvas style={StyleSheet.absoluteFillObject}>
+          <Rect x={0} y={0} width={4} height={h}>
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(0, h)}
+              colors={[primary, secondary]}
+            />
+          </Rect>
+        </Canvas>
+      )}
+    </View>
   );
 }
 
@@ -148,7 +180,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   cardLocked: { opacity: 0.4 },
-  accentBar: { width: 4, alignSelf: 'stretch' },
+  accentBar: { width: 4, alignSelf: 'stretch', overflow: 'hidden' },
   chapterIndex: { ...TEXT.labelSmall, fontSize: 10, letterSpacing: 1.5 },
   chapterName: {
     ...TEXT.title,
@@ -170,5 +202,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockIcon: { fontSize: 32 },
 });

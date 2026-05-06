@@ -96,8 +96,15 @@ function EnemySlot({
   // Per-kind procedural motion folded into the existing transform worklet —
   // no new derived values per slot. Phase staggered by index so a swarm of the
   // same kind doesn't pulse in lockstep.
+  //
+  // Heading: "forward"-oriented glyphs (drawn facing +x) rotate to match the
+  // path tangent so packets/worms/etc. point where they travel. "Upright"
+  // glyphs (crown/antennae up) only mirror horizontally based on heading sign,
+  // so they don't flop on their side at corners.
   const transform = useDerivedValue(() => {
-    const kind = snapshot.value.enemies[index]?.defKind;
+    const snap = snapshot.value.enemies[index];
+    const kind = snap?.defKind;
+    const heading = snap?.heading ?? 0;
     const t = clock.value + index * 0.37;
     let tx = 0, ty = 0, sx = 1, sy = 1, rot = 0;
     if (kind === 'worm') {
@@ -116,43 +123,110 @@ function EnemySlot({
       const p = 1 + 0.05 * Math.sin(t * 5);
       sx = p; sy = p;
     } else if (kind === 'hypervisor') {
-      // Heavy server-rack — slow lateral judder, no scale pulse (stoic).
       tx = Math.sin(t * 2) * bob * 0.6;
       const p = 1 + 0.04 * Math.sin(t * 1.5);
       sy = p;
     } else if (kind === 'kernelghost') {
-      // Endgame ghost — large bob + slow rotation + scale pulse.
       ty = Math.sin(t * 2.2) * bob * 1.6;
       rot = Math.sin(t * 1.5) * 0.05;
       const p = 1 + 0.07 * Math.sin(t * 2.5);
       sx = p; sy = p;
     } else if (kind === 'firmware-leech') {
-      // Slithering parasite — strong horizontal wave.
       tx = Math.sin(t * 5) * bob * 1.2;
       sy = 1 + 0.12 * Math.sin(t * 7);
     } else if (kind === 'darknet-titan') {
-      // Heavy stomp — deliberate vertical compression.
       sy = 1 + 0.08 * Math.sin(t * 1.5);
       sx = 1 - 0.04 * Math.sin(t * 1.5);
     } else if (kind === 'quantum-shade') {
-      // Phasing diamond — fast pulse + small rot.
       const p = 1 + 0.1 * Math.sin(t * 6);
       sx = p; sy = p;
       rot = Math.sin(t * 3) * 0.06;
     } else if (kind === 'logic-gate') {
-      // Mechanical gate — discrete twitches.
       rot = Math.sin(t * 0.8) * 0.03;
       tx = Math.sin(t * 4) * bob * 0.4;
     } else if (kind === 'voidwalker') {
-      // Slow imposing drift.
       ty = Math.sin(t * 1.2) * bob * 1.8;
       const p = 1 + 0.04 * Math.sin(t * 1.0);
       sy = p;
     } else if (kind === 'apex') {
-      // Final boss — slow majestic pulse.
       const p = 1 + 0.09 * Math.sin(t * 1.5);
       sx = p; sy = p;
       rot = Math.sin(t * 0.7) * 0.04;
+    } else if (kind === 'mote') {
+      // Tiny swarm filler — fast scale flicker.
+      const p = 1 + 0.18 * Math.sin(t * 9);
+      sx = p; sy = p;
+    } else if (kind === 'sprite') {
+      // Twinkling star — continuous spin + scale pulse.
+      rot = t * 1.6;
+      const p = 1 + 0.1 * Math.sin(t * 6);
+      sx = p; sy = p;
+    } else if (kind === 'packet') {
+      // Dart — quick horizontal jitter to imply velocity.
+      tx = Math.sin(t * 12) * bob * 0.4;
+      sx = 1 + 0.06 * Math.sin(t * 12);
+    } else if (kind === 'drone') {
+      // Hovering quad — subtle vertical bob + tiny tilt.
+      ty = Math.sin(t * 5) * bob * 0.5;
+      rot = Math.sin(t * 2) * 0.04;
+    } else if (kind === 'crawler') {
+      // Six-legged scuttle — leg-cycle scale wobble.
+      sy = 1 + 0.1 * Math.sin(t * 10);
+      sx = 1 - 0.05 * Math.sin(t * 10);
+    } else if (kind === 'stalker') {
+      // Predator triangle — predatory bob + small lateral sway.
+      ty = Math.sin(t * 3.5) * bob * 0.8;
+      tx = Math.sin(t * 1.7) * bob * 0.4;
+    } else if (kind === 'phantom') {
+      // Hooded silhouette — drifting bob + slight rotation.
+      ty = Math.sin(t * 1.8) * bob * 1.2;
+      rot = Math.sin(t * 1.2) * 0.05;
+    } else if (kind === 'bastion') {
+      // Armored shield — heavy slow sway, no pulse.
+      rot = Math.sin(t * 1.2) * 0.04;
+      ty = Math.sin(t * 1.2) * bob * 0.3;
+    } else if (kind === 'forkbomb') {
+      // Branching tree — twitchy scale spasms.
+      const p = 1 + 0.12 * Math.sin(t * 7);
+      sx = p; sy = p;
+      rot = Math.sin(t * 5) * 0.03;
+    } else if (kind === 'cache') {
+      // Concentric rings — heal-pulse breathing.
+      const p = 1 + 0.08 * Math.sin(t * 2.2);
+      sx = p; sy = p;
+    } else if (kind === 'reaper') {
+      // Hooded scythe — slow ominous bob + sway.
+      ty = Math.sin(t * 1.6) * bob * 1.4;
+      rot = Math.sin(t * 1.0) * 0.05;
+    } else if (kind === 'knight') {
+      // Greathelm — heavy stoic sway.
+      rot = Math.sin(t * 1.0) * 0.04;
+      ty = Math.sin(t * 2.0) * bob * 0.3;
+    } else if (kind === 'sentinel') {
+      // Eye-flier — wing-flap (sx pulse) + bob.
+      sx = 1 + 0.1 * Math.sin(t * 6);
+      ty = Math.sin(t * 6) * bob * 0.4;
+    } else if (kind === 'construct') {
+      // Blocky golem — heavy stomp compression.
+      sy = 1 + 0.07 * Math.sin(t * 1.8);
+      sx = 1 - 0.04 * Math.sin(t * 1.8);
+    } else if (kind === 'bulwark') {
+      // Crenellated keep — minimal sway, very stoic.
+      rot = Math.sin(t * 0.9) * 0.02;
+      sy = 1 + 0.03 * Math.sin(t * 1.4);
+    }
+
+    // Glyphs whose natural orientation is "standing up" — don't rotate them
+    // along the path tangent; just mirror horizontally on leftward travel.
+    const upright = kind === 'knight' || kind === 'apex' || kind === 'trojan'
+      || kind === 'reaper' || kind === 'daemon' || kind === 'construct'
+      || kind === 'bulwark' || kind === 'bastion' || kind === 'forkbomb'
+      || kind === 'voidwalker' || kind === 'darknet-titan' || kind === 'rootkit'
+      || kind === 'wraith' || kind === 'phantom' || kind === 'kernelghost';
+    if (upright) {
+      if (Math.cos(heading) < 0) sx = -sx;
+    } else {
+      rot += heading;
     }
     return [
       { translateX: cx.value + tx },

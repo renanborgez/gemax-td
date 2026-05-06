@@ -6,10 +6,10 @@ import type { IdGen } from '@/lib/id';
 export class Spawner {
   constructor(private idGen: IdGen) {}
 
-  spawn(opts: { enemyKind: EnemyKind; spawnerId: string }): Enemy {
+  spawn(opts: { enemyKind: EnemyKind; spawnerId: string; pathIndex: number }): Enemy {
     const def = getEnemyDef(opts.enemyKind);
     const id = this.idGen('enemy');
-    return new def.classRef({
+    const enemy = new def.classRef({
       id,
       defKind: def.kind,
       baseStats: { hp: def.baseStats.hp, speed: def.baseStats.speed, armor: def.baseStats.armor },
@@ -17,5 +17,7 @@ export class Spawner {
       flying: def.flying,
       spawnerId: opts.spawnerId,
     });
+    enemy.pathIndex = opts.pathIndex;
+    return enemy;
   }
 }

@@ -31,10 +31,10 @@ beforeEach(() => {
       special: { type: 'healAura', radius: 1.5, hpPerSec: 6 } },
   ]);
   registerTowers([
-    { kind: 'firewall',   displayName: 'Firewall',   baseStats: { range: 5,    fireRate: 5,   damage: 999 }, upgrades: [], cost: 50,  projectileKind: 'hitscan-bolt',    defaultTargetPriority: 'first', targets: 'both', classRef: FirewallTower },
-    { kind: 'logic-bomb', displayName: 'Logic Bomb', baseStats: { range: 2.5,  fireRate: 0.5, damage: 6   }, upgrades: [], cost: 90,  projectileKind: 'aoe-pulse',       defaultTargetPriority: 'strongest', targets: 'both', classRef: LogicBombTower },
-    { kind: 'ice-lance',  displayName: 'ICE Lance',  baseStats: { range: 4.5,  fireRate: 0.7, damage: 22  }, upgrades: [], cost: 140, projectileKind: 'ballistic-pulse', defaultTargetPriority: 'strongest', targets: 'both', classRef: ICELanceTower },
-    { kind: 'emp',        displayName: 'EMP',        baseStats: { range: 3.0,  fireRate: 1.0, damage: 1   }, upgrades: [], cost: 160, projectileKind: 'emp-burst',       defaultTargetPriority: 'closest', targets: 'both', classRef: EMPTower },
+    { kind: 'firewall',   displayName: 'Firewall',   baseStats: { range: 5,    fireRate: 5,   damage: 999 }, upgrades: [], cost: 50,  projectileKind: 'hitscan-bolt',    defaultTargetPriority: 'first', targets: 'both', classRef: FirewallTower, rarity: 'common' },
+    { kind: 'logic-bomb', displayName: 'Logic Bomb', baseStats: { range: 2.5,  fireRate: 0.5, damage: 6   }, upgrades: [], cost: 90,  projectileKind: 'aoe-pulse',       defaultTargetPriority: 'strongest', targets: 'both', classRef: LogicBombTower, rarity: 'common' },
+    { kind: 'ice-lance',  displayName: 'ICE Lance',  baseStats: { range: 4.5,  fireRate: 0.7, damage: 22  }, upgrades: [], cost: 140, projectileKind: 'ballistic-pulse', defaultTargetPriority: 'strongest', targets: 'both', classRef: ICELanceTower, rarity: 'uncommon' },
+    { kind: 'emp',        displayName: 'EMP',        baseStats: { range: 3.0,  fireRate: 1.0, damage: 1   }, upgrades: [], cost: 160, projectileKind: 'emp-burst',       defaultTargetPriority: 'closest', targets: 'both', classRef: EMPTower, rarity: 'rare' },
   ]);
   registerProjectiles([
     { kind: 'hitscan-bolt',    ttl: 0.05, classRef: HitscanProjectile },
@@ -47,8 +47,8 @@ beforeEach(() => {
 const level: LevelDef = {
   id: 'lvl-test', name: 'Test', chapter: 0,
   grid: { cols: 5, rows: 1, cells: [['path','path','path','path','path']] },
-  spawners: [{ id: 'main', tile: { col: 0, row: 0 } }],
-  path: [{ col: 0, row: 0 }, { col: 4, row: 0 }],
+  spawners: [{ id: 'main', tile: { col: 0, row: 0 }, pathIndex: 0 }],
+  paths: [[{ col: 0, row: 0 }, { col: 4, row: 0 }]],
   startCredits: 200, startLives: 5,
   waves: [{ delayBeforeStart: 0, groups: [{ id: 'g1', spawnerId: 'main', enemyKind: 'worm', count: 2, spacing: 0.5, delay: 0 }] }],
   starThresholds: { stars3: 5, stars2: 4, stars1: 1 },

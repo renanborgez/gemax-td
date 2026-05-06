@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/RootNav';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { AngularButton } from '@/ui/components/AngularButton';
-import { ChapterHero3D } from '@/ui/components/ChapterHero3D';
+import { ChapterEmblem } from '@/ui/components/ChapterEmblem';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ALL_LEVELS, LEVEL_BY_ID } from '@/content/levels';
 import { CHAPTER_BY_INDEX } from '@/content/chapters';
@@ -61,6 +61,7 @@ export function TitleScreen({ navigation }: Props) {
   );
   const heroChapterDef = CHAPTER_BY_INDEX[heroChapter];
   const heroAccent = heroChapterDef?.paletteAccent ?? COLORS.secondary;
+  const heroSecondary = heroChapterDef?.paletteSecondary;
 
   // Measured size of the body region drives the global scale.
   const [bodySize, setBodySize] = useState({ w: 0, h: 0 });
@@ -123,9 +124,10 @@ export function TitleScreen({ navigation }: Props) {
         </View>
 
         <View style={[styles.heroWrap, { gap: BASE.gapXs * scale }]}>
-          <ChapterHero3D
+          <ChapterEmblem
             chapterIndex={heroChapter}
             accent={heroAccent}
+            {...(heroSecondary !== undefined ? { secondary: heroSecondary } : {})}
             width={heroW}
             height={heroH}
           />

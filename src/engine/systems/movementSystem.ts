@@ -13,12 +13,14 @@ export type DotTickEvent = {
 
 export function movementSystem(
   enemies: readonly Enemy[],
-  path: Path,
+  paths: readonly Path[],
   ctx: StatContext,
   dt: number,
   outLeaks: LeakEvent[],
   outDotTicks: DotTickEvent[],
 ): void {
+  const fallback = paths[0];
+  if (!fallback) return;
   for (const e of enemies) {
     if (!e.alive) continue;
 
@@ -37,17 +39,20 @@ export function movementSystem(
     }
     tickStatuses(e.statuses, dt);
 
+    const lane = paths[e.pathIndex] ?? fallback;
     const speed = getEnemyStat(
       { kind: 'enemy', defKind: e.defKind, base: e.base, statuses: e.statuses },
       'speed',
       ctx,
     );
-    e.distAlongPath += speed * dt * path.tileSize;
-    const xy = path.xyAtDistance(e.distAlongPath);
+    e.distAlongPath += speed * dt * lane.tileSize;
+    const xy = lane.xyAtDistance(e.distAlongPath);
     e.x = xy.x;
     e.y = xy.y;
+    const tan = lane.tangentAtDistance(e.distAlongPath);
+    if (tan.x !== 0 || tan.y !== 0) e.heading = Math.atan2(tan.y, tan.x);
 
-    if (path.reachedEnd(e.distAlongPath)) {
+    if (lane.reachedEnd(e.distAlongPath)) {
       e.alive = false;
       outLeaks.push({ enemyId: e.id, enemyKind: e.defKind });
     }

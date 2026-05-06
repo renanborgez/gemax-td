@@ -8,6 +8,7 @@ import { PathLayer } from '@/render/layers/PathLayer';
 import { GridOverlayLayer } from '@/render/layers/GridOverlayLayer';
 import { BaseLayer } from '@/render/layers/BaseLayer';
 import { SpawnLayer } from '@/render/layers/SpawnLayer';
+import { ObstaclesLayer } from '@/render/layers/ObstaclesLayer';
 import { TowersLayer } from '@/render/layers/TowersLayer';
 import { EnemiesLayer } from '@/render/layers/EnemiesLayer';
 import { ProjectilesLayer } from '@/render/layers/ProjectilesLayer';
@@ -24,11 +25,13 @@ function SkiaWorldImpl({
   onViewportReady,
   cameraTransform,
   accent,
+  secondary,
 }: {
   session: GameSession;
   onViewportReady?: (vp: Viewport) => void;
   cameraTransform: SharedValue<CameraTransform>;
   accent?: string;
+  secondary?: string;
 }) {
   const world = session.worldRef.current;
   const [size, setSize] = useState<{ w: number; h: number; x: number; y: number } | null>(null);
@@ -62,12 +65,32 @@ function SkiaWorldImpl({
         <>
           {/* Bottom Canvas: static map + worklet-driven hint. */}
           <Canvas style={StyleSheet.absoluteFillObject}>
-            <BackgroundLayer viewport={viewport} {...(accent !== undefined ? { accent } : {})} />
+            <BackgroundLayer
+              viewport={viewport}
+              {...(accent !== undefined ? { accent } : {})}
+              {...(secondary !== undefined ? { secondary } : {})}
+            />
             <Group transform={cameraTransform}>
-              <PathLayer world={world} viewport={viewport} {...(accent !== undefined ? { accent } : {})} />
-              <GridOverlayLayer viewport={viewport} grid={world.grid} buildHint={session.buildHint} />
-              <BaseLayer world={world} viewport={viewport} />
+              <PathLayer
+                world={world}
+                viewport={viewport}
+                {...(accent !== undefined ? { accent } : {})}
+                {...(secondary !== undefined ? { secondary } : {})}
+              />
+              <GridOverlayLayer
+                viewport={viewport}
+                grid={world.grid}
+                buildHint={session.buildHint}
+                {...(accent !== undefined ? { accent } : {})}
+              />
+              <BaseLayer
+                world={world}
+                viewport={viewport}
+                {...(accent !== undefined ? { accent } : {})}
+                {...(secondary !== undefined ? { secondary } : {})}
+              />
               <SpawnLayer world={world} viewport={viewport} />
+              <ObstaclesLayer world={world} viewport={viewport} />
             </Group>
           </Canvas>
           {/* Tower Canvas: React-reactive. Isolating towers here means

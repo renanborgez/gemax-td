@@ -10,6 +10,11 @@ import type { ChapterDef } from '@/content/types';
  *
  * Boss-enemy assignments are intentionally one boss per chapter — the player
  * should encounter each boss kind in exactly one finale.
+ *
+ * Each chapter carries a primary `paletteAccent` and a secondary endpoint
+ * (`paletteSecondary`). Both feed the chapter card gradient, the in-match
+ * nebula tints, and the badge glow so every chapter reads as a distinct hue
+ * pair rather than a single flat color.
  */
 
 export const CHAPTERS: ReadonlyArray<ChapterDef> = [
@@ -18,6 +23,7 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     name: 'The Intranet',
     subtitle: 'Corporate firewalls. First contact.',
     paletteAccent: '#7AFCC9',
+    paletteSecondary: '#1E8A6B',
     artKey: 'chapter/intranet',
     briefing:
       'Breach an SMB network. Worms probe the perimeter; trojans test your firewall. ' +
@@ -30,6 +36,7 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     name: 'Uplink',
     subtitle: 'Outbound channel — keep it closed.',
     paletteAccent: '#44EEFF',
+    paletteSecondary: '#3A5BFF',
     artKey: 'chapter/uplink',
     briefing:
       'A staging server is exfiltrating data. Cut the uplink before payloads escape upstream — ' +
@@ -41,7 +48,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 2,
     name: 'Cloud Layer',
     subtitle: 'Burst into the tenancy. Burn the host.',
-    paletteAccent: '#FFB14E',
+    paletteAccent: '#9CC9FF',
+    paletteSecondary: '#E8F1FF',
     artKey: 'chapter/cloud',
     briefing:
       'Multi-tenant infra is leaking workloads. Cut the bastion edge, then bring the Hypervisor down ' +
@@ -53,7 +61,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 3,
     name: 'Mainframe',
     subtitle: 'Last hop. Kernel-level intrusion.',
-    paletteAccent: '#7AFCC9',
+    paletteAccent: '#38D399',
+    paletteSecondary: '#0E8A6B',
     artKey: 'chapter/mainframe',
     briefing:
       'Kernelghost has root. Hold the perimeter while the unwind sequence runs — every leaked ' +
@@ -65,7 +74,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 4,
     name: 'Firmware',
     subtitle: 'Below the OS. Where the bus speaks.',
-    paletteAccent: '#FFB14E',
+    paletteAccent: '#D2884B',
+    paletteSecondary: '#5A3214',
     artKey: 'chapter/firmware',
     briefing:
       'Microcode has been silently rewritten. A Firmware Leech sits between every read and write — ' +
@@ -77,7 +87,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 5,
     name: 'Darknet',
     subtitle: 'Off-grid traffic. Off-grid threats.',
-    paletteAccent: '#FF7A8A',
+    paletteAccent: '#FF4FA3',
+    paletteSecondary: '#7B1F73',
     artKey: 'chapter/darknet',
     briefing:
       'Onion routes cluster around a single relay. The Darknet Titan walks the corridor — ' +
@@ -89,7 +100,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 6,
     name: 'Quantum',
     subtitle: 'Superposed payloads. Split your fire.',
-    paletteAccent: '#44EEFF',
+    paletteAccent: '#A788FF',
+    paletteSecondary: '#44EEFF',
     artKey: 'chapter/quantum',
     briefing:
       'Probability harvesters phase between routing tables. The Quantum Shade only resolves when ' +
@@ -101,7 +113,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 7,
     name: 'Logic',
     subtitle: 'Boolean armor. Imperative response.',
-    paletteAccent: '#FFB14E',
+    paletteAccent: '#C5FF4E',
+    paletteSecondary: '#5E8A1A',
     artKey: 'chapter/logic',
     briefing:
       'A Logic Gate has rewritten the routing fabric. Burst its core; expect a daemon swarm on death.',
@@ -112,7 +125,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 8,
     name: 'Void',
     subtitle: 'Off-policy traffic. Off-record death.',
-    paletteAccent: '#8A8F99',
+    paletteAccent: '#7A4B9C',
+    paletteSecondary: '#1F1030',
     artKey: 'chapter/void',
     briefing:
       'Untracked binaries congregate around the Voidwalker. Heal-aura is brutal — control the swarm ' +
@@ -124,7 +138,8 @@ export const CHAPTERS: ReadonlyArray<ChapterDef> = [
     index: 9,
     name: 'Apex',
     subtitle: 'The kernel that writes the kernels.',
-    paletteAccent: '#F2F4F7',
+    paletteAccent: '#FFD86B',
+    paletteSecondary: '#FF6FA1',
     artKey: 'chapter/apex',
     briefing:
       'You are deep in the meta-layer. Apex regenerates from any leaked packet — fail to hold and ' +
