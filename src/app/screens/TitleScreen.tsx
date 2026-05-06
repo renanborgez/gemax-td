@@ -10,7 +10,7 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { ALL_LEVELS, LEVEL_BY_ID } from '@/content/levels';
 import { CHAPTER_BY_INDEX } from '@/content/chapters';
 import type { LevelProgress } from '@/meta/schema';
-import { COLORS, TEXT, SPACING } from '@/render/theme';
+import { COLORS, RADIUS, TEXT, SPACING } from '@/render/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Title'>;
 
@@ -195,10 +195,10 @@ const styles = StyleSheet.create({
     right: SPACING.md,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: `${COLORS.bgElevated}99`,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
