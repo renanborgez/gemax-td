@@ -73,11 +73,12 @@ export class AudioManager {
       }
       this.sfxPools.set(key, { players, cursor: 0 });
     }
-    // Duck-type once: assume playbackRate is supported iff the property exists on a
-    // freshly-constructed player. Setting an unknown prop on a JS-side proxy doesn't
-    // throw, so try/catch on assignment is unreliable — this is.
+    // Duck-type once: expo-audio exposes `playbackRate` as a getter-only Property
+    // and a separate `setPlaybackRate(rate)` Function. Assigning to
+    // `playbackRate` throws "only a getter" under Hermes. Probe for the function.
     const probe = this.sfxPools.get('ui-click')?.players[0];
-    this.supportsPlaybackRate = probe !== undefined && 'playbackRate' in (probe as object);
+    this.supportsPlaybackRate = probe !== undefined
+      && typeof (probe as unknown as { setPlaybackRate?: unknown }).setPlaybackRate === 'function';
     this.initialized = true;
   }
 
@@ -100,17 +101,26 @@ export class AudioManager {
     }
     const player = pool.players[pool.cursor]!;
     pool.cursor = (pool.cursor + 1) % pool.players.length;
-    try {
-      player.volume = this.volumes.master * this.volumes.sfx;
-      if (this.supportsPlaybackRate && JITTER_KEYS.has(key)) {
-        const rate = 1 + (this.jitterRng() - 0.5) * 0.06;
-        (player as unknown as { playbackRate: number }).playbackRate = rate;
+    const volume = this.volumes.master * this.volumes.sfx;
+    const jitterRate = this.supportsPlaybackRate && JITTER_KEYS.has(key)
+      ? 1 + (this.jitterRng() - 0.5) * 0.06
+      : null;
+    // seekTo() is async on iOS — if play() fires before the seek completes,
+    // a player that previously played to completion stays parked at the end
+    // and `playImmediately` produces no audible output. Await the rewind,
+    // then play. We don't await this from the caller (listeners are sync).
+    void (async () => {
+      try {
+        player.volume = volume;
+        if (jitterRate !== null) {
+          (player as unknown as { setPlaybackRate: (rate: number) => void }).setPlaybackRate(jitterRate);
+        }
+        await player.seekTo(0);
+        player.play();
+      } catch (err) {
+        if (__DEV__) console.warn(`[audio] play() failed for ${key}:`, err);
       }
-      void player.seekTo(0);
-      player.play();
-    } catch (err) {
-      if (__DEV__) console.warn(`[audio] play() failed for ${key}:`, err);
-    }
+    })();
   }
 
   async playMusic(key: MusicKey): Promise<void> {
