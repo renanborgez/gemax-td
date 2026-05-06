@@ -22,9 +22,12 @@ function levelHasAnyStar(progress: LevelProgress | undefined): boolean {
   return Object.values(progress.bestStarsByDifficulty).some((s) => (s ?? 0) >= 1);
 }
 
-function computeUnlockedChapters(campaign: Record<string, LevelProgress>): Set<number> {
+function computeUnlockedChapters(
+  campaign: Record<string, LevelProgress>,
+  godMode: boolean,
+): Set<number> {
   const chapters = Array.from(new Set(ALL_LEVELS.map((l) => l.chapter))).sort((a, b) => a - b);
-  if (__DEV__) return new Set(chapters);
+  if (__DEV__ && godMode) return new Set(chapters);
   const unlocked = new Set<number>();
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i]!;
@@ -67,9 +70,10 @@ function computeChapterStats(
 export function ChaptersScreen({ navigation }: Props) {
   const { data } = useSave();
 
+  const godMode = data.settings.devGodMode === true;
   const unlocked = useMemo(
-    () => computeUnlockedChapters(data.campaign),
-    [data.campaign],
+    () => computeUnlockedChapters(data.campaign, godMode),
+    [data.campaign, godMode],
   );
 
   return (

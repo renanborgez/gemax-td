@@ -23,8 +23,9 @@ function levelHasAnyStar(progress: LevelProgress | undefined): boolean {
 function isChapterUnlocked(
   chapter: number,
   campaign: Record<string, LevelProgress>,
+  godMode: boolean,
 ): boolean {
-  if (__DEV__) return true;
+  if (__DEV__ && godMode) return true;
   if (chapter === 0) return true;
   const prev = chapter - 1;
   const prevLevels = ALL_LEVELS.filter((l) => l.chapter === prev);
@@ -42,9 +43,10 @@ export function LevelSelectScreen({ navigation, route }: Props) {
     () => ALL_LEVELS.filter((l) => l.chapter === chapter),
     [chapter],
   );
+  const godMode = data.settings.devGodMode === true;
   const chapterLocked = useMemo(
-    () => !isChapterUnlocked(chapter, data.campaign),
-    [chapter, data.campaign],
+    () => !isChapterUnlocked(chapter, data.campaign, godMode),
+    [chapter, data.campaign, godMode],
   );
   // Index of the next playable mission: first level in this chapter that the
   // player hasn't earned any star on (current difficulty). -1 = chapter cleared.
@@ -79,9 +81,9 @@ export function LevelSelectScreen({ navigation, route }: Props) {
         const isFinale = def?.finaleLevelId === lvl.id;
         const isCleared = stars > 0;
         const isNext = !chapterLocked && idx === nextLevelIdx;
-        const isFutureLocked = !__DEV__ && !chapterLocked && !isCleared && !isNext;
-        const disabled = !__DEV__ && (chapterLocked || !isNext);
-        const dimmed = !__DEV__ && (chapterLocked || !isNext);
+        const isFutureLocked = !(__DEV__ && godMode) && !chapterLocked && !isCleared && !isNext;
+        const disabled = !(__DEV__ && godMode) && (chapterLocked || !isNext);
+        const dimmed = !(__DEV__ && godMode) && (chapterLocked || !isNext);
         const subtitleText = chapterLocked
           ? `LOCKED — CLEAR CHAPTER ${chapter - 1} FIRST`
           : isCleared
