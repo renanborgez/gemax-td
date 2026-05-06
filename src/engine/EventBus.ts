@@ -1,3 +1,5 @@
+import type { ChapterRewards } from '@/content/chapterRewards';
+
 export type SimEventMap = {
   'enemy-died': { enemyId: string; bounty: number; killedByTowerId: string };
   'enemy-leaked': { enemyKind: string };
@@ -12,6 +14,10 @@ export type SimEventMap = {
   'lives-changed': { lives: number };
   'match-won': { stars: 0 | 1 | 2 | 3; shardsAwarded: number };
   'match-lost': { wavesCleared: number };
+  /** Emitted from the render layer at end-of-match when a chapter newly clears.
+   *  Engine itself never emits this — the bus just acts as a pre-existing
+   *  delivery channel into eventBridge / hudStore. */
+  'chapter-cleared': { chapterIdx: number; rewards: ChapterRewards };
 };
 
 type Listener<T> = (payload: T) => void;

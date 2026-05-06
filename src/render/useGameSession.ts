@@ -18,6 +18,8 @@ import type { Viewport } from '@/engine/Viewport';
 import { getTowerDef } from '@/entities/registry';
 import { shardRewardForMatch } from '@/meta/playerLevel';
 import { buildEffectsContext } from '@/meta/TechTree';
+import { chaptersClearedNewly, awardChapterClear } from '@/meta/chapterProgress';
+import { CHAPTER_REWARDS } from '@/content/chapterRewards';
 
 export type GameSession = {
   worldRef: { current: World };
@@ -126,7 +128,10 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
         if (won) {
           // Selector × global tech tree mults stack multiplicatively for the
           // end-of-match shard reward.
+          let pendingClears: number[] = [];
           store.update((d) => {
+            const before = structuredClone(d);
+
             const lvl = (d.campaign[world.level.id] ??= {
               bestStarsByDifficulty: {}, bestWaveReached: 0, cleared: false, shardsAwardedFor: [],
             });
@@ -143,9 +148,17 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
               d.meta.shards += award;
               lvl.shardsAwardedFor.push(opts.difficulty);
             }
+
+            pendingClears = chaptersClearedNewly(before, d);
+            for (const ch of pendingClears) {
+              awardChapterClear(d, ch);
+            }
           });
           refresh();
           audio.playSfx('win');
+          for (const ch of pendingClears) {
+            w.bus.emit('chapter-cleared', { chapterIdx: ch, rewards: CHAPTER_REWARDS[ch]! });
+          }
         } else {
           audio.playSfx('lose');
         }
