@@ -15,6 +15,10 @@ export type SaveSettings = {
   music: number;                // 0..1
   difficultyDefault: Difficulty;
   tutorialSeen: boolean;
+  /** DEV-only god mode. When true, matches start with very high credits and
+   *  shards are topped up so unlock flows can be tested without grinding.
+   *  Honored only under `__DEV__`; ignored in production builds. */
+  devGodMode?: boolean;
 };
 
 export type SaveDataV1 = {

@@ -22,6 +22,22 @@ export function SettingsScreen() {
     setConfirmReset(false);
   };
 
+  const godMode = data.settings.devGodMode === true;
+  const toggleGodMode = () => {
+    store.update((d) => {
+      const next = !(d.settings.devGodMode === true);
+      if (next) {
+        d.settings.devGodMode = true;
+        // Top up shards immediately so unlock flows are testable without
+        // grinding. Credits get bumped at next match start in useGameSession.
+        d.meta.shards = Math.max(d.meta.shards, 999_999);
+      } else {
+        delete d.settings.devGodMode;
+      }
+    });
+    refresh();
+  };
+
   return (
     <ScreenShell sectionTitle="System Settings">
       <Section label={`EFFECTS  ${pct(data.settings.sfx)}`}>
@@ -61,6 +77,30 @@ export function SettingsScreen() {
           {confirmReset ? 'TAP AGAIN TO CONFIRM' : 'RESET PROGRESS'}
         </Text>
       </Pressable>
+
+      {__DEV__ && (
+        <Section label="DEV">
+          <Pressable
+            onPress={toggleGodMode}
+            style={[styles.devToggle, godMode && styles.devToggleOn]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: godMode }}
+            accessibilityLabel="Toggle developer god mode"
+          >
+            <View>
+              <Text style={[styles.devToggleLabel, godMode && styles.devToggleLabelOn]}>
+                GOD MODE {godMode ? 'ON' : 'OFF'}
+              </Text>
+              <Text style={styles.devToggleHint}>
+                {godMode ? '999K shards · 200K starting credits' : 'Regular economy'}
+              </Text>
+            </View>
+            <View style={[styles.devSwitch, godMode && styles.devSwitchOn]}>
+              <View style={[styles.devSwitchKnob, godMode && styles.devSwitchKnobOn]} />
+            </View>
+          </Pressable>
+        </Section>
+      )}
 
       <Text style={styles.version}>V. {APP_VERSION}</Text>
     </ScreenShell>
@@ -163,4 +203,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.md,
   },
+  devToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.bgElevated,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  devToggleOn: { borderColor: COLORS.tertiary },
+  devToggleLabel: { ...TEXT.button, color: COLORS.textPrimary, fontSize: 13 },
+  devToggleLabelOn: { color: COLORS.tertiary },
+  devToggleHint: { ...TEXT.labelSmall, color: COLORS.textMuted, fontSize: 10, marginTop: 2 },
+  devSwitch: {
+    width: 36,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.bg,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  devSwitchOn: { backgroundColor: COLORS.tertiary },
+  devSwitchKnob: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: COLORS.textMuted,
+  },
+  devSwitchKnobOn: { backgroundColor: COLORS.bg, transform: [{ translateX: 16 }] },
 });

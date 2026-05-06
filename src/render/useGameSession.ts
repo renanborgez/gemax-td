@@ -85,7 +85,7 @@ export function useGameSession(opts: { levelId: string; difficulty: Difficulty; 
     worldRef.current = createWorld({
       level, difficulty: opts.difficulty, seed: opts.seed, effects, redraw,
     });
-    if (__DEV__) {
+    if (__DEV__ && store.current().settings.devGodMode === true) {
       worldRef.current.credits = 200000;
     }
   }
