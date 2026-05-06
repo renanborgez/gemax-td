@@ -8,7 +8,7 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
 import { RARITY_ORDER, rarityRank, type Rarity, type TowerDef, type TowerKind } from '@/content/types';
 import { TOWER_ICON_COLORS, makeTowerIconPath } from '@/render/towerIcons';
-import { canUnlockTower, isInLoadout, loadoutFull, normalizeLoadout, toggleLoadout, unlockTower, getTowerStoreEntries, type TowerStoreEntry } from '@/meta/loadout';
+import { canUnlockTower, isInLoadout, loadoutFull, markTowerSeen, normalizeLoadout, toggleLoadout, unlockTower, getTowerStoreEntries, type TowerStoreEntry } from '@/meta/loadout';
 import { CHAPTER_BY_INDEX } from '@/content/chapters';
 import { LOADOUT_SLOTS } from '@/meta/schema';
 import { ScreenShell } from '@/ui/components/ScreenShell';
@@ -60,6 +60,19 @@ export function TowersScreen({ navigation }: Props) {
   // the next render (no stale snapshot of owned/inLoadout in the dialog).
   const [dialogKind, setDialogKind] = useState<TowerKind | null>(null);
   const closeDialog = () => setDialogKind(null);
+
+  // Opening a tower's detail dialog acknowledges its "new" badge. We persist
+  // exactly once per kind; the helper short-circuits if it has already been
+  // marked seen, so no save churn on repeat visits.
+  const openDialog = (kind: TowerKind) => {
+    setDialogKind(kind);
+    if (!store.current().meta.seenTowers.includes(kind)) {
+      store.update((d) => markTowerSeen(kind, d));
+      refresh();
+    }
+  };
+
+  const seenSet = useMemo(() => new Set(data.meta.seenTowers), [data.meta.seenTowers]);
 
   const [sortMode, setSortMode] = useState<SortMode>('rarity');
   const cycleSort = () => {
@@ -141,7 +154,8 @@ export function TowersScreen({ navigation }: Props) {
           <EquippedTile
             key={def?.kind ?? `empty-${i}`}
             def={def}
-            onPress={() => def && setDialogKind(def.kind)}
+            unseen={def !== null && !seenSet.has(def.kind)}
+            onPress={() => def && openDialog(def.kind)}
           />
         ))}
       </View>
@@ -159,13 +173,17 @@ export function TowersScreen({ navigation }: Props) {
           const equipped = normalizedLoadout.includes(def.kind);
           const onPress = entry.state === 'chapter-locked'
             ? () => navigation.navigate('Chapters')
-            : () => setDialogKind(def.kind);
+            : () => openDialog(def.kind);
+          // Chapter-locked tiles can't be opened, so they never carry a dot;
+          // the dot only marks visible-but-unopened towers.
+          const unseen = entry.state !== 'chapter-locked' && !seenSet.has(def.kind);
           return (
             <AvailableTile
               key={def.kind}
               def={def}
               entry={entry}
               equipped={equipped}
+              unseen={unseen}
               onPress={onPress}
             />
           );
@@ -228,8 +246,8 @@ function rarityTileTint(rarity: TowerDef['rarity'], locked: boolean): string {
 }
 
 function EquippedTile({
-  def, onPress,
-}: { def: TowerDef | null; onPress: () => void }) {
+  def, unseen, onPress,
+}: { def: TowerDef | null; unseen: boolean; onPress: () => void }) {
   if (def === null) {
     return (
       <View style={[styles.tile, styles.tileEmpty]}>
@@ -246,16 +264,18 @@ function EquippedTile({
         <TowerIcon kind={def.kind} size={TILE_ICON_SIZE} />
         <Text style={styles.tileName} numberOfLines={1}>{def.displayName}</Text>
       </View>
+      {unseen && <View pointerEvents="none" style={styles.unseenDot} />}
     </Pressable>
   );
 }
 
 function AvailableTile({
-  def, entry, equipped, onPress,
+  def, entry, equipped, unseen, onPress,
 }: {
   def: TowerDef;
   entry: TowerStoreEntry;
   equipped: boolean;
+  unseen: boolean;
   onPress: () => void;
 }) {
   if (entry.state === 'chapter-locked') {
@@ -294,6 +314,7 @@ function AvailableTile({
           <Text style={styles.unlockOverlayText}>UNLOCK</Text>
           <Text style={styles.unlockOverlayCost}>{def.unlockCost ?? 0} ◆</Text>
         </View>
+        {unseen && <View pointerEvents="none" style={styles.unseenDot} />}
       </Pressable>
     );
   }
@@ -319,6 +340,7 @@ function AvailableTile({
           </View>
         </View>
       )}
+      {unseen && <View pointerEvents="none" style={styles.unseenDot} />}
     </Pressable>
   );
 }
@@ -610,6 +632,17 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 0.6,
     color: COLORS.textOnAccent,
+  },
+  unseenDot: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    backgroundColor: COLORS.tertiary,
+    borderWidth: 1.5,
+    borderColor: COLORS.bgCard,
   },
 
   // Dialog

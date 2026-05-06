@@ -21,14 +21,17 @@ const TABS: readonly TabDef[] = [
 export function BottomTabBar({
   active,
   onSelect,
+  badges,
 }: {
   active: TabKey;
   onSelect: (k: TabKey) => void;
+  badges?: Partial<Record<TabKey, boolean>>;
 }) {
   return (
     <View style={styles.root}>
       {TABS.map((tab) => {
         const isActive = tab.key === active;
+        const showBadge = badges?.[tab.key] === true;
         return (
           <Pressable
             key={tab.key}
@@ -36,11 +39,14 @@ export function BottomTabBar({
             style={[styles.tab, isActive && styles.tabActive]}
             hitSlop={8}
           >
-            <Ionicons
-              name={tab.icon}
-              size={20}
-              color={isActive ? COLORS.primary : COLORS.textMuted}
-            />
+            <View style={styles.iconWrap}>
+              <Ionicons
+                name={tab.icon}
+                size={20}
+                color={isActive ? COLORS.primary : COLORS.textMuted}
+              />
+              {showBadge && <View style={styles.badgeDot} />}
+            </View>
             <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
           </Pressable>
         );
@@ -75,4 +81,16 @@ const styles = StyleSheet.create({
   },
   label: { ...TEXT.labelSmall, color: COLORS.textMuted, fontSize: 10 },
   labelActive: { color: COLORS.primary },
+  iconWrap: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  badgeDot: {
+    position: 'absolute',
+    top: -3,
+    right: -5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.tertiary,
+    borderWidth: 1.5,
+    borderColor: COLORS.bg,
+  },
 });
