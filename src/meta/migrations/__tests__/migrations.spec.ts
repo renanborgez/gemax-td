@@ -4,13 +4,12 @@ import {
   blankSaveDataV1,
   blankSaveDataV2,
   blankSaveDataV3,
-  blankSaveDataV4,
   blankSaveDataV5,
   CURRENT_VERSION,
   DEFAULT_LOADOUT,
   DEFAULT_UNLOCKED_TOWERS,
+  type ChapterUnlockState,
   type SaveDataV4,
-  type SaveDataV5,
 } from '@/meta/schema';
 
 describe('runMigrations', () => {
@@ -127,7 +126,7 @@ describe('v4 → v5 migration', () => {
 
   it('backfills rewardClaimedAt for chapters fully cleared in campaign', () => {
     const out = runMigrations(v4Blob({}, fullChapter(0)));
-    expect((out.meta.chapterUnlocks as Record<number, SaveDataV5['meta']['chapterUnlocks'][number]>)[0]?.rewardClaimedAt).toBe(2000);
+    expect((out.meta.chapterUnlocks as Record<number, ChapterUnlockState>)[0]?.rewardClaimedAt).toBe(2000);
   });
 
   it('does not flag partially-cleared chapters', () => {
