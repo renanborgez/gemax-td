@@ -8,68 +8,43 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="1600" height="480">
   <defs>
-    <linearGradient id="towerFillH" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="gFillH" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#7AFCC9"/>
-      <stop offset="55%" stop-color="#44EEFF"/>
-      <stop offset="100%" stop-color="#44EEFF" stop-opacity="0.55"/>
-    </linearGradient>
-    <linearGradient id="ringStrokeH" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"  stop-color="#44EEFF"/>
-      <stop offset="100%" stop-color="#7AFCC9"/>
+      <stop offset="100%" stop-color="#44EEFF"/>
     </linearGradient>
     <radialGradient id="pulseGlowH" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#7AFCC9" stop-opacity="0.85"/>
+      <stop offset="0%"   stop-color="#7AFCC9" stop-opacity="0.85"/>
       <stop offset="100%" stop-color="#7AFCC9" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
   <!-- Transparent background; consumers paint #0E1014 underneath -->
 
-  <!-- Mark cluster (scaled from 1024 master into 480x480 box at left) -->
+  <!-- Mark cluster (1024 master scaled into 480x480 box at left) -->
   <g transform="translate(0 0) scale(0.469)">
-    <!-- Hex ring -->
-    <g transform="translate(512 528)">
-      <polygon points="0,-380 329,-190 329,190 0,380 -329,190 -329,-190"
-               fill="none" stroke="url(#ringStrokeH)" stroke-width="14"
-               stroke-linejoin="round" opacity="0.95"/>
-      <polygon points="0,-300 260,-150 260,150 0,300 -260,150 -260,-150"
-               fill="none" stroke="#44EEFF" stroke-width="2" opacity="0.25"/>
-    </g>
+    <!-- "G" letterform stroke (mint -> cyan vertical gradient) -->
+    <path d="M 704 408
+             Q 704 288 584 288
+             L 440 288
+             Q 320 288 320 408
+             L 320 616
+             Q 320 736 440 736
+             L 584 736
+             Q 704 736 704 616
+             L 704 552
+             L 512 552"
+          fill="none"
+          stroke="url(#gFillH)"
+          stroke-width="120"
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
 
-    <!-- Signal arcs -->
-    <g fill="none" stroke="#44EEFF" stroke-linecap="round">
-      <path d="M 200 460 Q 150 512 200 564" stroke-width="10" opacity="0.85"/>
-      <path d="M 130 410 Q  60 512 130 614" stroke-width="6"  opacity="0.45"/>
-      <path d="M 824 460 Q 874 512 824 564" stroke-width="10" opacity="0.85"/>
-      <path d="M 894 410 Q 964 512 894 614" stroke-width="6"  opacity="0.45"/>
-    </g>
-
-    <!-- Tower pillar -->
-    <g>
-      <polygon points="392,720 632,720 600,608 424,608" fill="url(#towerFillH)" opacity="0.95"/>
-      <polygon points="424,604 600,604 576,500 448,500" fill="url(#towerFillH)" opacity="0.92"/>
-      <polygon points="448,496 576,496 556,396 468,396" fill="url(#towerFillH)"/>
-      <g fill="#0E1014" opacity="0.55">
-        <rect x="494" y="430" width="36" height="8" rx="2"/>
-        <rect x="478" y="538" width="68" height="8" rx="2"/>
-        <rect x="462" y="650" width="100" height="8" rx="2"/>
-      </g>
-    </g>
-
-    <!-- Antenna -->
-    <g>
-      <line x1="512" y1="396" x2="512" y2="296" stroke="#7AFCC9" stroke-width="6" stroke-linecap="round"/>
-      <circle cx="512" cy="282" r="48" fill="url(#pulseGlowH)"/>
-      <circle cx="512" cy="282" r="14" fill="#7AFCC9"/>
-      <circle cx="512" cy="282" r="6"  fill="#F2F4F7"/>
-    </g>
-
-    <!-- Base selection cell -->
-    <g transform="translate(512 760)">
-      <rect x="-52" y="-12" width="104" height="24" rx="4"
-            fill="none" stroke="#FFB14E" stroke-width="3" opacity="0.9"/>
-      <rect x="-46" y="-6"  width="92"  height="12" rx="2" fill="#FFB14E" opacity="0.18"/>
-    </g>
+    <!-- Antenna mast + pulse rising from top of "G" -->
+    <line x1="512" y1="228" x2="512" y2="152"
+          stroke="#7AFCC9" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="512" cy="124" r="56" fill="url(#pulseGlowH)"/>
+    <circle cx="512" cy="124" r="22" fill="#7AFCC9"/>
+    <circle cx="512" cy="124" r="8"  fill="#F2F4F7"/>
   </g>
 
   <!-- Vertical divider -->

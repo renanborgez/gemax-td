@@ -1,101 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   GeMax TD — square mark.
-  Cyber-defense netrunner glyph: hexagonal containment ring, stacked
-  angular tower pillar, antenna pulse, two outbound signal arcs, base
-  selection cell. Brand palette: cyan #44EEFF, mint #7AFCC9, orange #FFB14E.
+  Bold geometric "G" letterform doubling as tower silhouette: stroke-based
+  G with rounded corners (=tower walls, turret cap, balcony tongue) plus a
+  mint antenna mast + pulse dot rising from the top of the letter.
+  Brand palette: cyan #44EEFF, mint #7AFCC9.
   Master is 1024x1024 — render down for app-icon / adaptive foreground.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Subtle radial vignette behind mark -->
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="60%">
-      <stop offset="0%" stop-color="#1A1D24"/>
+    <!-- Subtle vertical gradient behind mark -->
+    <linearGradient id="bgGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#1A1D24"/>
       <stop offset="100%" stop-color="#0E1014"/>
-    </radialGradient>
+    </linearGradient>
 
-    <!-- Vertical mint→cyan tower fill -->
-    <linearGradient id="towerFill" x1="0" y1="0" x2="0" y2="1">
+    <!-- G letterform fill: mint top -> cyan bottom -->
+    <linearGradient id="gFill" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#7AFCC9"/>
-      <stop offset="55%" stop-color="#44EEFF"/>
-      <stop offset="100%" stop-color="#44EEFF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#44EEFF"/>
     </linearGradient>
 
-    <!-- Outer ring stroke gradient -->
-    <linearGradient id="ringStroke" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"  stop-color="#44EEFF"/>
-      <stop offset="100%" stop-color="#7AFCC9"/>
-    </linearGradient>
-
-    <!-- Antenna pulse glow -->
+    <!-- Antenna pulse halo -->
     <radialGradient id="pulseGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#7AFCC9" stop-opacity="0.85"/>
+      <stop offset="0%"   stop-color="#7AFCC9" stop-opacity="0.85"/>
       <stop offset="100%" stop-color="#7AFCC9" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Background plate (transparent if used over UI; rounded square) -->
+  <!-- Background plate (rounded square) -->
   <rect x="0" y="0" width="1024" height="1024" rx="180" ry="180" fill="url(#bgGlow)"/>
 
-  <!-- Faint grid hint (cyber circuit substrate) -->
-  <g stroke="#44EEFF" stroke-width="1" opacity="0.06">
-    <path d="M0 256 H1024 M0 512 H1024 M0 768 H1024 M256 0 V1024 M512 0 V1024 M768 0 V1024"/>
-  </g>
+  <!--
+    "G" letterform — single open path stroked with bold rounded line.
+    Coords: letter bounds 320..704 x, 288..736 y; corner radius 120;
+    stroke 120 (so visual edges run ~228..796 y, ~260..764 x).
+    Tongue ends at canvas center (512, 552) — slightly below mid for classic G.
+  -->
+  <path d="M 704 408
+           Q 704 288 584 288
+           L 440 288
+           Q 320 288 320 408
+           L 320 616
+           Q 320 736 440 736
+           L 584 736
+           Q 704 736 704 616
+           L 704 552
+           L 512 552"
+        fill="none"
+        stroke="url(#gFill)"
+        stroke-width="120"
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
 
-  <!-- Hexagonal containment ring (point-up) -->
-  <g transform="translate(512 528)">
-    <polygon points="0,-380 329,-190 329,190 0,380 -329,190 -329,-190"
-             fill="none" stroke="url(#ringStroke)" stroke-width="14"
-             stroke-linejoin="round" opacity="0.95"/>
-    <!-- Inner softer hex -->
-    <polygon points="0,-300 260,-150 260,150 0,300 -260,150 -260,-150"
-             fill="none" stroke="#44EEFF" stroke-width="2" opacity="0.25"/>
-  </g>
-
-  <!-- Outbound signal arcs (left + right) -->
-  <g fill="none" stroke="#44EEFF" stroke-linecap="round">
-    <path d="M 200 460 Q 150 512 200 564" stroke-width="10" opacity="0.85"/>
-    <path d="M 130 410 Q  60 512 130 614" stroke-width="6"  opacity="0.45"/>
-    <path d="M 824 460 Q 874 512 824 564" stroke-width="10" opacity="0.85"/>
-    <path d="M 894 410 Q 964 512 894 614" stroke-width="6"  opacity="0.45"/>
-  </g>
-
-  <!-- Stacked angular tower pillar (3 tiers, narrowing upward) -->
-  <g>
-    <!-- Base tier (widest) -->
-    <polygon points="392,720 632,720 600,608 424,608" fill="url(#towerFill)" opacity="0.95"/>
-    <!-- Mid tier -->
-    <polygon points="424,604 600,604 576,500 448,500" fill="url(#towerFill)" opacity="0.92"/>
-    <!-- Top tier (narrowest) -->
-    <polygon points="448,496 576,496 556,396 468,396" fill="url(#towerFill)"/>
-    <!-- Inner highlight slits -->
-    <g fill="#0E1014" opacity="0.55">
-      <rect x="494" y="430" width="36" height="8" rx="2"/>
-      <rect x="478" y="538" width="68" height="8" rx="2"/>
-      <rect x="462" y="650" width="100" height="8" rx="2"/>
-    </g>
-  </g>
-
-  <!-- Antenna mast + pulse dot -->
-  <g>
-    <line x1="512" y1="396" x2="512" y2="296" stroke="#7AFCC9" stroke-width="6" stroke-linecap="round"/>
-    <circle cx="512" cy="282" r="48" fill="url(#pulseGlow)"/>
-    <circle cx="512" cy="282" r="14" fill="#7AFCC9"/>
-    <circle cx="512" cy="282" r="6"  fill="#F2F4F7"/>
-  </g>
-
-  <!-- Base selection cell (orange tertiary accent) -->
-  <g transform="translate(512 760)">
-    <rect x="-52" y="-12" width="104" height="24" rx="4"
-          fill="none" stroke="#FFB14E" stroke-width="3" opacity="0.9"/>
-    <rect x="-46" y="-6"  width="92"  height="12" rx="2" fill="#FFB14E" opacity="0.18"/>
-  </g>
-
-  <!-- Corner brackets (UI chrome echo) -->
-  <g stroke="#44EEFF" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85">
-    <path d="M 96 168 V 96 H 168"/>
-    <path d="M 928 168 V 96 H 856"/>
-    <path d="M 96 856 V 928 H 168"/>
-    <path d="M 928 856 V 928 H 856"/>
-  </g>
+  <!-- Antenna mast + pulse (mint accent) rising from top of "G" -->
+  <line x1="512" y1="228" x2="512" y2="152"
+        stroke="#7AFCC9" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="512" cy="124" r="56" fill="url(#pulseGlow)"/>
+  <circle cx="512" cy="124" r="22" fill="#7AFCC9"/>
+  <circle cx="512" cy="124" r="8"  fill="#F2F4F7"/>
 </svg>
