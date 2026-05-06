@@ -165,16 +165,17 @@ export function PlayScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     const w = session.worldRef.current;
+    // Snapshot pre-match award state up-front: the engine calls
+    // onMatchEnded (which writes to shardsAwardedFor) BEFORE flushing the
+    // 'match-won' event, so reading the store inside the listener would
+    // always see the freshly-awarded difficulty and zero out the display.
+    const lvlAtStart = store.current().campaign[route.params.levelId];
+    const alreadyAwarded =
+      lvlAtStart?.shardsAwardedFor.includes(route.params.difficulty) ?? false;
     const offW = w.bus.on('match-won', () => {
       const lives = w.lives;
       const t = w.level.starThresholds;
       const stars: 0|1|2|3 = lives >= t.stars3 ? 3 : lives >= t.stars2 ? 2 : lives > 0 ? 1 : 0;
-      // Bus listeners fire during simStep's bus.flush(), before the engine's
-      // onMatchEnded hook mutates the save — so store.current() still reflects
-      // the pre-update state and tells us if shards were already collected
-      // for this (level, difficulty) pair on a prior clear.
-      const lvlPrev = store.current().campaign[route.params.levelId];
-      const alreadyAwarded = lvlPrev?.shardsAwardedFor.includes(route.params.difficulty) ?? false;
       const shards = alreadyAwarded
         ? 0
         : shardRewardForMatch({
