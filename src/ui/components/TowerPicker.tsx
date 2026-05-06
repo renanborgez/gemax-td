@@ -95,7 +95,9 @@ export function TowerPicker({
               style={[styles.cell, !affordable && styles.cellDisabled]}
             >
               <TowerIcon kind={def.kind} />
-              <Text style={styles.name}>{def.displayName}</Text>
+              <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+                {def.displayName}
+              </Text>
               <View style={styles.costRow}>
                 <Ionicons
                   name="disc"
@@ -167,21 +169,27 @@ const styles = StyleSheet.create({
   closeText: { ...TEXT.buttonSmall, color: COLORS.textPrimary },
   row: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   cell: {
-    width: 92,
-    height: 72,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.xs,
+    width: 104,
+    height: 88,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 4,
     overflow: 'hidden',
   },
   cellDisabled: { opacity: 0.45 },
   hidden: { opacity: 0 },
   icon: { width: ICON_SIZE, height: ICON_SIZE },
-  name: { ...TEXT.labelSmall, color: COLORS.textPrimary, fontSize: 11, textAlign: 'center' },
+  name: {
+    ...TEXT.labelSmall,
+    color: COLORS.textPrimary,
+    fontSize: 11,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
   costRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cost: { ...TEXT.buttonSmall, color: COLORS.tertiary },
   costShort: { color: COLORS.danger },
