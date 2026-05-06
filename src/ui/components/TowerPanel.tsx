@@ -112,6 +112,10 @@ function TowerPanelImpl({
 
   const nextUpgrade = t && def && t.level < 3 ? def.upgrades[t.level - 1] ?? null : null;
   const nextUpgradePrice = t && def && t.level < 3 ? upgradeCost(def.cost, t.level) : 0;
+  // Re-read credits per render so the affordability state stays current. Calling
+  // hudStore here keeps the panel reactive to tower-fired/sold credit changes.
+  const credits = useHudStore((s) => s.credits);
+  const canAfford = nextUpgrade !== null && credits >= nextUpgradePrice;
 
   return (
     <Animated.View
@@ -145,13 +149,19 @@ function TowerPanelImpl({
             {nextUpgrade && (
               <Pressable
                 onPress={onUpgrade}
-                style={styles.upgrade}
+                disabled={!canAfford}
+                style={[styles.upgrade, !canAfford && styles.upgradeDisabled]}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !canAfford }}
                 accessibilityLabel={`Upgrade ${def.displayName} for ${nextUpgradePrice} credits`}
               >
-                <Text style={styles.upgradeText}>UPGRADE </Text>
-                <Ionicons name="disc" size={13} color={COLORS.textOnAccent} />
-                <Text style={styles.upgradeText}> {nextUpgradePrice}</Text>
+                <Text style={[styles.upgradeText, !canAfford && styles.upgradeTextDisabled]}>UPGRADE </Text>
+                <Ionicons
+                  name="disc"
+                  size={13}
+                  color={canAfford ? COLORS.textOnAccent : COLORS.textMuted}
+                />
+                <Text style={[styles.upgradeText, !canAfford && styles.upgradeTextDisabled]}> {nextUpgradePrice}</Text>
               </Pressable>
             )}
             <Pressable
@@ -225,7 +235,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.secondary,
   },
+  upgradeDisabled: {
+    backgroundColor: COLORS.bgElevated,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+  },
   upgradeText: { ...TEXT.buttonSmall, color: COLORS.textOnAccent },
+  upgradeTextDisabled: { color: COLORS.textMuted },
   sell: {
     paddingVertical: SPACING.sm,
     alignItems: 'center',
