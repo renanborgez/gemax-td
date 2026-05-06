@@ -1,8 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, PanResponder, Linking, type LayoutChangeEvent } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
+import { CHAPTERS } from '@/content/chapters';
+import { CHAPTER_REWARDS } from '@/content/chapterRewards';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_URL = 'https://gemax.online/privacy';
@@ -22,6 +25,31 @@ export function SettingsScreen() {
     setConfirmReset(false);
   };
 
+  const palettes = useMemo(() => {
+    const earned = CHAPTERS.filter((ch) => !!data.meta.chapterUnlocks[ch.index]?.rewardClaimedAt);
+    return [
+      { id: 'auto', label: 'Auto (current chapter)', accent: COLORS.textPrimary },
+      ...earned.map((ch) => ({
+        id: CHAPTER_REWARDS[ch.index]!.paletteId,
+        label: ch.name,
+        accent: ch.paletteAccent,
+      })),
+    ];
+  }, [data.meta.chapterUnlocks]);
+
+  const activeId = data.meta.activePaletteId ?? 'auto';
+
+  const setPalette = (id: string) => {
+    store.update((d) => {
+      if (id === 'auto') {
+        delete d.meta.activePaletteId;
+      } else {
+        d.meta.activePaletteId = id;
+      }
+    });
+    refresh();
+  };
+
   return (
     <ScreenShell sectionTitle="System Settings">
       <Section label={`EFFECTS  ${pct(data.settings.sfx)}`}>
@@ -30,6 +58,26 @@ export function SettingsScreen() {
 
       <Section label={`MUSIC  ${pct(data.settings.music)}`}>
         <VolumeBar label="Music" value={data.settings.music} onChange={(v) => setVol('music', v)} />
+      </Section>
+
+      <Section label="THEME">
+        <View style={styles.themeList}>
+          {palettes.map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => setPalette(p.id)}
+              style={[styles.themeRow, activeId === p.id && styles.themeRowActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Use ${p.label} theme`}
+            >
+              <View style={styles.themeRowLeft}>
+                <View style={[styles.themeSwatch, { backgroundColor: p.accent }]} />
+                <Text style={styles.themeLabel}>{p.label.toUpperCase()}</Text>
+              </View>
+              {activeId === p.id && <Ionicons name="checkmark" size={16} color={COLORS.primary} />}
+            </Pressable>
+          ))}
+        </View>
       </Section>
 
       <View style={styles.linkRow}>
@@ -163,4 +211,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.md,
   },
+  themeList: { gap: SPACING.xs },
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  themeRowActive: { backgroundColor: COLORS.bgElevated },
+  themeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  themeSwatch: { width: 12, height: 12, borderRadius: 6 },
+  themeLabel: { ...TEXT.label, color: COLORS.textPrimary, letterSpacing: 1.2, fontSize: 12 },
 });
