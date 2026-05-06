@@ -183,12 +183,17 @@ export function PlayScreen({ route, navigation }: Props) {
             shardRewardMult: w.difficulty.shardRewardMult,
           });
       allowExit.current = true;
-      navigation.replace('Win', {
+      const winParams = {
         levelId: route.params.levelId,
         difficulty: route.params.difficulty,
         stars, shards,
         totalWaves: w.waveDirector.totalWaves,
-      });
+      };
+      if (useHudStore.getState().pendingChapterClear.length > 0) {
+        navigation.replace('ChapterCleared', { winParams });
+      } else {
+        navigation.replace('Win', winParams);
+      }
     });
     const offL = w.bus.on('match-lost', ({ wavesCleared }) => {
       allowExit.current = true;

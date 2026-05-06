@@ -11,6 +11,7 @@ import { PlayScreen } from '@/app/screens/PlayScreen';
 import { SettingsScreen } from '@/app/screens/SettingsScreen';
 import { WinScreen } from '@/app/screens/WinScreen';
 import { LoseScreen } from '@/app/screens/LoseScreen';
+import { ChapterClearedScreen } from '@/app/screens/ChapterClearedScreen';
 import { PersistentTabBar } from '@/ui/components/PersistentTabBar';
 import { useAudio } from '@/app/providers/AudioProvider';
 import type { Difficulty } from '@/content/types';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Play: { levelId: string; difficulty: Difficulty };
   Win: { levelId: string; difficulty: Difficulty; stars: 0 | 1 | 2 | 3; shards: number; totalWaves: number };
   Lose: { levelId: string; difficulty: Difficulty; wavesCleared: number };
+  ChapterCleared: { winParams: RootStackParamList['Win'] };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -85,6 +87,7 @@ export function RootNav() {
             <Stack.Screen name="Play" component={PlayScreen} />
             <Stack.Screen name="Win" component={WinScreen} />
             <Stack.Screen name="Lose" component={LoseScreen} />
+            <Stack.Screen name="ChapterCleared" component={ChapterClearedScreen} />
           </Stack.Navigator>
         </View>
         <PersistentTabBar routeName={routeName} navRef={navRef} />

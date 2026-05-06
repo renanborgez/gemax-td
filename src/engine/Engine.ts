@@ -750,8 +750,10 @@ export class Engine {
     // 11. Lose check.
     if (w.lives <= 0) {
       w.status = 'lost';
-      w.bus.emit('match-lost', { wavesCleared: Math.max(0, w.waveDirector.waveIndex) });
+      // host populates meta state first (e.g. chapter-cleared); the user-facing event fires
+      // after so listeners observe a coherent post-match world.
       this.host.onMatchEnded?.(w, false);
+      w.bus.emit('match-lost', { wavesCleared: Math.max(0, w.waveDirector.waveIndex) });
       w.bus.flush();
       return;
     }
@@ -759,8 +761,10 @@ export class Engine {
     // 12. Win check: all waves cleared.
     if (w.waveDirector.isAllClear) {
       w.status = 'won';
-      w.bus.emit('match-won', { stars: 0, shardsAwarded: 0 }); // shells; PlayScreen recomputes
+      // host populates meta state first (e.g. chapter-cleared); the user-facing event fires
+      // after so listeners observe a coherent post-match world.
       this.host.onMatchEnded?.(w, true);
+      w.bus.emit('match-won', { stars: 0, shardsAwarded: 0 }); // shells; PlayScreen recomputes
       w.bus.flush();
       return;
     }
