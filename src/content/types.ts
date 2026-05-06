@@ -89,6 +89,9 @@ export type TowerDef = DeepReadonly<{
   description?: string;
   /** Shards required to permanently unlock this tower. Omitted = free starter. */
   unlockCost?: number;
+  /** Chapter index that must be cleared before the tower listing is purchasable.
+   *  Omit for starters and any tower available from the start. */
+  unlockedByChapter?: number;
   rarity: Rarity;
 }>;
 

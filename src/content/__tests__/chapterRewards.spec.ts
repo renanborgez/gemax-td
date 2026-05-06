@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { CHAPTER_REWARDS } from '@/content/chapterRewards';
 import { CHAPTERS } from '@/content/chapters';
 import { ALL_TOWER_DEFS } from '@/content/towerDefs';
 import type { TowerKind } from '@/content/types';
+import { getTowerDef } from '@/entities/registry';
+import { bootstrap } from '@/app/bootstrap';
 
 describe('CHAPTER_REWARDS', () => {
   it('has an entry for every chapter index', () => {
@@ -45,5 +47,25 @@ describe('CHAPTER_REWARDS', () => {
       expect(medals.has(r.medalId)).toBe(false);
       medals.add(r.medalId);
     }
+  });
+});
+
+describe('TowerDef.unlockedByChapter', () => {
+  beforeAll(() => { bootstrap(); });
+
+  it('matches the chapter that lists the tower in CHAPTER_REWARDS', () => {
+    for (const [chStr, rewards] of Object.entries(CHAPTER_REWARDS)) {
+      const ch = Number(chStr);
+      for (const k of rewards.towerKinds) {
+        const def = getTowerDef(k);
+        expect(def.unlockedByChapter).toBe(ch);
+      }
+    }
+  });
+
+  it('starters have no unlockedByChapter', () => {
+    bootstrap();
+    expect(getTowerDef('bullet-turret').unlockedByChapter).toBeUndefined();
+    expect(getTowerDef('logic-bomb').unlockedByChapter).toBeUndefined();
   });
 });

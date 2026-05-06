@@ -49,6 +49,7 @@ export const MACHINE_GUN: TowerDef = {
   classRef: MachineGunTower,
   description: 'High-cadence rapid-fire. Shreds swarms with continuous chip damage.',
   unlockCost: 30,
+  unlockedByChapter: 1,
   rarity: 'uncommon',
 };
 
@@ -66,6 +67,7 @@ export const FIREWALL: TowerDef = {
   targets: 'both',
   classRef: FirewallTower,
   description: 'Continuous hitscan beam. Reliable single-target chip damage.',
+  unlockedByChapter: 0,
   rarity: 'common',
 };
 
@@ -101,6 +103,7 @@ export const ICE_LANCE: TowerDef = {
   classRef: ICELanceTower,
   description: 'Heavy ballistic shard that briefly freezes its target on hit.',
   unlockCost: 40,
+  unlockedByChapter: 6,
   rarity: 'uncommon',
 };
 
@@ -119,6 +122,7 @@ export const SNIPER: TowerDef = {
   classRef: SniperTower,
   description: 'Long-range tracer round. Slow fire, devastating single-target damage.',
   unlockCost: 60,
+  unlockedByChapter: 2,
   rarity: 'rare',
 };
 
@@ -137,6 +141,7 @@ export const TESLA_COIL: TowerDef = {
   classRef: TeslaCoilTower,
   description: 'Chains lightning between nearby enemies with damage falloff per jump.',
   unlockCost: 80,
+  unlockedByChapter: 3,
   rarity: 'epic',
 };
 
@@ -155,6 +160,7 @@ export const VENOM_SPIRE: TowerDef = {
   classRef: VenomSpireTower,
   description: 'Fires fast poison darts. Low impact damage, heavy DoT that stacks.',
   unlockCost: 50,
+  unlockedByChapter: 5,
   rarity: 'uncommon',
 };
 
@@ -173,6 +179,7 @@ export const EMP: TowerDef = {
   classRef: EMPTower,
   description: 'Radial pulse stuns every enemy in range. Trades DPS for crowd control.',
   unlockCost: 70,
+  unlockedByChapter: 3,
   rarity: 'rare',
 };
 
@@ -191,6 +198,7 @@ export const PLASMA_CANNON: TowerDef = {
   classRef: PlasmaCannonTower,
   description: 'Late-game heavy-hitter. Searing plasma bolts melt armored bosses.',
   unlockCost: 120,
+  unlockedByChapter: 8,
   rarity: 'legendary',
 };
 
@@ -209,6 +217,7 @@ export const MORTAR: TowerDef = {
   classRef: MortarTower,
   description: 'Long-range siege bomb. Bigger blast than the Logic Bomb at the cost of cadence.',
   unlockCost: 100,
+  unlockedByChapter: 4,
   rarity: 'epic',
 };
 
@@ -233,6 +242,7 @@ export const CRYO_FIELD: TowerDef = {
   classRef: CryoFieldTower,
   description: 'Passive aura. Continuously slows every enemy in range — pairs with DoT towers.',
   unlockCost: 50,
+  unlockedByChapter: 6,
   rarity: 'uncommon',
 };
 
@@ -251,6 +261,7 @@ export const MARKER: TowerDef = {
   classRef: MarkerTower,
   description: 'Tags a target. Marked enemies take +25% damage from every tower.',
   unlockCost: 60,
+  unlockedByChapter: 1,
   rarity: 'rare',
 };
 
@@ -269,6 +280,7 @@ export const BEAM_CANNON: TowerDef = {
   classRef: BeamCannonTower,
   description: 'Sustained beam. Damage ramps up to 2.5× while focused on the same target.',
   unlockCost: 90,
+  unlockedByChapter: 7,
   rarity: 'epic',
 };
 
@@ -287,6 +299,7 @@ export const FLAMER: TowerDef = {
   classRef: FlamerTower,
   description: 'Short-range cone. Hits up to 4 enemies in a forward arc.',
   unlockCost: 55,
+  unlockedByChapter: 5,
   rarity: 'rare',
 };
 
