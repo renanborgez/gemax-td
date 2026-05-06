@@ -2,6 +2,8 @@ import type { TowerKind } from '@/content/types';
 import type { SaveDataLatest } from '@/meta/schema';
 import { LOADOUT_SLOTS } from '@/meta/schema';
 import { getTowerDef } from '@/entities/registry';
+import { ALL_TOWER_DEFS } from '@/content/towerDefs';
+import { CHAPTER_BY_INDEX } from '@/content/chapters';
 
 export type UnlockResult = { ok: true } | { ok: false; reason: string };
 
@@ -71,4 +73,31 @@ export function toggleLoadout(kind: TowerKind, draft: SaveDataLatest): void {
   if (empty < 0) return;
   next[empty] = kind;
   draft.meta.activeLoadout = next;
+}
+
+export type TowerStoreEntry = {
+  kind: TowerKind;
+  state: 'owned' | 'buyable' | 'chapter-locked';
+  chapterHint?: { idx: number; name: string };
+};
+
+export function getTowerStoreEntries(data: SaveDataLatest): TowerStoreEntry[] {
+  const out: TowerStoreEntry[] = [];
+  for (const def of ALL_TOWER_DEFS) {
+    if (data.meta.unlockedTowers.includes(def.kind)) {
+      out.push({ kind: def.kind, state: 'owned' });
+      continue;
+    }
+    const gateCh = def.unlockedByChapter;
+    if (gateCh !== undefined && !data.meta.chapterUnlocks[gateCh]?.rewardClaimedAt) {
+      const ch = CHAPTER_BY_INDEX[gateCh];
+      const hint = ch !== undefined
+        ? { idx: gateCh, name: ch.name }
+        : { idx: gateCh, name: `Chapter ${gateCh + 1}` };
+      out.push({ kind: def.kind, state: 'chapter-locked', chapterHint: hint });
+      continue;
+    }
+    out.push({ kind: def.kind, state: 'buyable' });
+  }
+  return out;
 }
