@@ -5,6 +5,7 @@ import {
   blankSaveDataV2,
   blankSaveDataV3,
   blankSaveDataV5,
+  blankSaveDataV6,
   CURRENT_VERSION,
   DEFAULT_LOADOUT,
   DEFAULT_UNLOCKED_TOWERS,
@@ -13,10 +14,18 @@ import {
 } from '@/meta/schema';
 
 describe('runMigrations', () => {
-  it('passes v5 through unchanged', () => {
-    const data = blankSaveDataV5(123);
-    const out = runMigrations({ version: 5, data });
+  it('passes v6 through unchanged', () => {
+    const data = blankSaveDataV6(123);
+    const out = runMigrations({ version: 6, data });
     expect(out).toEqual(data);
+  });
+
+  it('migrates v5 → v6 by seeding seenTowers from currently-visible towers', () => {
+    const v5 = blankSaveDataV5(123);
+    const out = runMigrations({ version: 5, data: v5 });
+    // Starters are owned and ungated, so they're visible on a blank save and
+    // get pre-acknowledged. No badge spam on first post-update launch.
+    expect(out.meta.seenTowers).toEqual(expect.arrayContaining([...DEFAULT_UNLOCKED_TOWERS]));
   });
 
   it('migrates v1 → v5 by chaining v1→v2→v3→v4→v5', () => {
@@ -82,7 +91,7 @@ describe('runMigrations', () => {
   });
 
   it('reports the latest version constant', () => {
-    expect(CURRENT_VERSION).toBe(5);
+    expect(CURRENT_VERSION).toBe(6);
   });
 });
 
@@ -160,5 +169,27 @@ describe('runMigrations defensive backfill', () => {
     };
     const out = runMigrations({ version: 5, data: v5MissingField });
     expect(out.meta.chapterUnlocks).toEqual({});
+    // The v5→v6 step then runs and fills seenTowers from the visible set.
+    expect(out.meta.seenTowers).toEqual(expect.arrayContaining(['bullet-turret', 'logic-bomb']));
+  });
+
+  it('backfills missing seenTowers on v6 blobs', () => {
+    const v6MissingField = {
+      profile: { createdAt: 1, lastPlayedAt: 2 },
+      campaign: {},
+      meta: {
+        shards: 0,
+        techTree: {},
+        unlockedTowers: ['bullet-turret', 'logic-bomb'],
+        activeLoadout: ['bullet-turret', 'logic-bomb', null],
+        chapterUnlocks: {},
+      },
+      settings: {
+        audioMaster: 1, sfx: 0.8, music: 0.8,
+        difficultyDefault: 'normal', tutorialSeen: false,
+      },
+    };
+    const out = runMigrations({ version: 6, data: v6MissingField });
+    expect(out.meta.seenTowers).toEqual(expect.arrayContaining(['bullet-turret', 'logic-bomb']));
   });
 });

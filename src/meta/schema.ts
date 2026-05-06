@@ -138,7 +138,31 @@ export type PersistedBlobV5 = {
   data: SaveDataV5;
 };
 
-export const CURRENT_VERSION = 5 as const;
+export type SaveDataV6 = {
+  profile: { createdAt: number; lastPlayedAt: number };
+  campaign: Record<string, LevelProgress>;
+  meta: {
+    shards: number;
+    techTree: Record<string, number>;
+    unlockedTowers: TowerKind[];
+    activeLoadout: (TowerKind | null)[];
+    lastPlayedLevelId?: string;
+    chapterUnlocks: Record<number, ChapterUnlockState>;
+    /** Tower kinds the player has acknowledged on the Towers screen. Anything
+     *  newly visible (owned or buyable) but absent from this set drives the
+     *  "new tower" badge on the Towers tab. Visiting the screen syncs this
+     *  set to the currently-visible towers. */
+    seenTowers: TowerKind[];
+  };
+  settings: SaveSettings;
+};
+
+export type PersistedBlobV6 = {
+  version: 6;
+  data: SaveDataV6;
+};
+
+export const CURRENT_VERSION = 6 as const;
 
 export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
   return {
@@ -238,6 +262,29 @@ export function blankSaveDataV5(now: number = Date.now()): SaveDataV5 {
   };
 }
 
-export type SaveDataLatest = SaveDataV5;
-export type PersistedBlobLatest = PersistedBlobV5;
-export const blankSaveDataLatest = blankSaveDataV5;
+export function blankSaveDataV6(now: number = Date.now()): SaveDataV6 {
+  return {
+    profile: { createdAt: now, lastPlayedAt: now },
+    campaign: {},
+    meta: {
+      shards: 0,
+      techTree: {},
+      unlockedTowers: [...DEFAULT_UNLOCKED_TOWERS],
+      activeLoadout: [...DEFAULT_LOADOUT],
+      chapterUnlocks: {},
+      // Starters are pre-acknowledged so first launch doesn't badge the tab.
+      seenTowers: [...DEFAULT_UNLOCKED_TOWERS],
+    },
+    settings: {
+      audioMaster: 1.0,
+      sfx: 0.8,
+      music: 0.8,
+      difficultyDefault: 'normal',
+      tutorialSeen: false,
+    },
+  };
+}
+
+export type SaveDataLatest = SaveDataV6;
+export type PersistedBlobLatest = PersistedBlobV6;
+export const blankSaveDataLatest = blankSaveDataV6;

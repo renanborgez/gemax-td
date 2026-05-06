@@ -9,8 +9,11 @@ import {
   type SaveDataV3,
   type SaveDataV4,
   type SaveDataV5,
+  type SaveDataV6,
 } from '@/meta/schema';
 import { CHAPTERS } from '@/content/chapters';
+import { ALL_TOWER_DEFS } from '@/content/towerDefs';
+import type { TowerKind } from '@/content/types';
 
 export type Migration = {
   from: number;
@@ -95,7 +98,45 @@ export const MIGRATIONS: Migration[] = [
       return v5;
     },
   },
+  {
+    from: 5,
+    to: 6,
+    migrate: (d) => {
+      // Seed `seenTowers` with everything currently visible (owned + chapter-
+      // unlocked listings) so returning players don't get spammed with badges
+      // on their first post-update launch. Future unlocks diverge from this
+      // snapshot and surface the badge.
+      const v5 = d as SaveDataV5;
+      const seen = visibleTowerKinds(v5);
+      const v6: SaveDataV6 = {
+        ...v5,
+        meta: { ...v5.meta, seenTowers: seen },
+      };
+      return v6;
+    },
+  },
 ];
+
+/** Towers currently visible to the player on the Towers screen — i.e. either
+ *  owned, ungated, or whose chapter gate has been claimed. Used by the V5→V6
+ *  migration and as a defensive backfill below. Tolerates a missing
+ *  `chapterUnlocks` field — saves written between schema bumps may land here
+ *  with that map absent and we still need to compute a sensible seed set. */
+function visibleTowerKinds(data: SaveDataV5 | SaveDataV6): TowerKind[] {
+  const unlocks: Record<number, ChapterUnlockState> = data.meta.chapterUnlocks ?? {};
+  const out: TowerKind[] = [];
+  for (const def of ALL_TOWER_DEFS) {
+    if (data.meta.unlockedTowers.includes(def.kind)) {
+      out.push(def.kind);
+      continue;
+    }
+    const gate = def.unlockedByChapter;
+    if (gate === undefined || unlocks[gate]?.rewardClaimedAt) {
+      out.push(def.kind);
+    }
+  }
+  return out;
+}
 
 export function runMigrations(blob: { version: number; data: unknown }): SaveDataLatest {
   let { version, data } = blob;
@@ -115,6 +156,9 @@ export function runMigrations(blob: { version: number; data: unknown }): SaveDat
   const latest = data as SaveDataLatest;
   if (!latest.meta.chapterUnlocks) {
     latest.meta.chapterUnlocks = {};
+  }
+  if (!latest.meta.seenTowers) {
+    latest.meta.seenTowers = visibleTowerKinds(latest);
   }
   return latest;
 }

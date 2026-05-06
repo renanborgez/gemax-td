@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import type { RootStackParamList } from '@/app/RootNav';
 import { BottomTabBar, type TabKey } from '@/ui/components/BottomTabBar';
+import { useSave } from '@/app/providers/SaveProvider';
+import { hasUnseenTowers } from '@/meta/loadout';
 import { COLORS } from '@/render/theme';
 
 /**
@@ -22,6 +24,9 @@ export function PersistentTabBar({
   routeName: string | undefined;
   navRef: NavigationContainerRef<RootStackParamList>;
 }) {
+  const { data } = useSave();
+  const towersBadge = useMemo(() => hasUnseenTowers(data), [data]);
+
   if (!routeName || routeName === 'Play') return null;
 
   const activeTab: TabKey =
@@ -48,7 +53,11 @@ export function PersistentTabBar({
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.wrap}>
-      <BottomTabBar active={activeTab} onSelect={onSelect} />
+      <BottomTabBar
+        active={activeTab}
+        onSelect={onSelect}
+        badges={{ towers: towersBadge }}
+      />
     </SafeAreaView>
   );
 }
