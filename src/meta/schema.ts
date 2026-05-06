@@ -107,7 +107,38 @@ export type PersistedBlobV4 = {
   data: SaveDataV4;
 };
 
-export const CURRENT_VERSION = 4 as const;
+export type ChapterUnlockState = {
+  rewardClaimedAt?: number;
+};
+
+export type SaveDataV5 = {
+  profile: { createdAt: number; lastPlayedAt: number };
+  campaign: Record<string, LevelProgress>;
+  meta: {
+    shards: number;
+    techTree: Record<string, number>;
+    unlockedTowers: TowerKind[];
+    activeLoadout: (TowerKind | null)[];
+    /** Most recently entered level — used by the Title screen's CONTINUE affordance. */
+    lastPlayedLevelId?: string;
+    /** Per-chapter reward state. Presence of `rewardClaimedAt` means the chapter
+     *  was cleared and the player has been credited their tower listing(s),
+     *  medal, and palette. Absence means the celebration is still pending. */
+    chapterUnlocks: Record<number, ChapterUnlockState>;
+    /** When set, overrides the chapter-of-current-mission palette for HUD chrome
+     *  and the TitleScreen. In-match board/nebula tints are always tied to the
+     *  current mission's chapter regardless of this value. */
+    activePaletteId?: string;
+  };
+  settings: SaveSettings;
+};
+
+export type PersistedBlobV5 = {
+  version: 5;
+  data: SaveDataV5;
+};
+
+export const CURRENT_VERSION = 5 as const;
 
 export function blankSaveDataV1(now: number = Date.now()): SaveDataV1 {
   return {
@@ -186,6 +217,27 @@ export function blankSaveDataV4(now: number = Date.now()): SaveDataV4 {
   };
 }
 
-export type SaveDataLatest = SaveDataV4;
-export type PersistedBlobLatest = PersistedBlobV4;
-export const blankSaveDataLatest = blankSaveDataV4;
+export function blankSaveDataV5(now: number = Date.now()): SaveDataV5 {
+  return {
+    profile: { createdAt: now, lastPlayedAt: now },
+    campaign: {},
+    meta: {
+      shards: 0,
+      techTree: {},
+      unlockedTowers: [...DEFAULT_UNLOCKED_TOWERS],
+      activeLoadout: [...DEFAULT_LOADOUT],
+      chapterUnlocks: {},
+    },
+    settings: {
+      audioMaster: 1.0,
+      sfx: 0.8,
+      music: 0.8,
+      difficultyDefault: 'normal',
+      tutorialSeen: false,
+    },
+  };
+}
+
+export type SaveDataLatest = SaveDataV5;
+export type PersistedBlobLatest = PersistedBlobV5;
+export const blankSaveDataLatest = blankSaveDataV5;
