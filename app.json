@@ -22,7 +22,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E1014"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "assetBundlePatterns": [
       "**/*"
@@ -39,6 +49,15 @@
           "resizeMode": "cover"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dcdf6b85-75ca-4680-bdb1-36e6dbe2829a"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/dcdf6b85-75ca-4680-bdb1-36e6dbe2829a"
+    }
   }
 }
