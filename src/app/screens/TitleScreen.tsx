@@ -174,7 +174,7 @@ export function TitleScreen({ navigation }: Props) {
             // Sit fully below the title's divider row: title line height +
             // gap above the divider + divider thickness (= dot height) + a
             // breathing margin so the icon doesn't crowd the line.
-            top: BASE.titleLine * scale + BASE.gapMd * scale + BASE.dot * scale + SPACING.md,
+            top: BASE.titleLine * scale + BASE.gapMd * scale + BASE.dot * scale + SPACING.xxl,
           },
         ]}
         accessibilityRole="button"
