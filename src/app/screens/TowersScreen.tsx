@@ -52,7 +52,7 @@ function trailingPlaceholders(count: number): number {
   return rem === 0 ? 0 : TILES_PER_ROW - rem;
 }
 
-export function TowersScreen({ navigation: _navigation }: Props) {
+export function TowersScreen({ navigation }: Props) {
   const { data, store, refresh } = useSave();
 
   // Tile tap opens a modal; null means closed. Holding the kind here (not a def)
@@ -141,13 +141,16 @@ export function TowersScreen({ navigation: _navigation }: Props) {
       <View style={styles.availableGrid}>
         {availableEntries.map(({ def, entry }) => {
           const equipped = normalizedLoadout.includes(def.kind);
+          const onPress = entry.state === 'chapter-locked'
+            ? () => navigation.navigate('Chapters')
+            : () => setDialogKind(def.kind);
           return (
             <AvailableTile
               key={def.kind}
               def={def}
               entry={entry}
               equipped={equipped}
-              onPress={() => setDialogKind(def.kind)}
+              onPress={onPress}
             />
           );
         })}

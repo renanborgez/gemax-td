@@ -122,13 +122,9 @@ export type SaveDataV5 = {
     /** Most recently entered level — used by the Title screen's CONTINUE affordance. */
     lastPlayedLevelId?: string;
     /** Per-chapter reward state. Presence of `rewardClaimedAt` means the chapter
-     *  was cleared and the player has been credited their tower listing(s),
-     *  medal, and palette. Absence means the celebration is still pending. */
+     *  was cleared and the player has been credited their tower listing(s) and
+     *  medal. Absence means the celebration is still pending. */
     chapterUnlocks: Record<number, ChapterUnlockState>;
-    /** When set, overrides the chapter-of-current-mission palette for HUD chrome
-     *  and the TitleScreen. In-match board/nebula tints are always tied to the
-     *  current mission's chapter regardless of this value. */
-    activePaletteId?: string;
   };
   settings: SaveSettings;
 };
