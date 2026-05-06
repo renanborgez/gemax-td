@@ -2,12 +2,15 @@ import {
   CURRENT_VERSION,
   DEFAULT_LOADOUT,
   DEFAULT_UNLOCKED_TOWERS,
+  type ChapterUnlockState,
   type SaveDataLatest,
   type SaveDataV1,
   type SaveDataV2,
   type SaveDataV3,
   type SaveDataV4,
+  type SaveDataV5,
 } from '@/meta/schema';
+import { CHAPTERS } from '@/content/chapters';
 
 export type Migration = {
   from: number;
@@ -66,6 +69,30 @@ export const MIGRATIONS: Migration[] = [
       const { playerXp: _xp, playerLevel: _lvl, ...rest } = v3.meta;
       const v4: SaveDataV4 = { ...v3, meta: rest };
       return v4;
+    },
+  },
+  {
+    from: 4,
+    to: 5,
+    migrate: (d) => {
+      const v4 = d as SaveDataV4;
+      const chapterUnlocks: Record<number, ChapterUnlockState> = {};
+      for (let ch = 0; ch < CHAPTERS.length; ch++) {
+        let allCleared = true;
+        for (let m = 0; m < 10; m++) {
+          if (!v4.campaign[`lvl-c${ch}-m${m}`]?.cleared) { allCleared = false; break; }
+        }
+        if (allCleared) {
+          // Backdate so chaptersClearedNewly() returns nothing on the first
+          // post-update match end — returning players don't get celebration spam.
+          chapterUnlocks[ch] = { rewardClaimedAt: v4.profile.lastPlayedAt };
+        }
+      }
+      const v5: SaveDataV5 = {
+        ...v4,
+        meta: { ...v4.meta, chapterUnlocks },
+      };
+      return v5;
     },
   },
 ];

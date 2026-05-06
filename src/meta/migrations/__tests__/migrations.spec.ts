@@ -5,19 +5,22 @@ import {
   blankSaveDataV2,
   blankSaveDataV3,
   blankSaveDataV4,
+  blankSaveDataV5,
   CURRENT_VERSION,
   DEFAULT_LOADOUT,
   DEFAULT_UNLOCKED_TOWERS,
+  type SaveDataV4,
+  type SaveDataV5,
 } from '@/meta/schema';
 
 describe('runMigrations', () => {
-  it('passes v4 through unchanged', () => {
-    const data = blankSaveDataV4(123);
-    const out = runMigrations({ version: 4, data });
+  it('passes v5 through unchanged', () => {
+    const data = blankSaveDataV5(123);
+    const out = runMigrations({ version: 5, data });
     expect(out).toEqual(data);
   });
 
-  it('migrates v1 → v4 by chaining v1→v2→v3→v4', () => {
+  it('migrates v1 → v5 by chaining v1→v2→v3→v4→v5', () => {
     const v1 = blankSaveDataV1(123);
     const out = runMigrations({ version: 1, data: v1 });
     expect(out.meta.unlockedTowers).toEqual([...DEFAULT_UNLOCKED_TOWERS]);
@@ -28,9 +31,10 @@ describe('runMigrations', () => {
     expect(out.meta.techTree).toEqual(v1.meta.techTree);
     expect(out.profile).toEqual(v1.profile);
     expect(out.settings).toEqual(v1.settings);
+    expect(out.meta.chapterUnlocks).toEqual({});
   });
 
-  it('migrates v2 → v4 stripping the legacy XP fields introduced in v3', () => {
+  it('migrates v2 → v5 stripping the legacy XP fields introduced in v3', () => {
     const v2 = blankSaveDataV2(123);
     v2.meta.shards = 50;
     v2.meta.techTree = { 'firewall-t1': 1 };
@@ -42,7 +46,7 @@ describe('runMigrations', () => {
     expect(out.meta.unlockedTowers).toEqual(v2.meta.unlockedTowers);
   });
 
-  it('migrates v3 → v4 by removing playerXp / playerLevel from a populated v3 save', () => {
+  it('migrates v3 → v5 by removing playerXp / playerLevel from a populated v3 save', () => {
     const v3 = blankSaveDataV3(123);
     v3.meta.shards = 99;
     v3.meta.playerXp = 12345;
@@ -53,7 +57,7 @@ describe('runMigrations', () => {
     expect(out.meta.shards).toBe(99);
   });
 
-  it('preserves populated v1 values across the v1 → v4 chain', () => {
+  it('preserves populated v1 values across the v1 → v5 chain', () => {
     const v1 = blankSaveDataV1(123);
     v1.meta.shards = 42;
     v1.meta.techTree = { 'global-reserves': 1 };
@@ -79,6 +83,62 @@ describe('runMigrations', () => {
   });
 
   it('reports the latest version constant', () => {
-    expect(CURRENT_VERSION).toBe(4);
+    expect(CURRENT_VERSION).toBe(5);
+  });
+});
+
+function v4Blob(
+  data: Partial<SaveDataV4['meta']> = {},
+  campaign: SaveDataV4['campaign'] = {},
+): { version: 4; data: SaveDataV4 } {
+  return {
+    version: 4,
+    data: {
+      profile: { createdAt: 1000, lastPlayedAt: 2000 },
+      campaign,
+      meta: {
+        shards: 0,
+        techTree: {},
+        unlockedTowers: ['bullet-turret', 'logic-bomb'],
+        activeLoadout: ['bullet-turret', 'logic-bomb', null],
+        ...data,
+      },
+      settings: {
+        audioMaster: 1, sfx: 0.8, music: 0.8,
+        difficultyDefault: 'normal', tutorialSeen: false,
+      },
+    },
+  };
+}
+
+function fullChapter(ch: number): Record<string, { bestStarsByDifficulty: {}; bestWaveReached: number; cleared: boolean; shardsAwardedFor: [] }> {
+  const out: Record<string, { bestStarsByDifficulty: {}; bestWaveReached: number; cleared: boolean; shardsAwardedFor: [] }> = {};
+  for (let m = 0; m < 10; m++) {
+    out[`lvl-c${ch}-m${m}`] = { bestStarsByDifficulty: {}, bestWaveReached: 0, cleared: true, shardsAwardedFor: [] };
+  }
+  return out;
+}
+
+describe('v4 → v5 migration', () => {
+  it('adds empty chapterUnlocks for fresh v4 saves', () => {
+    const out = runMigrations(v4Blob());
+    expect(out.meta.chapterUnlocks).toEqual({});
+  });
+
+  it('backfills rewardClaimedAt for chapters fully cleared in campaign', () => {
+    const out = runMigrations(v4Blob({}, fullChapter(0)));
+    expect((out.meta.chapterUnlocks as Record<number, SaveDataV5['meta']['chapterUnlocks'][number]>)[0]?.rewardClaimedAt).toBe(2000);
+  });
+
+  it('does not flag partially-cleared chapters', () => {
+    const partial = fullChapter(0);
+    delete partial['lvl-c0-m9'];                // 9 of 10 cleared
+    const out = runMigrations(v4Blob({}, partial));
+    expect((out.meta.chapterUnlocks as Record<number, unknown>)[0]).toBeUndefined();
+  });
+
+  it('preserves unlockedTowers verbatim (no auto-grant)', () => {
+    const out = runMigrations(v4Blob({ unlockedTowers: ['bullet-turret', 'logic-bomb', 'sniper'] }, fullChapter(0)));
+    expect(out.meta.unlockedTowers).toEqual(['bullet-turret', 'logic-bomb', 'sniper']);
   });
 });
