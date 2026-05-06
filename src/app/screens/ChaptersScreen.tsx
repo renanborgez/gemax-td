@@ -9,6 +9,7 @@ import { CHAPTERS } from '@/content/chapters';
 import { useSave } from '@/app/providers/SaveProvider';
 import type { ChapterDef, Difficulty } from '@/content/types';
 import type { LevelProgress } from '@/meta/schema';
+import { chapterClearProgress } from '@/meta/chapterProgress';
 import { ScreenShell } from '@/ui/components/ScreenShell';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
@@ -80,12 +81,16 @@ export function ChaptersScreen({ navigation }: Props) {
       {CHAPTERS.map((def) => {
         const isUnlocked = unlocked.has(def.index);
         const stats = computeChapterStats(def.index, data.campaign);
+        const progress = chapterClearProgress(def.index, data);
+        const mastered = !!data.meta.chapterUnlocks[def.index]?.rewardClaimedAt;
         return (
           <ChapterCard
             key={def.index}
             def={def}
             locked={!isUnlocked}
             stats={stats}
+            progress={progress}
+            mastered={mastered}
             onPress={() =>
               navigation.navigate('LevelSelect', { chapter: def.index })
             }
@@ -100,11 +105,15 @@ function ChapterCard({
   def,
   locked,
   stats,
+  progress,
+  mastered,
   onPress,
 }: {
   def: ChapterDef;
   locked: boolean;
   stats: ChapterStats;
+  progress: { cleared: number; total: number };
+  mastered: boolean;
   onPress: () => void;
 }) {
   const accent = def.paletteAccent;
@@ -126,6 +135,12 @@ function ChapterCard({
           <Text style={[styles.metaStars, { color: COLORS.tertiary }]}>
             ★ {stats.starsEarned}/{stats.starsPossible}
           </Text>
+          <Text style={styles.metaProgress}>
+            {progress.cleared}/{progress.total} CLEARED
+          </Text>
+          {mastered && (
+            <Ionicons name="medal" size={14} color={accent} />
+          )}
         </View>
       </View>
       {locked && (
@@ -197,6 +212,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   metaStars: { ...TEXT.labelSmall, fontSize: 11 },
+  metaProgress: { ...TEXT.labelSmall, fontSize: 11, color: COLORS.textMuted },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
