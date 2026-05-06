@@ -97,11 +97,27 @@ export function TowersScreen({ navigation }: Props) {
   }, [normalizedLoadout]);
 
   // Available = every tower (equipped tiles flagged inline with an EQUIPPED badge).
+  // Sort priority: unlocked first, then by gating chapter (earlier chapters
+  // bubble up so the "next thing to grind" reads top-left), then by the
+  // user-selected sort mode (rarity / cost / name) as a stable tie-break.
   const availableEntries: { def: TowerDef; entry: TowerStoreEntry }[] = useMemo(() => {
     const entries = getTowerStoreEntries(data);
     const byKind = new Map(entries.map((e) => [e.kind, e] as const));
+    const stateRank = (s: TowerStoreEntry['state']): number => {
+      if (s === 'owned') return 0;
+      if (s === 'buyable') return 1;
+      return 2;
+    };
     return ALL_TOWER_DEFS.slice()
-      .sort((a, b) => compareDefs(a, b, sortMode))
+      .sort((a, b) => {
+        const sa = stateRank(byKind.get(a.kind)!.state);
+        const sb = stateRank(byKind.get(b.kind)!.state);
+        if (sa !== sb) return sa - sb;
+        const ca = a.unlockedByChapter ?? -1;
+        const cb = b.unlockedByChapter ?? -1;
+        if (ca !== cb) return ca - cb;
+        return compareDefs(a, b, sortMode);
+      })
       .map((def) => ({ def, entry: byKind.get(def.kind)! }));
   }, [data, sortMode]);
 
