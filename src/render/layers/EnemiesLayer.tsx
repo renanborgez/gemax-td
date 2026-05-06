@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Group, Path, Rect } from '@shopify/react-native-skia';
+import { Group, Path, Rect, type SkPath } from '@shopify/react-native-skia';
 import {
   runOnJS,
   useAnimatedReaction,
@@ -34,8 +34,11 @@ export function EnemiesLayer({
     const iconSize = tileSize * 0.6;
     return Object.fromEntries(
       ENEMY_ICON_KINDS.map((k) => [k, makeEnemyIconPath(k, iconSize)]),
-    ) as Record<EnemyKind, ReturnType<typeof makeEnemyIconPath>>;
+    ) as Record<EnemyKind, SkPath>;
   }, [tileSize]);
+  // Fallback path for empty slots — Path requires a non-null SkPath even when
+  // opacity is 0. Pick any baked kind; opacity worklet keeps it invisible.
+  const fallbackPath = iconPaths[ENEMY_ICON_KINDS[0]!];
 
   // Single shared clock (seconds) drives all per-kind procedural motion. Gated
   // by enemy presence so paused states don't fire 64 transform worklets/frame.
@@ -61,6 +64,7 @@ export function EnemiesLayer({
           snapshot={snapshot}
           viewport={viewport}
           iconPaths={iconPaths}
+          fallbackPath={fallbackPath}
           clock={clock}
         />
       ))}
@@ -69,12 +73,13 @@ export function EnemiesLayer({
 }
 
 function EnemySlot({
-  index, snapshot, viewport, iconPaths, clock,
+  index, snapshot, viewport, iconPaths, fallbackPath, clock,
 }: {
   index: number;
   snapshot: SharedValue<WorldSnapshot>;
   viewport: Viewport;
-  iconPaths: Record<EnemyKind, ReturnType<typeof makeEnemyIconPath>>;
+  iconPaths: Record<EnemyKind, SkPath>;
+  fallbackPath: SkPath;
   clock: SharedValue<number>;
 }) {
   const tileSize = viewport.tileSize;
@@ -244,47 +249,34 @@ function EnemySlot({
   const barY = useDerivedValue(() => cy.value - r * 1.3);
   const fillW = useDerivedValue(() => r * 2 * hpFrac.value);
 
+  // Single Path per slot whose geometry + color swap with the active enemy
+  // kind. Replaces a stack of 28 sibling Paths each with its own visibility
+  // worklet (was 28 worklets/slot just for kind selection).
+  const glyphPath = useDerivedValue<SkPath>(() => {
+    const kind = snapshot.value.enemies[index]?.defKind as EnemyKind | undefined;
+    if (!kind) return fallbackPath;
+    return iconPaths[kind] ?? fallbackPath;
+  });
+  const glyphColor = useDerivedValue<string>(() => {
+    const kind = snapshot.value.enemies[index]?.defKind as EnemyKind | undefined;
+    if (!kind) return COLORS.textMuted;
+    return ENEMY_ICON_COLORS[kind] ?? COLORS.textMuted;
+  });
+
   return (
     <Group opacity={opacity}>
       <Group transform={transform}>
-        {ENEMY_ICON_KINDS.map((kind) => (
-          <EnemyIconGlyph
-            key={kind}
-            kind={kind}
-            index={index}
-            snapshot={snapshot}
-            path={iconPaths[kind]}
-            strokeWidth={strokeWidth}
-          />
-        ))}
+        <Path
+          path={glyphPath}
+          style="stroke"
+          strokeWidth={strokeWidth}
+          strokeJoin="round"
+          strokeCap="round"
+          color={glyphColor}
+        />
       </Group>
       <Rect x={barX} y={barY} width={r * 2} height={3} color={COLORS.enemyHpBg} />
       <Rect x={barX} y={barY} width={fillW} height={3} color={COLORS.enemyHp} />
     </Group>
-  );
-}
-
-function EnemyIconGlyph({
-  kind, index, snapshot, path, strokeWidth,
-}: {
-  kind: EnemyKind;
-  index: number;
-  snapshot: SharedValue<WorldSnapshot>;
-  path: ReturnType<typeof makeEnemyIconPath>;
-  strokeWidth: number;
-}) {
-  const visible = useDerivedValue(() =>
-    snapshot.value.enemies[index]?.defKind === kind ? 1 : 0,
-  );
-  return (
-    <Path
-      path={path}
-      style="stroke"
-      strokeWidth={strokeWidth}
-      strokeJoin="round"
-      strokeCap="round"
-      color={ENEMY_ICON_COLORS[kind]}
-      opacity={visible}
-    />
   );
 }
