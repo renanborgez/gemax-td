@@ -4,11 +4,11 @@ import { useSave } from '@/app/providers/SaveProvider';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
 const STEPS = [
-  'Welcome to the netrunner sim. Defend the network from intrusions.',
-  'Tap a buildable tile to open the tower picker, then choose a tower to deploy.',
-  'Tap SEND in the top bar to launch the next wave early — and earn bonus credits.',
-  'Tap a placed tower to upgrade, sell, or change targeting priority.',
-  'Earn shards by clearing levels.',
+  'Welcome to GeMax TD. Defend the network from intrusions and keep your lives intact.',
+  'Tap an empty tile to open the tower picker, then choose a tower to deploy.',
+  'Tap START at the bottom to launch the next wave when you are ready.',
+  'Tap a placed tower to upgrade it or sell it for a partial refund.',
+  'Clear levels to earn shards — more stars and tougher chapters reward more.',
 ];
 
 export function TutorialOverlay() {

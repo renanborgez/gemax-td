@@ -21,6 +21,9 @@
     "eas:build:prod:all": "eas build --profile production --platform all",
     "eas:submit:ios": "eas submit --platform ios --latest",
     "eas:submit:android": "eas submit --platform android --latest",
+    "eas:ship:ios": "eas build --profile production --platform ios --auto-submit",
+    "eas:ship:android": "eas build --profile production --platform android --auto-submit",
+    "eas:ship:all": "eas build --profile production --platform all --auto-submit",
     "preflight": "npm run tsc && npm run test:engine && npm run lint:tsc:engine"
   },
   "dependencies": {

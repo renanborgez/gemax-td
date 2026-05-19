@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, PanResponder, Linking, type LayoutChangeEvent } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSave } from '@/app/providers/SaveProvider';
 import { ScreenShell } from '@/ui/components/ScreenShell';
+import type { RootStackParamList } from '@/app/RootNav';
 import { DEFAULT_LOADOUT, DEFAULT_UNLOCKED_TOWERS } from '@/meta/schema';
 import { COLORS, TEXT, RADIUS, SPACING } from '@/render/theme';
 
@@ -11,6 +14,7 @@ const SUPPORT_URL = 'https://gemax.online/support';
 
 export function SettingsScreen() {
   const { data, store, refresh } = useSave();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [confirmReset, setConfirmReset] = useState(false);
 
   const setVol = (k: 'sfx' | 'music', v: number) => {
@@ -113,6 +117,15 @@ export function SettingsScreen() {
             <View style={[styles.devSwitch, godMode && styles.devSwitchOn]}>
               <View style={[styles.devSwitchKnob, godMode && styles.devSwitchKnobOn]} />
             </View>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('MapBrowser')}
+            style={styles.devButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open map browser"
+          >
+            <Text style={styles.devButtonText}>MAP BROWSER</Text>
+            <Text style={styles.devButtonHint}>Inspect any generated map</Text>
           </Pressable>
         </Section>
       )}
@@ -249,4 +262,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.textMuted,
   },
   devSwitchKnobOn: { backgroundColor: COLORS.bg, transform: [{ translateX: 16 }] },
+  devButton: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.bgElevated,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  devButtonText: { ...TEXT.button, color: COLORS.textPrimary, fontSize: 13 },
+  devButtonHint: { ...TEXT.labelSmall, color: COLORS.textMuted, fontSize: 10, marginTop: 2 },
 });

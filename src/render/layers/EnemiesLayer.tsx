@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Group, Path, Rect, type SkPath } from '@shopify/react-native-skia';
+import { Group, Path, Rect, type SkPath, usePathValue } from '@shopify/react-native-skia';
 import {
   runOnJS,
   useAnimatedReaction,
@@ -250,12 +250,16 @@ function EnemySlot({
   const fillW = useDerivedValue(() => r * 2 * hpFrac.value);
 
   // Single Path per slot whose geometry + color swap with the active enemy
-  // kind. Replaces a stack of 28 sibling Paths each with its own visibility
-  // worklet (was 28 worklets/slot just for kind selection).
-  const glyphPath = useDerivedValue<SkPath>(() => {
+  // kind. Mutates one SkPath in place via usePathValue — assigning a fresh
+  // SkPath to a Reanimated SharedValue trips its animation-check path
+  // (valueSetter.ts treats certain Skia host objects as animation descriptors
+  // and crashes on `animation.onStart`). usePathValue uses `notifyChange` to
+  // bypass that setter.
+  const glyphPath = usePathValue((p) => {
+    'worklet';
     const kind = snapshot.value.enemies[index]?.defKind as EnemyKind | undefined;
-    if (!kind) return fallbackPath;
-    return iconPaths[kind] ?? fallbackPath;
+    const src = kind ? (iconPaths[kind] ?? fallbackPath) : fallbackPath;
+    p.addPath(src);
   });
   const glyphColor = useDerivedValue<string>(() => {
     const kind = snapshot.value.enemies[index]?.defKind as EnemyKind | undefined;
